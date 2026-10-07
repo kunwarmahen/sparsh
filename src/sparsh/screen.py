@@ -126,9 +126,13 @@ class Screen:
     app: str
     elements: list[Element] = field(default_factory=list)
     size: tuple[int, int] = (0, 0)  # the whole screen's width, height
+    #: Said instead of the list when the screen is not to be shown.
+    note: str = ""
 
     def text(self) -> str:
         lines = [f"App: {self.app or '(unknown)'}"]
+        if self.note:
+            return "\n".join([*lines, self.note])
         lines += [e.line() for e in self.elements]
         if not self.elements:
             lines.append("(nothing on this screen can be read -- try a screenshot)")
@@ -151,6 +155,7 @@ class Screen:
         return {
             "app": self.app,
             "size": list(self.size),
+            "note": self.note,
             "elements": [e.to_json() for e in self.elements],
         }
 

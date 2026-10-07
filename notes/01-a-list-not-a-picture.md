@@ -99,9 +99,10 @@ can fix it later.
   ASCII both need a helper app installed on the phone. Not yet: the
   first version works on any phone with USB debugging on, and nothing
   is left behind on it.
-* **No asking-first yet.** Sparsh does what it's told. Holding a tap on
-  "Send", "Pay" or "Delete" for a person's yes belongs with the agent's
-  tools (the MCP server), where there's someone to ask.
+* **No asking-first on the command line.** Sparsh does what it's told
+  there. Holding a tap on "Send", "Pay" or "Delete" for a person's yes
+  belongs with the agent's tools, where there's someone to ask
+  ([note 02](02-held-for-a-yes.md)).
 * **No iPhone.** Driving an iPhone needs WebDriverAgent, built and
   signed with Xcode, which only runs on a Mac. From Linux, the open
   tools can take an iPhone screenshot but can't tap.
@@ -152,8 +153,9 @@ A tap, wait included, took 5.3 seconds.
 
 ## What is not here yet
 
-* The agent's tools: `sparsh mcp`, with taps on Send / Pay / Buy /
-  Delete and typing into password fields held for a person's yes.
+* ~~The agent's tools: `sparsh mcp`, with taps on Send / Pay / Buy /
+  Delete and typing into password fields held for a person's yes.~~
+  Done: [note 02](02-held-for-a-yes.md).
 * A trial: the same phone tasks on a local model reading this list
   and a cloud model reading screenshots.
 * The phone over Wi-Fi (`adb pair`), so a container can reach it with

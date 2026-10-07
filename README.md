@@ -156,6 +156,8 @@ sparsh scroll down [--on 5]         down = show what is further down
 sparsh key back [home enter ...]    back, home, enter, recent, delete, tab, ...
 sparsh open settings                open an app by name or package
 sparsh apps [FILTER]                apps that can be opened
+sparsh mcp                          the agent's tools (MCP), held by your rules
+sparsh status [--json]              phones, rules, and how to start the tools
 ```
 
 Every command that does something prints the screen it led to. Every
@@ -198,13 +200,110 @@ done.
 * **Banking and password screens** often come back black in
   screenshots. The phone does that on purpose.
 
+## Letting an agent use it
+
+`sparsh mcp` gives an agent the same hands, as an MCP server: `look`,
+`tap`, `type_text`, `scroll`, `press_key`, `open_app` and `list_apps`.
+Every one of them hands back the screen it led to, so the agent always
+has the next numbers in front of it.
+
+**[Yantra](https://github.com/kunwarmahen/yantra) finds it by itself.**
+With `sparsh` on your `PATH` and a phone attached, a Yantra session
+starts the tools and says so in one line:
+
+```
+sparsh: 9 tool(s); phone emulator-5554 (sdk_gphone64_x86_64) -- via /home/you/sparsh/.venv/bin/sparsh
+```
+
+Then ask for something on the phone in plain words: "turn on airplane
+mode", "text 5554 saying running late". `YANTRA_SPARSH=/path/to/sparsh`
+names it when it isn't on `PATH`.
+
+**Other harnesses** (Claude Code, Cursor, …) take it like any MCP server:
+
+```json
+{"mcpServers": {"sparsh": {"command": "/home/you/sparsh/.venv/bin/sparsh", "args": ["mcp"]}}}
+```
+
+They'll ask you before each tap unless you allow the tools. Allow them
+all except `confirm` (below), and you get what Yantra does.
+
+### What it asks you first
+
+Most of working a phone is harmless: open Settings, tap a row, scroll,
+go back. Being asked about every tap would mean not reading the
+questions by the tenth one. So an agent's steps run by themselves, and
+Sparsh **holds** the few that can't be taken back:
+
+* a tap on something whose words say it acts: **Send, Pay, Buy, Order,
+  Place, Book, Confirm, Submit, Post, Share, Reply, Call, Delete,
+  Remove, Install, Uninstall, Allow, Accept, Sign out, Block**, and a few
+  more. These are matched as whole words, so "Place order" is held and
+  the "Orders" tab is not. "Send to Asha" (choosing who a message goes
+  to) isn't held; the Send button after it is;
+* typing into a **password** field;
+* **Enter**, while the screen shows something that would be held: in a
+  chat app with "Enter to send" on, Enter is the Send button.
+
+A held step isn't done. The agent is told so, and asks you through its
+`confirm` tool. That is the one tool Yantra asks about every time, even
+when you've told it to stop asking (`--yolo`). The question says what
+will happen, with the screen it will happen on:
+
+```
+╭─ approve mcp__sparsh__confirm()? ────────────────────────────────────────────╮
+│ Do this on the phone?                                                        │
+│ On the phone emulator-5554: tap image "Send SMS" in                          │
+│ com.google.android.apps.messaging -- held because it says "send".            │
+│ The screen when it was asked for:                                            │
+│ App: com.google.android.apps.messaging                                       │
+│ 1 text "Message list"                                                        │
+│ 2 item "7:59 AM — Texting with 5554 (SMS/MMS) ..."                           │
+│ 3 image "Expand attachment buttons"                                          │
+│ 4 field "running late, be there at 7"                                        │
+│ 5 image "Explore emoji"                                                      │
+│ 6 image "Send SMS"                                                           │
+│ ...                                                                          │
+╰──────────────────────────────────────────────────────────────────────────────╯
+run it? [y/n/e/s] (n):
+```
+
+If the screen has changed by the time you say yes, nothing is tapped.
+A held step waits 10 minutes, then lapses.
+
+### Your rules
+
+`~/.sparsh/rules.toml` is yours. No tool can change it:
+
+```toml
+ask = ["archive", "unfollow"]      # more words that need a yes
+dont_ask = ["share"]               # built-in words not to ask about
+never = ["com.chase.*", "*bank*"]  # apps the agent may not use at all
+```
+
+An app on the `never` list can't be opened, and if the agent ends up in
+it anyway (a notification, a link), nothing on its screen is shown.
+Back and Home always work, so the agent can leave. `sparsh status`
+prints the rules in force.
+
+The `sparsh` commands you type yourself are never held: they're your
+own hands.
+
+### Settings
+
+| | |
+|---|---|
+| `ANDROID_SERIAL` | which phone, when more than one is attached (or `--serial`) |
+| `SPARSH_STATE` | where the last screen of each phone and `rules.toml` live (default `~/.sparsh`; or `--state`) |
+| `SPARSH_RULES` | a rules file somewhere else |
+| `SPARSH_ADB` | the `adb` to use, when it isn't on `PATH` or in `~/Android/Sdk` |
+
 ## Not here yet
 
-* An agent's own tools for this (an MCP server, so Yantra, Claude Code
-  or any other harness can use it), with a yes from you before
-  anything that sends, pays, buys or deletes.
 * The phone over Wi-Fi instead of a cable, and typing beyond plain
   ASCII.
+* A phone for runs nobody is watching (a schedule): Yantra gives those
+  no phone at all for now.
 * iPhones. Driving an iPhone needs a Mac (Apple's tools only run there),
   and Sparsh runs on Linux.
 
@@ -220,12 +319,20 @@ src/sparsh/
 ├── phone.py    numbers in, taps out: the last look is kept, and a number
 │               is checked against the screen now before anything is done
 │               (notes/01)
+├── rules.py    what waits for a yes (words on a tap, password fields) and
+│               which apps are off limits; ~/.sparsh/rules.toml (notes/02)
+├── mcp.py      `sparsh mcp`: the agent's tools, a hand-written MCP server;
+│               reads, acts and `confirm` (notes/02)
+├── status.py   `sparsh status --json` (sparsh.status.v1): what a harness
+│               reads to find the phone, the rules and each tool's kind
 ├── fake.py     a phone made of saved screens, for tests
 └── cli.py      `sparsh`
 tests/screens/  real screens from the Android 15 emulator
 ```
 
-Why it is shaped this way: [notes/01](notes/01-a-list-not-a-picture.md).
+Why it is shaped this way: [notes/01](notes/01-a-list-not-a-picture.md)
+(the list, and the check before a tap) and
+[notes/02](notes/02-held-for-a-yes.md) (what an agent may do by itself).
 
 ## Licence
 

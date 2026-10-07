@@ -186,7 +186,7 @@ class AdbDevice:
         self._shell("input", "swipe", *(str(v) for v in (x1, y1, x2, y2, ms)))
 
     def type_text(self, text: str) -> None:
-        for chunk in _typeable(text):
+        for chunk in typeable(text):
             self._shell("input", "text", chunk)
 
     def keys(self, *names: str) -> None:
@@ -219,7 +219,7 @@ def key_code(name: str) -> str:
     return code
 
 
-def _typeable(text: str) -> list[str]:
+def typeable(text: str) -> list[str]:
     """``text`` as shell words for ``input text``, or a sentence why not."""
     if not text:
         return []

@@ -11,7 +11,7 @@ only what came back.
 import pytest
 
 from sparsh import SparshError
-from sparsh.device import _typeable
+from sparsh.device import typeable
 from sparsh.phone import Phone, ScreenChanged
 
 
@@ -119,15 +119,15 @@ def test_an_app_that_is_not_there_lists_the_ones_that_are(phone):
 
 
 def test_typing_is_quoted_for_the_phones_shell():
-    assert _typeable("it's a b&c") == ["'it'\\''s%sa%sb&c'"]
-    assert _typeable("") == []
-    assert len(_typeable("x" * 450)) == 3
+    assert typeable("it's a b&c") == ["'it'\\''s%sa%sb&c'"]
+    assert typeable("") == []
+    assert len(typeable("x" * 450)) == 3
 
 
 @pytest.mark.parametrize("text", ["café", "नमस्ते", "🙂", "100%sure"])
 def test_what_cannot_be_typed_yet_is_refused_in_words(text):
     with pytest.raises(SparshError, match="can't type"):
-        _typeable(text)
+        typeable(text)
 
 
 def test_an_unknown_key(phone):

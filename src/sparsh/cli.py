@@ -8,6 +8,8 @@
     sparsh key back [home enter ...]    back, home, enter, recent, delete, tab, ...
     sparsh open settings                open an app by name or package
     sparsh apps [FILTER]                apps that can be opened
+    sparsh mcp                          the agent's tools (MCP, stdio), held by the rules
+    sparsh status [--json]              phones, rules, and how a harness starts the tools
 
 Every command that does something prints the screen it led to, so the
 next number to use is always on the screen. If the screen changed
@@ -16,7 +18,9 @@ the exit code is 3.
 
 Which phone: the only one attached, or ``--serial`` / ``$ANDROID_SERIAL``
 (``sparsh devices`` shows the names). The last screen is kept in
-``~/.sparsh`` (``--state`` or ``$SPARSH_STATE``).
+``~/.sparsh`` (``--state`` or ``$SPARSH_STATE``), next to the rules
+an agent's steps are held by (``rules.toml``, rules.py). These commands
+are your own hands and are never held.
 """
 
 from __future__ import annotations
@@ -26,8 +30,10 @@ import json
 import sys
 
 from sparsh import SparshError, __version__
+from sparsh import mcp
 from sparsh.device import KEYS, attached, pick
-from sparsh.phone import DIRECTIONS, Phone, ScreenChanged
+from sparsh.phone import DIRECTIONS, Phone, ScreenChanged, state_root
+from sparsh.rules import load
 from sparsh.screen import Screen
 
 #: Exit code when the screen moved under a number (nothing was done).
@@ -94,6 +100,12 @@ def _parser() -> argparse.ArgumentParser:
     s = sub.add_parser("apps", parents=[common], help="apps that can be opened")
     s.add_argument("like", nargs="?", default="")
     s.set_defaults(run=_apps)
+
+    s = sub.add_parser("mcp", parents=[common], help="the agent's tools, as an MCP server")
+    s.set_defaults(run=_mcp)
+
+    s = sub.add_parser("status", parents=[common], help="phones, rules, and the agent's tools")
+    s.set_defaults(run=_status)
     return p
 
 
@@ -149,6 +161,36 @@ def _open(args) -> int:
 def _apps(args) -> int:
     for app in _phone(args).apps(args.like):
         print(app)
+    return 0
+
+
+def _mcp(args) -> int:
+    state = state_root(args.state)
+    rules, _ = load(state)
+    mcp.serve(mcp.Tools(rules, state=state, serial=args.serial))
+    return 0
+
+
+def _status(args) -> int:
+    from sparsh.status import report
+
+    data = report(state_root(args.state))
+    if args.json:
+        print(json.dumps(data, indent=1))
+        return 0
+    print(f"sparsh {data['version']}, state in {data['state']}")
+    if data["adb"] != "ok":
+        print(f"adb: {data['adb']}")
+    for phone in data["phones"]:
+        print(f"phone: {phone['serial']}  {phone['model'] or '?'}  {phone['state']}")
+    if data["adb"] == "ok" and not data["phones"]:
+        print("phone: none attached")
+    rules = data["rules"]
+    print(f"rules: {rules['path']}" + ("" if rules["exists"] else " (not written; the defaults)"))
+    print(f"  never: {', '.join(rules['never']) or '(no app is off limits)'}")
+    print(f"  a tap needs a yes when it says: {', '.join(rules['ask'])}")
+    print("  typing into a password field always needs a yes")
+    print(f"agent's tools: {data['mcp']['command']} {' '.join(data['mcp']['args'])}")
     return 0
 
 

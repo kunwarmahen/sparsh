@@ -14,7 +14,7 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from sparsh import SparshError
-from sparsh.device import _typeable, key_code
+from sparsh.device import key_code, typeable
 
 #: Enough of a PNG for anything that only checks the start.
 PNG = b"\x89PNG\r\n\x1a\n" + b"\0" * 16
@@ -56,7 +56,7 @@ class FakeDevice:
         self._did("swipe", x1, y1, x2, y2)
 
     def type_text(self, text: str) -> None:
-        _typeable(text)  # refuse what the real phone would refuse
+        typeable(text)  # refuse what the real phone would refuse
         self._did("text", text)
 
     def keys(self, *names: str) -> None:
