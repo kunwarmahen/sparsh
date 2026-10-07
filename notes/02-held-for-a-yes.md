@@ -143,6 +143,28 @@ goes to; it sends nothing. Held, it cost a yes before the message was
 even written. "Send" followed by "to" is now not held. The real Send
 button, labelled "Send SMS", still is.
 
+## Written down
+
+The agent's last message is its own account of what it did ("Done -- the
+text was sent"). A person reading it afterwards deserves the phone's
+account too. **EVERY ACT IS WRITTEN DOWN, HOWEVER IT ENDED**: each tap,
+typing, scroll, key, app opened and confirm goes into
+`~/.sparsh/phones/<serial>/actions.jsonl`, with who asked for it (the
+agent, or "you" on the command line), the line it was aimed at as it
+was read, how it ended (`done`, `held`, `changed`, `not_done`), why if
+not done, and the screen it led to. Held and refused steps are the
+point: a log of successes alone would read as if nothing was ever
+stopped.
+
+Looks aren't written down; they change nothing. Text typed into a
+password field is `(hidden)`, here as on the card. The newest 500 steps
+are kept, so the file never grows without end. `sparsh log` reads it:
+
+```
+10:15:07 agent press_key keys=["enter"] -> held (h39b833: enter could do what item "Send SMS — SMS" does (it says "send"))
+10:15:07 agent open_app name="whatsapp" -> not_done (no app matches 'whatsapp'. ...)
+```
+
 ## Live receipt
 
 The Android 15 emulator, headless, booted clean; Yantra on

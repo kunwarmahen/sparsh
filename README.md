@@ -221,6 +221,7 @@ sparsh scroll down [--on 5]         down = show what is further down
 sparsh key back [home enter ...]    back, home, enter, recent, delete, tab, ...
 sparsh open settings                open an app by name or package
 sparsh apps [FILTER]                apps that can be opened
+sparsh log [-n 20] [--json]         what was done on the phone, by the agent and by you
 sparsh mcp                          the agent's tools (MCP), held by your rules
 sparsh status [--json]              phones, rules, and how to start the tools
 ```
@@ -362,6 +363,23 @@ screen and leaves that memory alone. A plain `sparsh look` would
 renumber the screen under the agent. Yantra's phone panel peeks this
 way.
 
+**What was done.** Every step taken on the phone is written down: by the
+agent through its tools, or by you on the command line. That includes
+the ones that were held, refused, or stopped because the screen had moved.
+`sparsh log` shows them:
+
+```
+10:15:00 you   press_key keys=["home"] -> done (com.google.android.apps.nexuslauncher)
+10:15:03 you   open_app name="messages" -> done (com.google.android.apps.messaging)
+10:15:07 agent press_key keys=["enter"] -> held (h39b833: enter could do what item "Send SMS — SMS" does (it says "send"))
+10:15:07 agent open_app name="whatsapp" -> not_done (no app matches 'whatsapp'. ...)
+```
+
+`--json` adds what each step was aimed at and the screen it led to.
+Text typed into a password field is `(hidden)` there too. The newest 500
+steps per phone are kept, in `~/.sparsh/phones/<serial>/actions.jsonl`.
+Looking isn't a step, so it isn't logged.
+
 ### Settings
 
 | | |
@@ -398,6 +416,8 @@ src/sparsh/
 ├── phone.py    numbers in, taps out: the last look is kept, and a number
 │               is checked against the screen now before anything is done
 │               (notes/01)
+├── log.py      every step on the phone, by the agent or by you, however it
+│               ended; `sparsh log` (notes/02)
 ├── rules.py    what waits for a yes (words on a tap, password fields) and
 │               which apps are off limits; ~/.sparsh/rules.toml (notes/02)
 ├── mcp.py      `sparsh mcp`: the agent's tools, a hand-written MCP server;

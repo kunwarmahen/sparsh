@@ -15,6 +15,8 @@ hand like Samay's -- with nine tools in three kinds:
     open_app       act      by everyday name or package
     confirm        confirm  do a held step -- after the person said yes
 
+EVERY ACT IS WRITTEN DOWN (log.py), by "agent", however it ended.
+
 EVERY ACT RETURNS THE SCREEN IT LED TO, so the next number to use is
 always in the model's last tool result, and a turn needs one ``look`` at
 the start and none after.
@@ -42,7 +44,7 @@ import sys
 from pathlib import Path
 from typing import Any, TextIO
 
-from sparsh import SparshError, __version__
+from sparsh import SparshError, __version__, log
 from sparsh.device import KEYS, Device, pick
 from sparsh.phone import DIRECTIONS, Held, Phone, ScreenChanged
 from sparsh.rules import Rules
@@ -176,8 +178,13 @@ class Tools:
         if name not in KINDS:
             raise ToolFailed(f"no tool {name!r}")
         _known_only(name, args)
+        handler = getattr(self, f"_{name}")
         try:
-            return getattr(self, f"_{name}")(args)
+            if KINDS[name] == "read":
+                return handler(args)
+            # Every act is written down where the person can read it later
+            # (log.py) -- held, refused and moved-screen steps included.
+            return log.recorded(self.phone(), "agent", name, args, lambda: handler(args))
         except (Held, ScreenChanged) as e:
             raise ToolFailed(str(e)) from None
         except SparshError as e:

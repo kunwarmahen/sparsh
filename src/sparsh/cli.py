@@ -9,6 +9,7 @@
     sparsh key back [home enter ...]    back, home, enter, recent, delete, tab, ...
     sparsh open settings                open an app by name or package
     sparsh apps [FILTER]                apps that can be opened
+    sparsh log [-n 20] [--json]         what was done on the phone, by the agent and by you
     sparsh mcp                          the agent's tools (MCP, stdio), held by the rules
     sparsh status [--json]              phones, rules, and how a harness starts the tools
 
@@ -33,7 +34,7 @@ import json
 import sys
 
 from sparsh import SparshError, __version__
-from sparsh import mcp
+from sparsh import log, mcp
 from sparsh.device import KEYS, attached, iphones, pick
 from sparsh.phone import DIRECTIONS, Phone, ScreenChanged, state_root
 from sparsh.rules import load
@@ -107,6 +108,10 @@ def _parser() -> argparse.ArgumentParser:
     s.add_argument("like", nargs="?", default="")
     s.set_defaults(run=_apps)
 
+    s = sub.add_parser("log", parents=[common], help="what was done on the phone, oldest first")
+    s.add_argument("-n", type=int, default=20, help="how many steps (default 20)")
+    s.set_defaults(run=_log)
+
     s = sub.add_parser("mcp", parents=[common], help="the agent's tools, as an MCP server")
     s.set_defaults(run=_mcp)
 
@@ -150,25 +155,46 @@ def _look(args) -> int:
     return _show(args, screen)
 
 
+def _done(args, action: str, asked: dict, run) -> int:
+    """Do one act by hand, written down by "you" (log.py)."""
+    phone = _phone(args)
+    return _show(args, log.recorded(phone, "you", action, asked, lambda: run(phone)))
+
+
 def _tap(args) -> int:
-    return _show(args, _phone(args).tap(args.n, long=args.long))
+    return _done(args, "tap", {"n": args.n, **({"long": True} if args.long else {})},
+                 lambda p: p.tap(args.n, long=args.long))  # fmt: skip
 
 
 def _type(args) -> int:
-    phone = _phone(args)
-    return _show(args, phone.type(args.text, into=args.into, clear=args.clear, enter=args.enter))
+    asked = {"text": args.text, "into": args.into, "clear": args.clear, "enter": args.enter}
+    asked = {k: v for k, v in asked.items() if v not in (None, False)}
+    return _done(args, "type_text", asked, lambda p: p.type(
+        args.text, into=args.into, clear=args.clear, enter=args.enter))  # fmt: skip
 
 
 def _scroll(args) -> int:
-    return _show(args, _phone(args).scroll(args.direction, on=args.on))
+    asked = {"direction": args.direction, **({"on": args.on} if args.on else {})}
+    return _done(args, "scroll", asked, lambda p: p.scroll(args.direction, on=args.on))
 
 
 def _key(args) -> int:
-    return _show(args, _phone(args).key(*args.names))
+    return _done(args, "press_key", {"keys": args.names}, lambda p: p.key(*args.names))
 
 
 def _open(args) -> int:
-    return _show(args, _phone(args).open_app(args.name))
+    return _done(args, "open_app", {"name": args.name}, lambda p: p.open_app(args.name))
+
+
+def _log(args) -> int:
+    steps = log.recent(_phone(args), args.n)
+    if args.json:
+        print(json.dumps(steps, ensure_ascii=False, indent=1))
+    elif not steps:
+        print("Nothing done on this phone yet.")
+    for step in reversed(steps if not args.json else []):
+        print(log.line(step))
+    return 0
 
 
 def _apps(args) -> int:
