@@ -166,3 +166,29 @@ def test_a_tap_that_lands_on_an_unreadable_page_says_it_was_done(phone, fake):
     with pytest.raises(SparshError):
         phone.tap(6)
     assert fake.actions == [("tap", 540, 820)]
+
+
+def test_an_app_that_reopens_on_an_unreadable_page_is_backed_out_of_it(phone, fake):
+    # Settings reopens where it was left -- here, a page whose clock ticks.
+    fake.screens["ticking"] = "ERROR: could not get idle state."
+    fake.current = "home"
+
+    def go(f, action):
+        if action[0] == "launch":
+            f.current = "ticking"
+        elif action == ("keys", "back"):
+            f.current = "settings"
+
+    fake.after = go
+    now = phone.open_app("settings")
+    assert fake.actions == [("launch", "com.android.settings"), ("keys", "back")]
+    assert "back was pressed once" in now.text()
+    assert any(e.label == "Search settings" for e in now.elements)
+
+
+def test_an_app_that_opens_readable_is_left_alone(phone, fake):
+    fake.current = "home"
+    fake.after = lambda f, action: setattr(f, "current", "settings")
+    now = phone.open_app("settings")
+    assert fake.actions == [("launch", "com.android.settings")]
+    assert "back was pressed" not in now.text()

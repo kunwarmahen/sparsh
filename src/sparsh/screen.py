@@ -128,9 +128,13 @@ class Screen:
     size: tuple[int, int] = (0, 0)  # the whole screen's width, height
     #: Said instead of the list when the screen is not to be shown.
     note: str = ""
+    #: Said above the list: what Sparsh did on its own to get here.
+    remark: str = ""
 
     def text(self) -> str:
         lines = [f"App: {self.app or '(unknown)'}"]
+        if self.remark:
+            lines.append(self.remark)
         if self.note:
             return "\n".join([*lines, self.note])
         lines += [e.line() for e in self.elements]
@@ -156,6 +160,7 @@ class Screen:
             "app": self.app,
             "size": list(self.size),
             "note": self.note,
+            "remark": self.remark,
             "elements": [e.to_json() for e in self.elements],
         }
 

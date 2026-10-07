@@ -181,7 +181,7 @@ class Phone:
         try:
             return self.look()
         except ScreenUnreadable as e:
-            return Screen("", note=f"Done. But the screen it led to can't be read: {e}.")
+            return Screen("", note=f"{_UNREAD}{e}.")
 
     # -- doing ---------------------------------------------------------
 
@@ -305,10 +305,27 @@ class Phone:
         return None
 
     def open_app(self, name: str) -> Screen:
+        """AN APP REOPENS WHERE IT WAS LEFT. If that was a page that can't
+        be read (Settings' About page, its clock ticking), opening the app
+        again only lands there again -- the phone trial watched an agent go
+        home and reopen Settings for nineteen minutes. So Sparsh presses
+        back, up to twice, until there is a page to read, and says so.
+        Back is never held, and loses nothing."""
         package = self.which_app(name)
         self._guard(package)
         self.device.launch(package)
-        return self._after()
+        screen = self._after()
+        pressed = 0
+        while _unread(screen) and pressed < 2:
+            self.device.keys("back")
+            pressed += 1
+            screen = self._after()
+        if pressed and not _unread(screen):
+            screen.remark = (
+                f"(It opened on a page that can't be read, so back was pressed "
+                f"{'once' if pressed == 1 else 'twice'}. This is where that led.)"
+            )
+        return screen
 
     # -- holds ---------------------------------------------------------
 
@@ -406,10 +423,16 @@ class Phone:
         return (self.folder / "last.xml").exists()
 
 
+_UNREAD = "Done. But the screen it led to can't be read: "
+
 _OFF_LIMITS = (
     "(this app is off limits: the person's rules keep the agent out of it, so "
     "nothing on it is shown. Press back or home to leave.)"
 )
+
+
+def _unread(screen: Screen) -> bool:
+    return screen.note.startswith(_UNREAD)
 
 
 def _beside(element: Element, field: Element) -> bool:
