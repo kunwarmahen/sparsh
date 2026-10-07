@@ -40,7 +40,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from sparsh import SparshError
-from sparsh.device import Device, typeable
+from sparsh.device import Device
 from sparsh.rules import Rules
 from sparsh.screen import Element, Screen, ScreenUnreadable, read
 
@@ -207,7 +207,7 @@ class Phone:
     def type(
         self, text: str, into: int | None = None, clear: bool = False, enter: bool = False
     ) -> Screen:
-        typeable(text)  # refused before anything is tapped
+        self.device.check_text(text)  # refused before anything is tapped
         if into is not None:
             target = self._still_there(into)
             if not target.type:

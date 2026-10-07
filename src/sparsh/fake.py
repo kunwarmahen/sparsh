@@ -4,7 +4,8 @@
     fake.after = lambda f, action: ...   # move between screens
 
 Every call is written down in ``fake.actions`` as a tuple --
-``("tap", 540, 820)``, ``("text", "hi")``, ``("keys", "back")`` -- and
+``("tap", 540, 820)``, ``("text", "hi")``, ``("keys", "back")`` --
+(``("keyboard", "café")`` when it went through ADBKeyBoard), and
 ``after``, if set, is called with each one so a test can change
 ``fake.current`` the way the real phone would.
 """
@@ -14,7 +15,7 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from sparsh import SparshError
-from sparsh.device import key_code, typeable
+from sparsh.device import key_code, needs_keyboard, plain
 
 #: Enough of a PNG for anything that only checks the start.
 PNG = b"\x89PNG\r\n\x1a\n" + b"\0" * 16
@@ -27,11 +28,13 @@ class FakeDevice:
         start: str,
         apps: list[str] | None = None,
         serial: str = "fake",
+        keyboard: bool = False,
     ) -> None:
         self.screens = screens
         self.current = start
         self.installed = sorted(apps or [])
         self.serial = serial
+        self.keyboard = keyboard  # ADBKeyBoard installed
         self.actions: list[tuple] = []
         self.after: Callable[[FakeDevice, tuple], None] | None = None
 
@@ -55,9 +58,13 @@ class FakeDevice:
     def swipe(self, x1: int, y1: int, x2: int, y2: int, ms: int = 300) -> None:
         self._did("swipe", x1, y1, x2, y2)
 
+    def check_text(self, text: str) -> None:
+        if not plain(text) and not self.keyboard:
+            raise needs_keyboard(text)  # refuse what the real phone would refuse
+
     def type_text(self, text: str) -> None:
-        typeable(text)  # refuse what the real phone would refuse
-        self._did("text", text)
+        self.check_text(text)
+        self._did("text" if plain(text) else "keyboard", text)
 
     def keys(self, *names: str) -> None:
         for name in names:

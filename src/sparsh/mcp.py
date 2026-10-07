@@ -84,7 +84,8 @@ TOOLS: list[dict] = [
     {"name": "type_text",
      "description": (
          "Type text. With `into`, the numbered field is tapped first; without, "
-         "it goes where the keyboard already is. Plain ASCII only. `clear` "
+         "it goes where the keyboard already is. Any language if the phone "
+         "allows it; if not, you are told and nothing is typed. `clear` "
          "empties the field first; `enter` presses enter after (to search)."),
      "inputSchema": {"type": "object", "properties": {
          "text": {"type": "string"},

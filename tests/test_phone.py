@@ -11,7 +11,7 @@ only what came back.
 import pytest
 
 from sparsh import SparshError
-from sparsh.device import typeable
+from sparsh.device import KEYBOARD, AdbDevice, typeable
 from sparsh.phone import Phone, ScreenChanged
 
 
@@ -125,9 +125,68 @@ def test_typing_is_quoted_for_the_phones_shell():
 
 
 @pytest.mark.parametrize("text", ["café", "नमस्ते", "🙂", "100%sure"])
-def test_what_cannot_be_typed_yet_is_refused_in_words(text):
+def test_what_input_cannot_type_is_refused_in_words(text, phone, fake):
     with pytest.raises(SparshError, match="can't type"):
         typeable(text)
+    with pytest.raises(SparshError, match="ADBKeyBoard"):
+        phone.type(text, into=2)
+    assert fake.actions == []  # refused before the field was tapped
+
+
+def test_with_the_keyboard_app_anything_is_typed(phone, fake):
+    fake.keyboard = True
+    phone.type("नमस्ते 🙂")
+    phone.type("plain")
+    assert fake.actions == [("keyboard", "नमस्ते 🙂"), ("text", "plain")]
+
+
+class Shell(AdbDevice):
+    """An AdbDevice that writes down what it would run on the phone."""
+
+    def __init__(self, answers):
+        self.serial, self.adb, self._keyboard = "fake", "adb", False
+        self.answers, self.ran = answers, []
+
+    def _shell(self, *args, timeout=30):
+        self.ran.append(" ".join(args))
+        return next(
+            (out for start, out in self.answers.items() if self.ran[-1].startswith(start)), ""
+        )
+
+
+LATIN = "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME"
+
+
+def test_the_keyboard_app_is_used_and_the_persons_own_put_back(monkeypatch):
+    monkeypatch.setattr("sparsh.device.time.sleep", lambda s: None)
+    phone = Shell(
+        {
+            "pm list": f"package:{KEYBOARD.split('/')[0]}\n",
+            "settings get": LATIN + "\n",
+            "ime list": LATIN + "\n",
+        }
+    )
+    phone.type_text("café")
+    assert phone.ran == [
+        "pm list packages com.android.adbkeyboard",
+        "settings get secure default_input_method",
+        "ime list -s",
+        f"ime enable {KEYBOARD}",
+        f"ime set {KEYBOARD}",
+        "am broadcast -a ADB_INPUT_B64 --es msg Y2Fmw6k=",  # café
+        f"ime set {LATIN}",
+        f"ime disable {KEYBOARD}",  # off the list again: it wasn't on it
+    ]
+    phone.ran.clear()
+    phone.type_text("it's plain")
+    assert phone.ran == ["input text 'it'\\''s%splain'"]
+
+
+def test_without_the_keyboard_app_nothing_is_run_but_the_check():
+    phone = Shell({"pm list": ""})
+    with pytest.raises(SparshError, match="ADBKeyBoard"):
+        phone.type_text("100%sure")
+    assert phone.ran == ["pm list packages com.android.adbkeyboard"]
 
 
 def test_an_unknown_key(phone):

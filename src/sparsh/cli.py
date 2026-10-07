@@ -87,7 +87,7 @@ def _parser() -> argparse.ArgumentParser:
     s.add_argument("--long", action="store_true", help="press and hold")
     s.set_defaults(run=_tap)
 
-    s = sub.add_parser("type", parents=[common], help="type text (plain ASCII for now)")
+    s = sub.add_parser("type", parents=[common], help="type text (beyond ASCII: SETUP.md, Part G)")
     s.add_argument("text")
     s.add_argument("--into", type=int, metavar="N", help="tap this field first")
     s.add_argument("--clear", action="store_true", help="empty the field first")

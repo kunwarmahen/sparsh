@@ -179,9 +179,13 @@ What the end of each line means:
 An empty field shows its hint as its text (`field "Search settings"`):
 Android reports it that way. `--clear` empties a field before typing.
 
-**Typing.** Plain letters, digits and punctuation work. Letters outside
-plain ASCII (é, नमस्ते, emoji) are refused with a sentence rather than
-typed wrong, because `adb` can't type them.
+**Typing.** Plain letters, digits and punctuation work on every phone.
+For letters outside plain ASCII (é, नमस्ते, emoji), Android needs the small
+ADBKeyBoard app, which you install once ([SETUP.md, Part
+G](SETUP.md#part-g--typing-other-languages-optional-android)). Sparsh
+switches to it just for that text and then back to your own keyboard.
+Without it, such text is refused with a sentence rather than typed
+wrong. An iPhone types them as they are.
 
 **Exit codes.** `0` done, `1` something went wrong (one sentence on
 stderr), `3` the screen changed since the last look and nothing was
@@ -330,8 +334,9 @@ Looking isn't a step, so it isn't logged.
 
 ## Not here yet
 
-* The phone over Wi-Fi instead of a cable, and typing beyond plain
-  ASCII.
+* The phone over Wi-Fi instead of a cable.
+* ~~Typing beyond plain ASCII.~~ Built through ADBKeyBoard (SETUP.md,
+  Part G); not yet run on a phone.
 * A phone for runs nobody is watching (a schedule): Yantra gives those
   no phone at all for now.
 * ~~iPhones.~~ Built: [notes/03](notes/03-an-iphone-through-a-mac.md),

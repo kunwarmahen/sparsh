@@ -485,6 +485,35 @@ the rules in force. The README's "Your rules" has the rest.
 
 ---
 
+## Part G · Typing other languages (optional, Android)
+
+On its own, Android lets a computer type only plain letters, digits and
+punctuation. Ask an agent to search for *café* or write *नमस्ते* and Sparsh
+says it can't, and types nothing. An iPhone doesn't need this part.
+
+The fix is a small keyboard app called
+[ADBKeyBoard](https://github.com/senzhk/ADBKeyBoard). It's open source
+(GPL-2), about 18 KB, and does one thing: it types whatever the computer
+sends it. Sparsh never installs it for you. If you want it:
+
+```
+curl -LO https://github.com/senzhk/ADBKeyBoard/releases/download/v2.5-dev/keyboardservice-debug.apk
+adb install keyboardservice-debug.apk
+```
+
+That's all. You don't have to switch keyboards yourself. When text
+needs it, Sparsh switches to ADBKeyBoard, types, and switches straight
+back to your own keyboard. It also takes ADBKeyBoard off your keyboard
+list again if it wasn't there before. Plain text still goes the old way
+and never touches it.
+
+To remove it: `adb uninstall com.android.adbkeyboard`.
+
+> **Status:** tested against a stand-in phone that records the commands
+> Sparsh sends; not yet run on a real phone or the emulator.
+
+---
+
 ## Quick reference
 
 | | Android | iPhone |
@@ -493,4 +522,5 @@ the rules in force. The README's "Your rules" has the rest.
 | Name it with | `--serial R58M...` / `ANDROID_SERIAL` | `--serial http://127.0.0.1:8100` / `SPARSH_WDA` |
 | Check | `uv run sparsh devices` | the same, with `SPARSH_WDA` set |
 | Every day | plug in / start the emulator | `scripts/start-wda-from-linux.sh` |
+| Other languages (é, नमस्ते, emoji) | install ADBKeyBoard once (Part G) | nothing to do |
 | Every 7 days | — | `ssh -t <mac> ./build-wda-on-mac.sh`, copy `WDA.ipa`, install; `sparsh wda` says when |

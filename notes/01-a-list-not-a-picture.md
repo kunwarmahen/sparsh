@@ -88,7 +88,7 @@ arrived in the search field as typed.
 What it can't do is type outside plain ASCII. `adb` has no way to send
 é or नमस्ते. **REFUSED, NOT MANGLED**: those are turned down with a
 sentence before anything reaches the phone. A keyboard app on the phone
-can fix it later.
+can fix it later. (Later: [note 04](04-typing-other-languages.md).)
 
 ## What was deliberately not built
 
@@ -162,6 +162,6 @@ A tap, wait included, took 5.3 seconds.
   12 of 13 each ([Yantra's note 120](https://github.com/kunwarmahen/yantra/blob/main/notes/120-thirteen-tasks-on-a-phone.md)). The cloud model reading
   screenshots is parked.
 * The phone over Wi-Fi (`adb pair`), so a container can reach it with
-  no USB cable; typing beyond ASCII.
+  no USB cable. ~~Typing beyond ASCII~~: [note 04](04-typing-other-languages.md).
 * An iPhone. Built: [note 03](03-an-iphone-through-a-mac.md), read
   through the same list.

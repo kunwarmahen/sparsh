@@ -139,8 +139,10 @@ arrives, and the go-ios commands on a current iOS.
 
 * A real iPhone: a captured Settings screen, the scripts run end to
   end, an agent's task done on it.
-* Typing beyond plain ASCII. WDA could type it, but `typeable()`
-  refuses it for both phones until Android can too.
+* ~~Typing beyond plain ASCII.~~ Each phone now says what it can type
+  (`check_text`). An iPhone takes anything; WDA types it as given
+  ([note 04](04-typing-other-languages.md)). Untried on a real iPhone,
+  like the rest.
 * ~~Rebuilding WDA on a schedule, before the free signature runs out.~~
   Said instead of scheduled: the date is read from inside `WDA.ipa`
   (its `embedded.mobileprovision`) when it's installed, and `sparsh

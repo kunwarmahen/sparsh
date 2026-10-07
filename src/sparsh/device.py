@@ -9,7 +9,8 @@ installed on the phone. What each method runs:
     tap         input tap X Y
     long_press  input swipe X Y X Y 800           a swipe that doesn't move
     swipe       input swipe X1 Y1 X2 Y2 MS
-    type_text   input text '...'                  plain ASCII only (below)
+    type_text   input text '...'                  plain ASCII (below)
+                am broadcast -a ADB_INPUT_B64     anything else, via ADBKeyBoard
     keys        input keyevent KEYCODE_...
     launch      monkey -p PKG -c ...LAUNCHER 1    the app's front door
     apps        cmd package query-activities      apps with a front door
@@ -22,13 +23,21 @@ iPhone -- picked when the phone's name is a web address.
 
 TYPING. ``input text`` takes one shell word on the phone: it is quoted
 here, and a space is sent as ``%s`` (which ``input`` turns back into a
-space). It cannot type letters outside plain ASCII -- that needs a
-keyboard app on the phone, a later slice -- so those are refused with a
-sentence rather than typed wrong.
+space). It cannot type letters outside plain ASCII -- on Android 15 it
+crashes on them -- and the phone's clipboard has no shell command.
+
+So anything else (é, नमस्ते, emoji, a literal ``%s``) goes through
+ADBKeyBoard, a small open-source keyboard app that types what adb
+broadcasts to it. Sparsh never installs it: the person does, once
+(SETUP.md, "Typing other languages"). For each such piece of text
+Sparsh switches to it, types, and switches back to the person's own
+keyboard, leaving the keyboard list as it found it. Without it, the
+text is refused with a sentence rather than typed wrong.
 """
 
 from __future__ import annotations
 
+import base64
 import os
 import re
 import shutil
@@ -59,6 +68,10 @@ KEYS = {
     "volume_down": "KEYCODE_VOLUME_DOWN",
 }
 
+#: ADBKeyBoard (github.com/senzhk/ADBKeyBoard), for what `input` can't type.
+KEYBOARD_APP = "com.android.adbkeyboard"
+KEYBOARD = KEYBOARD_APP + "/.AdbIME"
+
 
 class Device(Protocol):
     serial: str
@@ -68,6 +81,7 @@ class Device(Protocol):
     def tap(self, x: int, y: int) -> None: ...
     def long_press(self, x: int, y: int) -> None: ...
     def swipe(self, x1: int, y1: int, x2: int, y2: int, ms: int = 300) -> None: ...
+    def check_text(self, text: str) -> None: ...
     def type_text(self, text: str) -> None: ...
     def keys(self, *names: str) -> None: ...
     def launch(self, package: str) -> None: ...
@@ -167,6 +181,7 @@ class AdbDevice:
     def __init__(self, serial: str, adb: str | None = None) -> None:
         self.serial = serial
         self.adb = adb or adb_path()
+        self._keyboard = False  # only a yes is kept: it may be installed later
 
     def _shell(self, *args: str, timeout: float = 30) -> str:
         done = _run([self.adb, "-s", self.serial, "shell", *args], timeout=timeout)
@@ -214,9 +229,41 @@ class AdbDevice:
     def swipe(self, x1: int, y1: int, x2: int, y2: int, ms: int = 300) -> None:
         self._shell("input", "swipe", *(str(v) for v in (x1, y1, x2, y2, ms)))
 
+    def check_text(self, text: str) -> None:
+        """Raise, before anything is done, if ``text`` can't be typed here."""
+        if not plain(text) and not self.has_keyboard():
+            raise needs_keyboard(text)
+
+    def has_keyboard(self) -> bool:
+        if not self._keyboard:
+            out = self._shell("pm", "list", "packages", KEYBOARD_APP)
+            self._keyboard = f"package:{KEYBOARD_APP}" in out.split()
+        return self._keyboard
+
     def type_text(self, text: str) -> None:
-        for chunk in typeable(text):
-            self._shell("input", "text", chunk)
+        if plain(text):
+            for chunk in typeable(text):
+                self._shell("input", "text", chunk)
+            return
+        self.check_text(text)
+        was = self._shell("settings", "get", "secure", "default_input_method").strip()
+        listed = self._shell("ime", "list", "-s").split()
+        if was != KEYBOARD:
+            if KEYBOARD not in listed:
+                self._shell("ime", "enable", KEYBOARD)
+            self._shell("ime", "set", KEYBOARD)
+            time.sleep(0.5)  # for it to take over the field
+        try:
+            for piece in pieces(text):
+                msg = base64.b64encode(piece.encode()).decode()
+                self._shell("am", "broadcast", "-a", "ADB_INPUT_B64", "--es", "msg", msg)
+        finally:
+            # Back to the person's own keyboard, and off the list if it wasn't on it.
+            if was != KEYBOARD:
+                if was and was != "null":
+                    self._shell("ime", "set", was)
+                if KEYBOARD not in listed:
+                    self._shell("ime", "disable", KEYBOARD)
 
     def keys(self, *names: str) -> None:
         self._shell("input", "keyevent", *(key_code(n) for n in names))
@@ -248,24 +295,37 @@ def key_code(name: str) -> str:
     return code
 
 
+def plain(text: str) -> bool:
+    """Whether ``input text`` can type ``text`` on its own."""
+    return all(32 <= ord(c) < 127 for c in text) and "%s" not in text
+
+
+def needs_keyboard(text: str) -> SparshError:
+    odd = sorted({c for c in text if not (32 <= ord(c) < 127)})
+    if not odd:
+        return SparshError(
+            "can't type the two letters '%s' together on this phone (it reads them "
+            'as a space) without the ADBKeyBoard app -- SETUP.md, "Typing other '
+            'languages". Nothing was typed'
+        )
+    shown = "".join(odd[:5]).encode("unicode_escape").decode()
+    return SparshError(
+        f"can't type {shown!r} on this phone: only plain ASCII letters, digits "
+        "and punctuation, unless the person installs the small ADBKeyBoard app "
+        '(SETUP.md, "Typing other languages"). Nothing was typed'
+    )
+
+
+def pieces(text: str, size: int = 200) -> list[str]:
+    # Long text in one go can be dropped by the phone; send it in pieces.
+    return [text[i : i + size] for i in range(0, len(text), size)]
+
+
 def typeable(text: str) -> list[str]:
     """``text`` as shell words for ``input text``, or a sentence why not."""
-    if not text:
-        return []
-    odd = sorted({c for c in text if not (32 <= ord(c) < 127)})
-    if odd:
-        shown = "".join(odd[:5]).encode("unicode_escape").decode()
-        raise SparshError(
-            f"can't type {shown!r} yet: only plain ASCII letters, digits and "
-            "punctuation can be typed for now"
-        )
-    if "%s" in text:
-        raise SparshError(
-            "can't type the two letters '%s' together (the phone reads them as a space)"
-        )
-    # Long text in one go can be dropped by the phone; send it in pieces.
-    pieces = [text[i : i + 200] for i in range(0, len(text), 200)]
-    return ["'" + p.replace(" ", "%s").replace("'", "'\\''") + "'" for p in pieces]
+    if not plain(text):
+        raise needs_keyboard(text)
+    return ["'" + p.replace(" ", "%s").replace("'", "'\\''") + "'" for p in pieces(text)]
 
 
 def _run(args: list[str], timeout: float = 30) -> subprocess.CompletedProcess:

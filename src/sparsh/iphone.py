@@ -238,6 +238,9 @@ class WdaDevice:
                   "parameters": {"pointerType": "touch"}, "actions": steps}  # fmt: skip
         self._act("/actions", {"actions": [finger]})
 
+    def check_text(self, text: str) -> None:
+        pass  # WDA types any letter the iPhone's keyboard has
+
     def type_text(self, text: str) -> None:
         if text:
             self._act("/wda/keys", {"value": [text]})
