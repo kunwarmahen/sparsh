@@ -63,7 +63,9 @@ screen. Sparsh reads that description and folds it into the list
 above. A small local model like `qwen3.8:latest` on Ollama reads lines
 of text well, so it can work a phone without seeing it. A screenshot is
 still there when you want one (`sparsh look --shot screen.png`), for a
-model that can use it or for you.
+model that can use it or for you. And where the list has nothing to
+give, an agent can be handed the picture too (`sparsh mcp --shots`,
+below).
 
 ## It never taps something that moved
 
@@ -197,8 +199,9 @@ done.
   clock ticking every second (Settings' *About phone* page counts its
   "Up time"). The phone waits for the screen to be still before
   describing it, and gives up on one that never is. Sparsh tries twice
-  and then says so, and tells an agent to press Back and find what it
-  needs another way. You can pause the video, or use `look --shot`.
+  and then says so, names the app in front, and tells an agent to press
+  Back and find what it needs another way. You can pause the video, or
+  use `look --shot`.
   An app that reopens on such a page (apps reopen where they were left)
   is backed out of it: `open` presses back up to twice and says so above
   the list.
@@ -235,6 +238,35 @@ names it when it isn't on `PATH`.
 
 They'll ask you before each tap unless you allow the tools. Allow them
 all except `confirm` (below), and you get what Yantra does.
+
+### A picture, only where the list has nothing
+
+Some screens give the list nothing: a page that never goes still, or an
+app drawn as one picture. Started as `sparsh mcp --shots`, a tool whose
+screen comes back empty or unreadable also returns a **screenshot** of
+it, as an image the model can look at:
+
+```
+App: com.android.settings
+(this screen can't be read as a list: the screen keeps changing (...). Press back to leave this page, ...)
+(A screenshot of this screen is attached to this result: you can already see it, no tool is needed. Only numbered things can be tapped, ...)
+```
+
+Only then. A screen the list can read never comes with a picture, an
+app on your `never` list never does, and nor does one whose name can't
+be found while you keep the agent out of some. It's **off** unless
+whoever starts the server turns it on, because a phone's screen is your
+messages, names and codes, and the harness is the one that knows
+whether the model can see and whether it runs in the cloud. Yantra
+turns it on for a local model that can see, and for a cloud model only
+when you say so (`YANTRA_PHONE_SHOTS=on`).
+
+The picture is for reading. Nothing taps by position: what isn't on the
+list is reached another way (back, a scroll, a search). On the Android
+emulator, `gemma4:26b` read the IMEI off Settings' About page this way,
+a page the list can't read at all. Renaming the phone, which needs a tap
+on that page, stays out of reach
+([notes/05](notes/05-a-picture-where-the-list-has-nothing.md)).
 
 ### What it asks you first
 
@@ -339,6 +371,11 @@ Looking isn't a step, so it isn't logged.
   Part G); run on the emulator, not yet on a real phone.
 * A phone for runs nobody is watching (a schedule): Yantra gives those
   no phone at all for now.
+* ~~Screenshots through the agent's tools.~~ Built: `sparsh mcp --shots`
+  ([notes/05](notes/05-a-picture-where-the-list-has-nothing.md)), for
+  reading only.
+* Acting on a screen the list can't read (renaming the phone on the
+  About page). The picture shows it; nothing taps by position.
 * ~~iPhones.~~ Built: [notes/03](notes/03-an-iphone-through-a-mac.md),
   with a Mac needed once to sign WebDriverAgent. Not yet run on a real
   iPhone.
@@ -363,7 +400,8 @@ src/sparsh/
 ├── rules.py    what waits for a yes (words on a tap, password fields) and
 │               which apps are off limits; ~/.sparsh/rules.toml (notes/02)
 ├── mcp.py      `sparsh mcp`: the agent's tools, a hand-written MCP server;
-│               reads, acts and `confirm` (notes/02)
+│               reads, acts and `confirm` (notes/02); `--shots`, a picture
+│               where the list has nothing (notes/05)
 ├── status.py   `sparsh status --json` (sparsh.status.v1): what a harness
 │               reads to find the phone, the rules and each tool's kind
 ├── fake.py     a phone made of saved screens, for tests

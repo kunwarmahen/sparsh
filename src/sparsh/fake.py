@@ -16,6 +16,7 @@ from collections.abc import Callable
 
 from sparsh import SparshError
 from sparsh.device import key_code, needs_keyboard, plain
+from sparsh.screen import ScreenUnreadable, read
 
 #: Enough of a PNG for anything that only checks the start.
 PNG = b"\x89PNG\r\n\x1a\n" + b"\0" * 16
@@ -24,7 +25,7 @@ PNG = b"\x89PNG\r\n\x1a\n" + b"\0" * 16
 class FakeDevice:
     def __init__(
         self,
-        screens: dict[str, str],
+        screens: dict[str, str | None],
         start: str,
         apps: list[str] | None = None,
         serial: str = "fake",
@@ -35,6 +36,7 @@ class FakeDevice:
         self.installed = sorted(apps or [])
         self.serial = serial
         self.keyboard = keyboard  # ADBKeyBoard installed
+        self.front = ""  # the app in front, when a test says so
         self.actions: list[tuple] = []
         self.after: Callable[[FakeDevice, tuple], None] | None = None
 
@@ -44,7 +46,10 @@ class FakeDevice:
             self.after(self, action)
 
     def dump(self) -> str:
-        return self.screens[self.current]
+        xml = self.screens[self.current]
+        if xml is None:  # a screen the phone can't describe (About phone)
+            raise ScreenUnreadable("the screen keeps changing")
+        return xml
 
     def screenshot(self) -> bytes:
         return PNG
@@ -78,3 +83,11 @@ class FakeDevice:
 
     def apps(self) -> list[str]:
         return list(self.installed)
+
+    def front_app(self) -> str:
+        if self.front:
+            return self.front
+        try:
+            return read(self.dump()).app
+        except SparshError:
+            return ""

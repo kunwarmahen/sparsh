@@ -116,6 +116,11 @@ def _parser() -> argparse.ArgumentParser:
     s.set_defaults(run=_log)
 
     s = sub.add_parser("mcp", parents=[common], help="the agent's tools, as an MCP server")
+    s.add_argument(
+        "--shots",
+        action="store_true",
+        help="attach a screenshot when a screen can't be read as a list",
+    )
     s.set_defaults(run=_mcp)
 
     s = sub.add_parser("status", parents=[common], help="phones, rules, and the agent's tools")
@@ -218,7 +223,7 @@ def _apps(args) -> int:
 def _mcp(args) -> int:
     state = state_root(args.state)
     rules, _ = load(state)
-    mcp.serve(mcp.Tools(rules, state=state, serial=args.serial))
+    mcp.serve(mcp.Tools(rules, state=state, serial=args.serial, shots=args.shots))
     return 0
 
 

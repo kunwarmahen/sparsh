@@ -238,5 +238,6 @@ button. The message store still holds only the first message.
   model, counted.~~ Two local models done
   ([Yantra's note 120](https://github.com/kunwarmahen/yantra/blob/main/notes/120-thirteen-tasks-on-a-phone.md)): both texts held on both, one message
   after a yes, none after a no. The cloud model is parked.
-* Screenshots through the agent's tools, for apps whose screens don't
-  describe themselves.
+* ~~Screenshots through the agent's tools, for apps whose screens don't
+  describe themselves.~~ [Note 05](05-a-picture-where-the-list-has-nothing.md):
+  `sparsh mcp --shots`, a picture only where the list has nothing.

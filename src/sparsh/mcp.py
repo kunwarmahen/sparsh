@@ -32,6 +32,20 @@ asks a person first. ``describe_hold`` is what a harness shows them.
 A harness that lets ``confirm`` through without asking has given its
 yes on the person's behalf; Sparsh can't tell the difference.
 
+A PICTURE ONLY WHERE THE LIST HAS NOTHING (``--shots``). The model
+works from the numbered list, never from pictures: that is what lets a
+local model do it, and what keeps a phone's screen out of a cloud
+model's request. But some screens give the list nothing -- a page that
+never goes still (Settings' About phone), an app drawn as one picture.
+Started with ``--shots``, a tool whose screen comes back empty or
+unreadable also returns a screenshot of it, as an MCP image. Only then,
+and never of an app on the person's ``never`` list. It is OFF unless
+whoever starts the server turns it on; that harness knows whether its
+model can see, and whether the person lets screenshots go to it (Yantra
+gives them to local models, and to cloud models only when asked). The
+picture is for reading. There is still no tapping by position: what
+isn't on the list is reached another way (back, a scroll, a search).
+
 ONE PHONE PER SERVER. ``--serial`` is fixed by whoever starts the
 server. With none, the only attached phone is used, found again on
 each call, so a phone plugged in after the server started still works.
@@ -39,6 +53,7 @@ each call, so a phone plugged in after the server started still works.
 
 from __future__ import annotations
 
+import base64
 import json
 import sys
 from pathlib import Path
@@ -48,6 +63,10 @@ from sparsh import SparshError, __version__, log
 from sparsh.device import KEYS, Device, pick
 from sparsh.phone import DIRECTIONS, Held, Phone, ScreenChanged
 from sparsh.rules import Rules
+from sparsh.screen import Screen
+
+#: The most a screenshot may weigh (Anthropic's per-image cap).
+SHOT_BYTES = 5 * 1024 * 1024
 
 #: What this server speaks, newest first; the client's choice wins when
 #: it is one of these.
@@ -158,7 +177,9 @@ class Tools:
         serial: str | None = None,
         device: Device | None = None,
         settle: float | None = None,
+        shots: bool = False,
     ) -> None:
+        self.shots = shots
         self.rules = rules
         self.state = state
         self.serial = serial
@@ -176,6 +197,26 @@ class Tools:
         return self._phone
 
     def call(self, name: str, args: dict) -> str:
+        return self.reply(name, args)[0]
+
+    def reply(self, name: str, args: dict) -> tuple[str, bytes | None]:
+        """The tool's text, and a screenshot when one goes with it."""
+        result = self._result(name, args)
+        if not isinstance(result, Screen):
+            return result, None
+        text = result.text()
+        if not (self.shots and self.phone().shown(result)):
+            return text, None
+        try:
+            png = self.phone().device.screenshot()
+        except SparshError as e:
+            return f"{text}\n(No screenshot either: {e}.)", None
+        if len(png) > SHOT_BYTES:
+            return f"{text}\n(The screenshot was too big to attach.)", None
+        text = text.replace(_NOTHING, "(nothing on this screen can be read as a list)")
+        return text + "\n" + _SHOT, png
+
+    def _result(self, name: str, args: dict) -> str | Screen:
         if name not in KINDS:
             raise ToolFailed(f"no tool {name!r}")
         _known_only(name, args)
@@ -191,16 +232,16 @@ class Tools:
         except SparshError as e:
             raise ToolFailed(f"Not done: {e}") from None
 
-    def _look(self, args: dict) -> str:
-        return self.phone().look().text()
+    def _look(self, args: dict) -> Screen:
+        return self.phone().see()
 
     def _list_apps(self, args: dict) -> str:
         return "\n".join(self.phone().apps(str(args.get("like") or ""))) or "(none)"
 
-    def _tap(self, args: dict) -> str:
-        return self.phone().tap(_n(args, "n"), long=bool(args.get("long"))).text()
+    def _tap(self, args: dict) -> Screen:
+        return self.phone().tap(_n(args, "n"), long=bool(args.get("long")))
 
-    def _type_text(self, args: dict) -> str:
+    def _type_text(self, args: dict) -> Screen:
         text = args.get("text")
         if not isinstance(text, str):
             raise ToolFailed("missing: text")
@@ -208,25 +249,25 @@ class Tools:
         phone = self.phone()
         screen = phone.type(text, into=into, clear=bool(args.get("clear")),
                             enter=bool(args.get("enter")))  # fmt: skip
-        return screen.text()
+        return screen
 
-    def _scroll(self, args: dict) -> str:
+    def _scroll(self, args: dict) -> Screen:
         on = _n(args, "on") if args.get("on") is not None else None
-        return self.phone().scroll(str(args.get("direction") or "down"), on=on).text()
+        return self.phone().scroll(str(args.get("direction") or "down"), on=on)
 
-    def _press_key(self, args: dict) -> str:
+    def _press_key(self, args: dict) -> Screen:
         keys = args.get("keys")
         if isinstance(keys, str):
             keys = [keys]
         if not keys:
             raise ToolFailed("missing: keys")
-        return self.phone().key(*[str(k) for k in keys]).text()
+        return self.phone().key(*[str(k) for k in keys])
 
-    def _open_app(self, args: dict) -> str:
+    def _open_app(self, args: dict) -> Screen:
         name = str(args.get("name") or "").strip()
         if not name:
             raise ToolFailed("missing: name")
-        return self.phone().open_app(name).text()
+        return self.phone().open_app(name)
 
     def _describe_hold(self, args: dict) -> str:
         phone = self.phone()
@@ -234,6 +275,14 @@ class Tools:
 
     def _confirm(self, args: dict) -> str:
         return "Done. " + self.phone().confirm(str(args.get("hold") or "")).text()
+
+
+_NOTHING = "(nothing on this screen can be read -- try a screenshot)"
+_SHOT = (
+    "(A screenshot of this screen is attached to this result: you can already see "
+    "it, no tool is needed. Only numbered things can be tapped, so to act on what "
+    "it shows, find it another way -- press back, scroll, or search.)"
+)
 
 
 #: Names other tools use, and what they are called here.
@@ -292,8 +341,12 @@ def answer(tools: Tools, message: dict) -> dict | None:
     if method == "tools/call":
         params = message.get("params") or {}
         try:
-            text = tools.call(str(params.get("name")), params.get("arguments") or {})
-            return _ok(ident, {"content": [{"type": "text", "text": text}], "isError": False})
+            text, png = tools.reply(str(params.get("name")), params.get("arguments") or {})
+            content: list[dict] = [{"type": "text", "text": text}]
+            if png is not None:
+                data = base64.b64encode(png).decode()
+                content.append({"type": "image", "data": data, "mimeType": "image/png"})
+            return _ok(ident, {"content": content, "isError": False})
         except ToolFailed as e:
             return _ok(ident, {"content": [{"type": "text", "text": str(e)}], "isError": True})
     return {

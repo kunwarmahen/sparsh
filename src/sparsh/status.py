@@ -11,6 +11,9 @@ refuses rather than guesses (Yantra's sparsh_link does). Fields:
              iPhone at ``$SPARSH_WDA`` (its serial is that address);
              adb's are missing when adb itself is, with ``adb`` saying why
     mcp      {command, args}: how to start the agent's tools
+    shots    the flag that adds a screenshot to a screen that can't be
+             read as a list (mcp.py); a harness adds it to ``mcp.args``
+             only when its model can see and the person allows it
     tools    {name: "read" | "act" | "confirm"} -- what each tool is
              (mcp.py says what a harness should do with each kind)
     wda      the iPhone's WebDriverAgent signature, once ``sparsh wda
@@ -62,6 +65,7 @@ def report(state: Path) -> dict:
         "adb": adb,
         "phones": phones,
         "mcp": {"command": sparsh_command(), "args": ["mcp", "--state", str(state)]},
+        "shots": "--shots",
         "tools": dict(KINDS),
         "wda": _wda(state),
     }

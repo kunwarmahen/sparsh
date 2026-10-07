@@ -201,12 +201,7 @@ class WdaDevice:
         source = self._call("GET", "/source?format=xml")
         if not isinstance(source, str) or not source.strip():
             raise ScreenUnreadable("the iPhone did not describe its screen")
-        try:
-            info = self._call("GET", "/wda/activeAppInfo")
-        except WdaError:
-            info = {}
-        bundle = info.get("bundleId", "") if isinstance(info, dict) else ""
-        return as_android(source, bundle)
+        return as_android(source, self.front_app())
 
     def screenshot(self) -> bytes:
         shot = self._call("GET", "/screenshot")
@@ -283,6 +278,13 @@ class WdaDevice:
             self._act("/wda/apps/launch", {"bundleId": package})
         except WdaError as e:
             raise SparshError(f"{package} could not be opened on this iPhone ({e})") from None
+
+    def front_app(self) -> str:
+        try:
+            info = self._call("GET", "/wda/activeAppInfo")
+        except WdaError:
+            return ""
+        return info.get("bundleId", "") if isinstance(info, dict) else ""
 
     def apps(self) -> list[str]:
         extra = os.environ.get("SPARSH_IOS_APPS", "")

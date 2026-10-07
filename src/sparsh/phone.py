@@ -181,7 +181,36 @@ class Phone:
         try:
             return self.look()
         except ScreenUnreadable as e:
-            return Screen("", note=f"{_UNREAD}{e}.")
+            return self._unreadable(f"{_UNREAD}{e}.")
+
+    def see(self) -> Screen:
+        """The agent's look. A screen that can't be read is an ANSWER, not
+        a failure: it says which app is in front and what to do, and a
+        screenshot can go with it (mcp.py, ``--shots``)."""
+        try:
+            return self.look()
+        except ScreenUnreadable as e:
+            return self._unreadable(f"(this screen can't be read as a list: {e}.)")
+
+    def _unreadable(self, note: str) -> Screen:
+        try:
+            app = self.device.front_app()
+        except SparshError:
+            app = ""
+        if self._off_limits(app):
+            return Screen(app, note=_OFF_LIMITS)
+        return Screen(app, note=note)
+
+    def shown(self, screen: Screen) -> bool:
+        """Whether a picture of ``screen`` may be shown: only when the list
+        has nothing to give (empty, or the screen can't be read), and never
+        of an app the rules keep the agent out of -- nor of one that can't
+        be named while the rules keep it out of some."""
+        if screen.elements or screen.note == _OFF_LIMITS:
+            return False
+        if not screen.app:
+            return not (self.rules and self.rules.never)
+        return not self._off_limits(screen.app)
 
     # -- doing ---------------------------------------------------------
 

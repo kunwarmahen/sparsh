@@ -5,9 +5,12 @@ THE KINDS, AND THE KINDS DON'T LIE. Reads say readOnlyHint; every act
 says it changes things; confirm -- the one way through a hold -- says
 it is destructive, so any harness asks. The second bias: every failure
 reaches the model as readable text with isError, never a crash of the
-server, and every act hands back the screen it led to.
+server, and every act hands back the screen it led to. The third: A
+PICTURE ONLY WHERE THE LIST HAS NOTHING, only when turned on, and never
+of an app the person keeps the agent out of.
 """
 
+import base64
 import io
 import json
 
@@ -123,5 +126,79 @@ def test_status_names_the_contract_the_tools_and_the_rules(tmp_path, monkeypatch
     assert data["format"] == FORMAT
     assert data["tools"] == mcp.KINDS
     assert data["mcp"]["args"] == ["mcp", "--state", str(tmp_path)]
+    assert data["shots"] == "--shots"  # added to args only when allowed
     assert data["rules"]["never"] == ["*bank*"] and data["rules"]["exists"]
     assert data["phones"] == [] and data["adb"] == "ok"
+
+
+# -- a picture only where the list has nothing (--shots) ----------------
+
+
+def answer(tools, tool, **args):
+    reply = mcp.answer(
+        tools,
+        {"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+         "params": {"name": tool, "arguments": args}},
+    )  # fmt: skip
+    return reply["result"]["content"]
+
+
+def unreadable(fake, app="com.android.settings"):
+    fake.screens["about"] = None  # a page that never goes still
+    fake.current, fake.front = "about", app
+
+
+def shots(fake, tmp_path, never=()):
+    return mcp.Tools(Rules(never=never), state=tmp_path, device=fake, settle=0, shots=True)
+
+
+def test_an_unreadable_screen_is_an_answer_with_its_app_not_a_failure(tools, fake):
+    unreadable(fake)
+    text, failed = call(tools, "look")
+    assert not failed
+    assert text.startswith("App: com.android.settings")
+    assert "can't be read as a list" in text and "screen keeps changing" in text
+
+
+def test_without_shots_no_picture_is_sent(tools, fake):
+    unreadable(fake)
+    assert [b["type"] for b in answer(tools, "look")] == ["text"]
+
+
+def test_with_shots_an_unreadable_screen_comes_with_its_picture(fake, tmp_path):
+    unreadable(fake)
+    text, image = answer(shots(fake, tmp_path), "look")
+    assert image["type"] == "image" and image["mimeType"] == "image/png"
+    assert base64.b64decode(image["data"]).startswith(b"\x89PNG")
+    assert "screenshot of this screen is attached" in text["text"]
+    assert "Only numbered things can be tapped" in text["text"]
+
+
+def test_with_shots_a_readable_screen_is_still_only_the_list(fake, tmp_path):
+    content = answer(shots(fake, tmp_path), "look")
+    assert [b["type"] for b in content] == ["text"]
+
+
+def test_an_act_that_leads_to_an_unreadable_screen_says_done_and_shows_it(fake, tmp_path):
+    tools = shots(fake, tmp_path)
+    call(tools, "look")
+    fake.after = lambda f, action: unreadable(f)
+    text, image = answer(tools, "tap", n=6)
+    assert text["text"].startswith("App: com.android.settings")
+    assert "Done. But the screen it led to can't be read" in text["text"]
+    assert image["type"] == "image"
+
+
+def test_no_picture_of_an_app_the_rules_keep_out(fake, tmp_path):
+    unreadable(fake, app="com.chase.sig.android")
+    content = answer(shots(fake, tmp_path, never=("com.chase.*",)), "look")
+    assert [b["type"] for b in content] == ["text"]
+    assert "off limits" in content[0]["text"]
+
+
+def test_no_picture_of_an_app_that_cant_be_named_while_some_are_kept_out(fake, tmp_path):
+    unreadable(fake, app="")
+    kept = answer(shots(fake, tmp_path, never=("com.chase.*",)), "look")
+    assert [b["type"] for b in kept] == ["text"]
+    free = answer(shots(fake, tmp_path), "look")
+    assert [b["type"] for b in free] == ["text", "image"]

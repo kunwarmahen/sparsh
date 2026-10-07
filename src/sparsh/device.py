@@ -14,6 +14,8 @@ installed on the phone. What each method runs:
     keys        input keyevent KEYCODE_...
     launch      monkey -p PKG -c ...LAUNCHER 1    the app's front door
     apps        cmd package query-activities      apps with a front door
+    front_app   dumpsys activity activities       the app in front, even when
+                                                  its screen can't be read
 
 The methods take coordinates; numbers from the screen list are turned
 into coordinates one level up (phone.py), so a backend never has to
@@ -86,6 +88,7 @@ class Device(Protocol):
     def keys(self, *names: str) -> None: ...
     def launch(self, package: str) -> None: ...
     def apps(self) -> list[str]: ...
+    def front_app(self) -> str: ...
 
 
 @dataclass(frozen=True)
@@ -286,6 +289,11 @@ class AdbDevice:
         )
         found = re.findall(r"^\s*([\w.]+)/", out, flags=re.MULTILINE)
         return sorted(set(found))
+
+    def front_app(self) -> str:
+        out = self._shell("dumpsys", "activity", "activities")
+        found = re.search(r"topResumedActivity=ActivityRecord\{\S+ \S+ ([\w.]+)/", out)
+        return found.group(1) if found else ""
 
 
 def key_code(name: str) -> str:
