@@ -147,3 +147,22 @@ def test_a_page_that_never_goes_still_says_to_leave_it(monkeypatch):
     monkeypatch.setattr("sparsh.device.time.sleep", lambda s: None)
     with pytest.raises(ScreenUnreadable, match="Press back to leave this page"):
         AdbDevice("emulator-5556", adb="adb").dump()
+
+
+def test_a_tap_that_lands_on_an_unreadable_page_says_it_was_done(phone, fake):
+    phone.look()
+    fake.screens["ticking"] = "ERROR: could not get idle state."
+
+    def go(f, action):
+        if action[0] == "tap":
+            f.current = "ticking"
+
+    fake.after = go
+    now = phone.tap(6)
+    assert fake.actions == [("tap", 540, 820)]
+    assert now.text().startswith("App: (unknown)\nDone. But the screen it led to can't be read")
+    # The last look is the one the agent read, so a number from it is
+    # checked against a screen that can't be found -- and refused.
+    with pytest.raises(SparshError):
+        phone.tap(6)
+    assert fake.actions == [("tap", 540, 820)]

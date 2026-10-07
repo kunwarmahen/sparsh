@@ -13,7 +13,8 @@ person) actually read:
     key("back") / open_app("settings") / apps("goo")
 
 Every action ends with a short wait and a fresh look, which is what it
-returns: the agent always gets the screen its action led to.
+returns: the agent always gets the screen its action led to -- or, when
+that screen can't be read, a sentence saying the action WAS done.
 
 The last screen is saved per phone under the state folder
 (``~/.sparsh/phones/<serial>/last.xml``), so ``sparsh look`` and a
@@ -41,7 +42,7 @@ from pathlib import Path
 from sparsh import SparshError
 from sparsh.device import Device, typeable
 from sparsh.rules import Rules
-from sparsh.screen import Element, Screen, read
+from sparsh.screen import Element, Screen, ScreenUnreadable, read
 
 #: Seconds to let the phone react before looking again.
 SETTLE = 0.8
@@ -169,9 +170,18 @@ class Phone:
         return found
 
     def _after(self) -> Screen:
+        """The screen an act led to. THE ACT WAS DONE either way: a screen
+        that can't be read afterwards (a clock ticking on it) is said as
+        such, never as "Not done" -- told that, an agent does it again,
+        and a second Send is a second message. The last look stays as it
+        was, so the next number is checked against a screen it can't
+        find, and refused."""
         if self.settle:
             time.sleep(self.settle)
-        return self.look()
+        try:
+            return self.look()
+        except ScreenUnreadable as e:
+            return Screen("", note=f"Done. But the screen it led to can't be read: {e}.")
 
     # -- doing ---------------------------------------------------------
 
