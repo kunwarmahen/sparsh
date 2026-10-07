@@ -9,7 +9,7 @@ agent use an Android phone the way you do: it sees what's on the
 screen, taps, types, scrolls, presses Back, and opens apps. It works
 with a real phone over USB, or with the Android emulator on your
 computer. An iPhone works too, once a Mac has signed the small app
-that lets it be driven (see [An iPhone](#an-iphone)).
+that lets it be driven ([SETUP.md](SETUP.md)).
 
 ## The name
 
@@ -92,34 +92,23 @@ still in the same place on the screen.
 
 ## Getting a phone ready
 
-You need `adb`, Android's small program for talking to phones:
+**[SETUP.md](SETUP.md) walks through all three, step by step:** the
+Android emulator (a pretend phone on your computer, nothing at risk),
+a real Android phone, and an iPhone.
 
-```
-sudo apt install adb          # Debian / Ubuntu
-sudo dnf install android-tools  # Fedora
-```
+In short:
 
-Then pick one of these two.
-
-**The emulator (no phone needed).** Install
-[Android Studio](https://developer.android.com/studio), open
-*Device Manager*, and create a phone (any recent one; we test with a
-"Medium Phone" on Android 15). You can then start it without Android
-Studio:
-
-```
-~/Android/Sdk/emulator/emulator -list-avds
-~/Android/Sdk/emulator/emulator -avd Medium_Phone_API_35 -no-snapshot-save
-```
-
-Add `-no-window` to run it with no window at all. `-no-snapshot-save`
-means anything the agent changes is thrown away when the emulator
-stops.
-
-**A real phone.** On the phone: *Settings → About phone*, tap *Build
-number* seven times to unlock *Developer options*, then turn on *USB
-debugging* in there. Plug the phone in and accept the question it asks
-on its screen.
+* **Android** (phone or emulator) needs only `adb`, Android's own small
+  program (`sudo apt install adb`), and *USB debugging* turned on in
+  the phone's developer options. Nothing is installed on the phone.
+* **An iPhone** needs a Mac once. The way in is
+  [WebDriverAgent](https://github.com/appium/WebDriverAgent), a small
+  app on the iPhone that takes taps over the network. It has to be
+  signed with Xcode, which only runs on a Mac.
+  `scripts/build-wda-on-mac.sh` does that, over `ssh` if you like, and
+  `scripts/start-wda-from-linux.sh` installs and starts it from Linux.
+  With a free Apple ID the signature lasts 7 days. Not yet run on a
+  real iPhone ([notes/03](notes/03-an-iphone-through-a-mac.md)).
 
 Either way, check it's there:
 
@@ -128,75 +117,15 @@ $ sparsh devices
 emulator-5554  sdk_gphone64_x86_64  device
 ```
 
-If it says `unauthorized`, unlock the phone and accept the USB
-debugging question.
+An iPhone is named by WebDriverAgent's address
+(`SPARSH_WDA=http://127.0.0.1:8100`, or `--serial`). On an iPhone,
+`back` is the swipe in from the left edge, and `sparsh apps` lists
+Apple's own apps plus any in `$SPARSH_IOS_APPS`, because an iPhone
+won't say what's installed.
 
 > **What an agent can see.** Anything on the phone's screen can be read:
 > messages, emails, names, codes. While you're trying this out, use the
 > emulator or a spare phone, not the phone you live on.
-
-## An iPhone
-
-An iPhone can be driven too, with one difference: it needs a Mac once.
-Apple doesn't let a computer work an iPhone the way `adb` works an
-Android phone. The way in is
-[WebDriverAgent](https://github.com/appium/WebDriverAgent) (WDA), a
-small app that runs on the iPhone and takes taps over the network. It
-has to be built and signed with Xcode, and Xcode only runs on a Mac.
-After that, everything happens from Linux.
-
-**On the Mac (once; again every 7 days with a free Apple ID).** Install
-Xcode, open it, and add your Apple ID under *Xcode → Settings →
-Accounts*. Plug the iPhone into the Mac once and tap *Trust*. Then,
-at the Mac or over SSH from Linux (turn on *System Settings → General
-→ Sharing → Remote Login* first):
-
-```
-scp scripts/build-wda-on-mac.sh mac.local:
-ssh -t mac.local ./build-wda-on-mac.sh
-```
-
-It makes `~/sparsh-wda/WDA.ipa` on the Mac and prints the `PREFIX` it
-used. Over SSH it asks for the Mac user's password to unlock the
-keychain, which signing needs.
-
-**On Linux.** Install [go-ios](https://github.com/danielpaulus/go-ios)
-(`npm install -g go-ios`) and `usbmuxd`, plug the iPhone in, and:
-
-```
-scp mac.local:sparsh-wda/WDA.ipa .
-PREFIX=com.you.sparsh scripts/start-wda-from-linux.sh WDA.ipa
-```
-
-The first time, the iPhone asks you to trust the developer (*Settings
-→ General → VPN & Device Management*) and to turn on *Developer Mode*
-(*Settings → Privacy & Security*). Leave the script running. In
-another terminal:
-
-```
-$ sparsh look --serial http://127.0.0.1:8100
-App: com.apple.Preferences
-1 text "Settings"
-2 field "Search" [type]
-3 list [scroll]
-4 switch "Airplane Mode" [tap, off]
-5 item "Wi-Fi (HomeNet)" [tap]
-```
-
-or set `SPARSH_WDA=http://127.0.0.1:8100` and leave `--serial` off.
-The phone's Wi-Fi address works in place of `127.0.0.1` from any
-machine on the same network.
-
-If you'd rather keep the iPhone plugged into the Mac,
-`./build-wda-on-mac.sh --run` builds WDA and runs it from there, and
-Sparsh reaches it over Wi-Fi.
-
-What's different on an iPhone ([notes/03](notes/03-an-iphone-through-a-mac.md)):
-`back` is the swipe in from the left edge, since there's no Back key.
-`recent`, `search` and the arrow keys don't exist. `sparsh apps` lists
-Apple's own apps plus any you name in `$SPARSH_IOS_APPS`, because WDA
-can't list what's installed. `open settings`, `open messages` and the
-other Apple apps work by name.
 
 ## Install
 
