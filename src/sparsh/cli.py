@@ -12,6 +12,7 @@
     sparsh log [-n 20] [--json]         what was done on the phone, by the agent and by you
     sparsh mcp                          the agent's tools (MCP, stdio), held by the rules
     sparsh status [--json]              phones, rules, and how a harness starts the tools
+    sparsh wda [WDA.ipa]                when the iPhone's WebDriverAgent signature runs out
 
 Every command that does something prints the screen it led to, so the
 next number to use is always on the screen. If the screen changed
@@ -32,10 +33,12 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from datetime import datetime
 
 from sparsh import SparshError, __version__
 from sparsh import log, mcp
 from sparsh.device import KEYS, attached, iphones, pick
+from sparsh.iphone import remember_signature, signature, signature_note
 from sparsh.phone import DIRECTIONS, Phone, ScreenChanged, state_root
 from sparsh.rules import load
 from sparsh.screen import Screen
@@ -117,6 +120,12 @@ def _parser() -> argparse.ArgumentParser:
 
     s = sub.add_parser("status", parents=[common], help="phones, rules, and the agent's tools")
     s.set_defaults(run=_status)
+
+    s = sub.add_parser("wda", parents=[common],
+                       help="when the iPhone's WebDriverAgent signature runs out; "
+                            "given WDA.ipa, remember it")  # fmt: skip
+    s.add_argument("ipa", nargs="?", help="the WDA.ipa just built (build-wda-on-mac.sh)")
+    s.set_defaults(run=_wda)
     return p
 
 
@@ -145,6 +154,9 @@ def _devices(args) -> int:
         print("No phone attached. Plug one in with USB debugging on, or start the emulator.")
     for phone in phones:
         print(phone.line())
+    note = signature_note(signature(state_root(args.state))) if found else ""
+    if note:
+        print(f"Note: {note}.")
     return 0
 
 
@@ -230,7 +242,34 @@ def _status(args) -> int:
     print(f"  a tap needs a yes when it says: {', '.join(rules['ask'])}")
     print("  typing into a password field always needs a yes")
     print(f"agent's tools: {data['mcp']['command']} {' '.join(data['mcp']['args'])}")
+    if data["wda"]:
+        print(f"iPhone's WebDriverAgent: {_signed(data['wda'])}")
     return 0
+
+
+def _wda(args) -> int:
+    state = state_root(args.state)
+    if args.ipa:
+        remember_signature(state, args.ipa)
+    sig = signature(state)
+    if sig is None:
+        print("No WDA.ipa remembered yet. After building it: sparsh wda WDA.ipa")
+        return 0
+    if args.json:
+        print(json.dumps(sig, indent=1))
+    else:
+        print(f"{sig['ipa']}: {_signed(sig)}")
+    if sig["days_left"] <= 0:
+        raise SparshError(signature_note(sig))
+    return 0
+
+
+def _signed(sig: dict) -> str:
+    when = datetime.fromisoformat(sig["signed_until"]).astimezone().strftime("%a %d %b %H:%M")
+    left = sig["days_left"]
+    said = f"signed until {when}" + (f" ({left:g} days left)" if left > 0 else " (ran out)")
+    note = signature_note(sig)
+    return said + (f" -- {note}" if note and left > 0 else "")
 
 
 if __name__ == "__main__":

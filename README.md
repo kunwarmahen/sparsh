@@ -107,8 +107,10 @@ In short:
   signed with Xcode, which only runs on a Mac.
   `scripts/build-wda-on-mac.sh` does that, over `ssh` if you like, and
   `scripts/start-wda-from-linux.sh` installs and starts it from Linux.
-  With a free Apple ID the signature lasts 7 days. Not yet run on a
-  real iPhone ([notes/03](notes/03-an-iphone-through-a-mac.md)).
+  With a free Apple ID the signature lasts 7 days; `sparsh wda` reads
+  the date from the app, and Sparsh says when two days are left. Not
+  yet run on a real iPhone
+  ([notes/03](notes/03-an-iphone-through-a-mac.md)).
 
 Either way, check it's there:
 
@@ -153,6 +155,7 @@ sparsh apps [FILTER]                apps that can be opened
 sparsh log [-n 20] [--json]         what was done on the phone, by the agent and by you
 sparsh mcp                          the agent's tools (MCP), held by your rules
 sparsh status [--json]              phones, rules, and how to start the tools
+sparsh wda [WDA.ipa]                when the iPhone's WebDriverAgent signature runs out
 ```
 
 Every command that does something prints the screen it led to. Every

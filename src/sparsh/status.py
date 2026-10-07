@@ -13,6 +13,10 @@ refuses rather than guesses (Yantra's sparsh_link does). Fields:
     mcp      {command, args}: how to start the agent's tools
     tools    {name: "read" | "act" | "confirm"} -- what each tool is
              (mcp.py says what a harness should do with each kind)
+    wda      the iPhone's WebDriverAgent signature, once ``sparsh wda
+             WDA.ipa`` has read it: {ipa, signed_until, days_left, note},
+             where ``note`` is a sentence for the person when two days or
+             fewer are left (iphone.py), else ""; null when there's none
 """
 
 from __future__ import annotations
@@ -23,6 +27,7 @@ from pathlib import Path
 
 from sparsh import SparshError, __version__
 from sparsh.device import attached, iphones
+from sparsh.iphone import signature, signature_note
 from sparsh.mcp import KINDS
 from sparsh.rules import load
 
@@ -58,4 +63,10 @@ def report(state: Path) -> dict:
         "phones": phones,
         "mcp": {"command": sparsh_command(), "args": ["mcp", "--state", str(state)]},
         "tools": dict(KINDS),
+        "wda": _wda(state),
     }
+
+
+def _wda(state: Path) -> dict | None:
+    sig = signature(state)
+    return {**sig, "note": signature_note(sig)} if sig else None

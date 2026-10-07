@@ -141,4 +141,9 @@ arrives, and the go-ios commands on a current iOS.
   end, an agent's task done on it.
 * Typing beyond plain ASCII. WDA could type it, but `typeable()`
   refuses it for both phones until Android can too.
-* Rebuilding WDA on a schedule, before the free signature runs out.
+* ~~Rebuilding WDA on a schedule, before the free signature runs out.~~
+  Said instead of scheduled: the date is read from inside `WDA.ipa`
+  (its `embedded.mobileprovision`) when it's installed, and `sparsh
+  devices`, `sparsh status` (its `wda` field) and Yantra's startup line
+  say it two days before. A rebuild needs the Mac and a password, so a
+  reminder is the honest part; doing it unasked isn't.

@@ -105,10 +105,13 @@ rm -rf "$HERE/Payload" "$HERE/WDA.ipa"
 mkdir "$HERE/Payload"
 cp -R "$APP" "$HERE/Payload/"
 (cd "$HERE" && zip -qr WDA.ipa Payload && rm -rf Payload)
+UNTIL="$(security cms -D -i "$APP/embedded.mobileprovision" 2>/dev/null \
+  | plutil -extract ExpirationDate raw -o - - 2>/dev/null || echo "unknown")"
 
 cat <<EOF
 
 Built: $HERE/WDA.ipa  (bundle id $PREFIX.WebDriverAgentRunner.xctrunner)
+Signed until: $UNTIL  -- run this again before then.
 
 On Linux, with the iPhone plugged in there:
   scp $(id -un)@$(hostname):sparsh-wda/WDA.ipa .

@@ -283,8 +283,26 @@ scp you@macbook.local:sparsh-wda/WDA.ipa .
 
 ### C5 · Every 7 days (free Apple ID)
 
-When WDA stops opening on the iPhone, run C4 again. Nothing else needs
-redoing. Then install the new `WDA.ipa` (C6).
+You don't have to keep count. The build prints the date its signature
+runs out, and when you install `WDA.ipa` (C6), Sparsh reads that date
+from inside it and remembers it. Two days before the end, `sparsh
+devices`, `sparsh status` and Yantra's first line all say so:
+
+```
+Note: the iPhone's WebDriverAgent signature runs out Tue 14 Oct 16:02: rebuild it on the Mac before then (build-wda-on-mac.sh).
+```
+
+To check any time:
+
+```
+$ uv run sparsh wda
+/home/you/sparsh/WDA.ipa: signed until Tue 14 Oct 16:02 (6.2 days left)
+```
+
+When it's time, run C4 again (nothing else needs redoing), copy the new
+`WDA.ipa`, and install it (C6). If you forget, the start script refuses
+a run-out one with that same sentence, instead of the phone refusing it
+in Apple's words.
 
 ### C6 · Start WDA on the iPhone, from Linux
 
@@ -432,9 +450,10 @@ Then ask in plain words: *"turn on airplane mode"*, *"what's the newest
 message in Messages?"* When a step would send, pay, delete or type a
 password, Yantra stops and asks you first.
 
-**iPhone and Yantra:** the agent's tools work with `SPARSH_WDA` set. The
-**phone** panel on Yantra's page doesn't accept an iPhone's address
-yet.
+**iPhone and Yantra:** with `SPARSH_WDA` set, the agent's tools and the
+**phone** panel on Yantra's page both use the iPhone. Yantra is told
+it's an iPhone (so `back` is a swipe), and its first line says when the
+signature is two days from running out.
 
 ### With another agent program
 
@@ -474,4 +493,4 @@ the rules in force. The README's "Your rules" has the rest.
 | Name it with | `--serial R58M...` / `ANDROID_SERIAL` | `--serial http://127.0.0.1:8100` / `SPARSH_WDA` |
 | Check | `uv run sparsh devices` | the same, with `SPARSH_WDA` set |
 | Every day | plug in / start the emulator | `scripts/start-wda-from-linux.sh` |
-| Every 7 days | — | `ssh -t <mac> ./build-wda-on-mac.sh`, copy `WDA.ipa`, install |
+| Every 7 days | — | `ssh -t <mac> ./build-wda-on-mac.sh`, copy `WDA.ipa`, install; `sparsh wda` says when |

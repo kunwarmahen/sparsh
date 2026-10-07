@@ -40,6 +40,15 @@ nothing (tapping a field puts the cursor at the end of it already);
 WDA can't list the apps on the phone, so :meth:`WdaDevice.apps` is
 Apple's own apps plus any named in ``$SPARSH_IOS_APPS``, and everyday
 names ("settings", "messages") are looked up in :data:`NICKNAMES`.
+
+A SIGNATURE THAT RUNS OUT IS SAID BEFORE IT DOES. What a free Apple ID
+signs opens for seven days; after that WDA simply won't start, and
+go-ios says so in Apple's words. The date is written inside the signed
+app (its ``embedded.mobileprovision``), so :func:`signed_until` reads
+it from ``WDA.ipa`` when it's installed, :func:`remember_signature`
+keeps it in the state folder (``wda.json``), and :func:`signature_note`
+is the sentence ``sparsh devices``, ``sparsh status`` and a harness's
+startup line say when two days or fewer are left.
 """
 
 from __future__ import annotations
@@ -47,9 +56,13 @@ from __future__ import annotations
 import base64
 import json
 import os
+import re
 import urllib.error
 import urllib.request
 import xml.etree.ElementTree as ET
+import zipfile
+from datetime import UTC, datetime
+from pathlib import Path
 from xml.sax.saxutils import quoteattr
 
 from sparsh import SparshError
@@ -399,3 +412,62 @@ def _bounds(el: ET.Element) -> str:
 
 def _yes(flag: bool) -> str:
     return "true" if flag else "false"
+
+
+# -- how long the signature lasts --------------------------------------------
+
+#: Days before the end at which the signature is mentioned.
+WARN_DAYS = 2
+
+_EXPIRES = re.compile(rb"<key>ExpirationDate</key>\s*<date>([^<]+)</date>")
+
+
+def signed_until(ipa: str | os.PathLike) -> datetime:
+    """When the signature inside ``WDA.ipa`` stops it opening."""
+    try:
+        with zipfile.ZipFile(ipa) as packed:
+            names = [n for n in packed.namelist() if n.endswith(".app/embedded.mobileprovision")]
+            profile = packed.read(min(names, key=len)) if names else b""
+    except (OSError, zipfile.BadZipFile) as e:
+        raise SparshError(f"can't read {ipa} ({e})") from None
+    found = _EXPIRES.search(profile)
+    if not found:
+        raise SparshError(
+            f"{ipa} carries no signing profile -- was it built by build-wda-on-mac.sh?"
+        )
+    return datetime.fromisoformat(found.group(1).decode().replace("Z", "+00:00"))
+
+
+def remember_signature(state: Path, ipa: str | os.PathLike) -> dict:
+    until = signed_until(ipa)
+    data = {"ipa": str(Path(ipa).resolve()), "signed_until": until.isoformat()}
+    state.mkdir(parents=True, exist_ok=True)
+    (state / "wda.json").write_text(json.dumps(data, indent=1) + "\n")
+    return data
+
+
+def signature(state: Path, now: datetime | None = None) -> dict | None:
+    """What's remembered, with ``days_left`` (negative once it ran out)."""
+    try:
+        data = json.loads((state / "wda.json").read_text())
+        until = datetime.fromisoformat(data["signed_until"])
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+    left = until - (now or datetime.now(UTC))
+    return {**data, "days_left": round(left.total_seconds() / 86400, 1)}
+
+
+def signature_note(sig: dict | None) -> str:
+    """A sentence when it's soon or past, else nothing."""
+    if not sig or sig["days_left"] > WARN_DAYS:
+        return ""
+    when = datetime.fromisoformat(sig["signed_until"]).astimezone().strftime("%a %d %b %H:%M")
+    if sig["days_left"] <= 0:
+        return (
+            f"the iPhone's WebDriverAgent signature ran out on {when}: rebuild it on "
+            "the Mac (build-wda-on-mac.sh) and install the new WDA.ipa"
+        )
+    return (
+        f"the iPhone's WebDriverAgent signature runs out {when}: rebuild it on the Mac "
+        "before then (build-wda-on-mac.sh)"
+    )

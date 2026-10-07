@@ -5,6 +5,8 @@
 #   PREFIX=com.someone.sparsh scripts/start-wda-from-linux.sh      # already installed
 #
 # WDA.ipa comes from scripts/build-wda-on-mac.sh, with the same PREFIX.
+# Sparsh reads when its signature runs out (`sparsh wda`), and says so in
+# `sparsh devices` and `sparsh status` when two days or fewer are left.
 # This uses go-ios (https://github.com/danielpaulus/go-ios), one program
 # that speaks to an iPhone over USB from Linux: `npm install -g go-ios`,
 # or a release binary called `ios` on PATH. Linux also needs usbmuxd
@@ -27,6 +29,16 @@ say() { printf '\n== %s\n' "$*"; }
 die() { printf 'start-wda: %s\n' "$*" >&2; exit 1; }
 
 command -v ios >/dev/null || die "go-ios isn't installed: npm install -g go-ios"
+
+# Sparsh remembers when WDA's signature runs out, and refuses a run-out one
+# here rather than letting the phone refuse it in Apple's words.
+SPARSH="$(dirname "$0")/../.venv/bin/sparsh"
+[ -x "$SPARSH" ] || SPARSH="$(command -v sparsh || true)"
+if [ -n "$SPARSH" ]; then
+  if [ -n "$IPA" ]; then "$SPARSH" wda "$IPA" || exit 1
+  else "$SPARSH" wda || exit 1
+  fi
+fi
 ios list | grep -q '[0-9a-fA-F]' || die "no iPhone found. Plug it in, unlock it, answer 'Trust',
   and check usbmuxd is running (sudo systemctl start usbmuxd)"
 

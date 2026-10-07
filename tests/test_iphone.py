@@ -17,6 +17,8 @@ and x/y/width/height), not captured from a phone.
 import base64
 import json
 import threading
+import zipfile
+from datetime import UTC, datetime, timedelta
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 
@@ -24,9 +26,18 @@ import pytest
 
 from sparsh import SparshError
 from sparsh.device import pick
-from sparsh.iphone import WdaDevice, as_android
+from sparsh.cli import main
+from sparsh.iphone import (
+    WdaDevice,
+    as_android,
+    remember_signature,
+    signature,
+    signature_note,
+    signed_until,
+)
 from sparsh.phone import Phone, ScreenChanged
 from sparsh.screen import read
+from sparsh.status import report
 
 IOS = Path(__file__).parent / "screens" / "ios"
 PNG = b"\x89PNG\r\n\x1a\n" + b"\0" * 8
@@ -248,3 +259,60 @@ def test_a_switch_row_is_tapped_on_the_switch_itself(iphone, wda):
     ((path, body),) = wda.posts()
     assert body["actions"][0]["actions"][0]["x"] == 341
     assert body["actions"][0]["actions"][0]["y"] == 226
+
+
+# -- how long the signature lasts ----------------------------------------
+
+
+def make_ipa(folder: Path, until: datetime) -> Path:
+    """A WDA.ipa as build-wda-on-mac.sh packs it: the profile is a signed
+    blob (bytes either side) with the plist's dates in the middle."""
+    stamp = until.strftime("%Y-%m-%dT%H:%M:%SZ").encode()
+    profile = (b"\x30\x82\x01\x00signed..<plist><dict><key>CreationDate</key><date>"
+               b"2026-10-01T00:00:00Z</date><key>ExpirationDate</key>\n\t<date>" + stamp +
+               b"</date></dict></plist>..signature\x00")  # fmt: skip
+    ipa = folder / "WDA.ipa"
+    with zipfile.ZipFile(ipa, "w") as packed:
+        app = "Payload/WebDriverAgentRunner-Runner.app/"
+        packed.writestr(app + "embedded.mobileprovision", profile)
+        packed.writestr(app + "PlugIns/WebDriverAgentRunner.xctest/embedded.mobileprovision", b"")
+    return ipa
+
+
+def test_the_date_is_read_from_inside_the_signed_app(tmp_path):
+    until = datetime(2026, 10, 14, 16, 2, tzinfo=UTC)
+    assert signed_until(make_ipa(tmp_path, until)) == until
+
+
+def test_a_week_left_says_nothing_and_two_days_says_rebuild(tmp_path):
+    now = datetime(2026, 10, 7, 12, 0, tzinfo=UTC)
+    remember_signature(tmp_path, make_ipa(tmp_path, now + timedelta(days=7)))
+    assert signature_note(signature(tmp_path, now)) == ""
+    soon = signature(tmp_path, now + timedelta(days=5, hours=12))
+    assert soon["days_left"] == 1.5
+    assert "runs out" in signature_note(soon) and "rebuild it on the Mac" in signature_note(soon)
+
+
+def test_a_run_out_signature_is_refused_before_anything_starts(tmp_path, capsys):
+    ipa = make_ipa(tmp_path, datetime.now(UTC) - timedelta(hours=1))
+    assert main(["wda", str(ipa), "--state", str(tmp_path)]) == 1
+    assert "signature ran out" in capsys.readouterr().err
+    assert main(["wda", "--state", str(tmp_path)]) == 1
+
+
+def test_status_and_devices_carry_the_reminder(tmp_path, monkeypatch, capsys):
+    remember_signature(tmp_path, make_ipa(tmp_path, datetime.now(UTC) + timedelta(days=1)))
+    wda = report(tmp_path)["wda"]
+    assert wda["days_left"] < 2 and "runs out" in wda["note"]
+    monkeypatch.setenv("SPARSH_WDA", "http://127.0.0.1:9")
+    monkeypatch.setattr("sparsh.cli.attached", lambda: [])
+    main(["devices", "--state", str(tmp_path)])
+    assert "Note: the iPhone's WebDriverAgent signature runs out" in capsys.readouterr().out
+
+
+def test_an_ipa_with_no_profile_says_what_it_is_not(tmp_path):
+    ipa = tmp_path / "other.ipa"
+    with zipfile.ZipFile(ipa, "w") as packed:
+        packed.writestr("Payload/Other.app/Info.plist", b"")
+    with pytest.raises(SparshError, match="carries no signing profile"):
+        signed_until(ipa)
