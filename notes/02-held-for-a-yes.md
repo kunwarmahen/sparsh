@@ -93,9 +93,23 @@ item "Send SMS — SMS" does (it says "send").
 ```
 
 That was live, in the conversation where the refused "dinner is at 8"
-was still in the box. Elsewhere, a search screen that happens to show an
-Install button pays one yes for its Enter. That's the cheap side to be
-wrong on. Back and Home are never held.
+was still in the box. Back and Home are never held.
+
+**BESIDE THE FIELD, NOT ANYWHERE ON THE SCREEN.** At first Enter was
+held while *anything* on the screen would be, on the theory that one
+extra yes is the cheap side to be wrong on. The phone trial
+([Yantra's notes/120](https://github.com/kunwarmahen/yantra/blob/main/notes/120-thirteen-tasks-on-a-phone.md))
+found the cost. Chrome's new tab puts a news feed under the address bar,
+and its rows say "Share ...". Every `example.com` + Enter was held. Told
+no, `gemma4:26b` tapped Chrome's suggestion instead: through, but round
+the no.
+
+Enter presses what sits next to the field being typed into: Send beside
+the message box, Post under a reply. So with a field focused, only
+things in its row count, give or take the field's own height. The Share
+row far down the feed doesn't count; Messages' Send does, even though
+Messages reads it as a row (`item`), not a button. With no field
+focused, anything on the screen still counts.
 
 ## Off limits
 

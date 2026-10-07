@@ -230,7 +230,7 @@ class Phone:
             target = None
         why = self.rules.why_type(target) if self.rules else None
         if not why and enter and self.rules:
-            why = self._why_enter(self.last())
+            why = self._why_enter(self.last(), target)
         if why:
             self._hold("type", why, target, text=text, tap_first=into is not None,
                        clear=clear, enter=enter)  # fmt: skip
@@ -283,12 +283,22 @@ class Phone:
         self.device.keys(*names)
         return self._after()
 
-    def _why_enter(self, screen: Screen) -> str | None:
+    def _why_enter(self, screen: Screen, field: Element | None = None) -> str | None:
         """ENTER IS HELD WHERE A TAP WOULD BE. In a chat app with "Enter to
-        send" on, Enter is the Send button; so while anything on the
-        screen would itself be held, so is Enter. A search screen showing
-        an Install button pays one yes for it."""
+        send" on, Enter is the Send button; so while something on the
+        screen that Enter could press would itself be held, so is Enter.
+
+        What Enter could press is what sits BESIDE THE FIELD being typed
+        into -- Send next to the message box, Post under a reply -- so
+        with a field focused, only things overlapping its row (give or
+        take the field's own height) count. In the phone trial, Chrome's
+        address bar held every Enter because the news feed far below it
+        had a row saying "Share". With no field focused, anything on the
+        screen counts, as before: unsure is the side to ask on."""
+        field = field or next((e for e in screen.elements if e.focused), None)
         for element in screen.elements:
+            if field is not None and not _beside(element, field):
+                continue
             why = element.tap and self.rules.why_tap(element)
             if why:
                 return f"enter could do what {element.kind} {_quoted(element)} does ({why})"
@@ -400,6 +410,13 @@ _OFF_LIMITS = (
     "(this app is off limits: the person's rules keep the agent out of it, so "
     "nothing on it is shown. Press back or home to leave.)"
 )
+
+
+def _beside(element: Element, field: Element) -> bool:
+    """Overlapping the field's row, stretched by the field's height."""
+    _, top, _, bottom = field.bounds
+    reach = bottom - top
+    return element.bounds[1] < bottom + reach and element.bounds[3] > top - reach
 
 
 def _quoted(element: Element) -> str:

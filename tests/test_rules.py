@@ -224,6 +224,33 @@ def test_enter_runs_where_nothing_would_be_held(guarded, fake):
     assert ("keys", "enter") in fake.actions and ("text", "wifi") in fake.actions
 
 
+def test_a_feed_row_saying_share_does_not_hold_enter(guarded, fake):
+    # Chrome's new tab: the field being typed in, and far below it a news
+    # feed whose rows say "Share ...". Enter goes to the field's address.
+    fake.screens["feed"] = SEND.replace(
+        'class="android.widget.ImageButton" package="com.google.android.apps.messaging" '
+        'content-desc="Send SMS"',
+        'class="android.view.ViewGroup" package="com.google.android.apps.messaging" '
+        'content-desc="Share Raleigh puts data centers on notice"',
+    ).replace('bounds="[900,2000][1080,2200]"', 'bounds="[0,600][1080,900]"')
+    fake.current = "feed"
+    guarded.look()
+    guarded.type("example.com", into=1, enter=True)
+    assert fake.actions[-1] == ("keys", "enter")
+
+
+def test_a_send_row_beside_the_box_holds_enter_whatever_it_is_called(guarded, fake):
+    # Messages reads its Send as a row ("item"), not a button: still held.
+    fake.screens["row"] = SEND.replace(
+        'class="android.widget.ImageButton"', 'class="android.view.ViewGroup"'
+    )
+    fake.current = "row"
+    guarded.look()
+    with pytest.raises(Held):
+        guarded.key("enter")
+    assert fake.actions == []
+
+
 def test_back_is_never_held(guarded, fake):
     guarded.look()
     guarded.key("back")
