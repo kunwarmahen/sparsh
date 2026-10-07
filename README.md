@@ -189,10 +189,12 @@ done.
 
 ## When the phone can't describe its screen
 
-* **A video or animation playing.** The phone waits for the screen to
-  be still before describing it, and gives up on one that keeps
-  moving. Sparsh tries twice and then says so. Pause the video, or use
-  `look --shot`.
+* **Something that never stops changing:** a video, an animation, or a
+  clock ticking every second (Settings' *About phone* page counts its
+  "Up time"). The phone waits for the screen to be still before
+  describing it, and gives up on one that never is. Sparsh tries twice
+  and then says so, and tells an agent to press Back and find what it
+  needs another way. You can pause the video, or use `look --shot`.
 * **Apps that don't describe themselves.** Some games, and some apps
   built with tools that skip the accessibility description, show up as
   a few unlabelled lines. A screenshot is the way in there.

@@ -188,9 +188,14 @@ class AdbDevice:
             if attempt == 0:
                 time.sleep(1)
         if "idle state" in said:
+            # Something on it never stops changing: a video, an animation,
+            # or a clock ticking every second (Settings' About page counts
+            # its "Up time"). Waiting longer doesn't help; leaving does.
             raise ScreenUnreadable(
-                "the screen keeps moving (a video or animation), so the phone "
-                "can't describe it -- pause it, or take a screenshot instead"
+                "the screen keeps changing (a video, an animation, or a clock "
+                "ticking -- Settings' About page does), so the phone can't "
+                "describe it. Press back to leave this page, and find what you "
+                "need another way (a search, a different page)"
             )
         raise ScreenUnreadable(f"the phone did not describe its screen ({said or 'no answer'})")
 

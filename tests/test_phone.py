@@ -133,3 +133,17 @@ def test_what_cannot_be_typed_yet_is_refused_in_words(text):
 def test_an_unknown_key(phone):
     with pytest.raises(SparshError, match="no key called 'jump'"):
         phone.key("jump")
+
+
+def test_a_page_that_never_goes_still_says_to_leave_it(monkeypatch):
+    from sparsh.device import AdbDevice
+    from sparsh.screen import ScreenUnreadable
+
+    class Done:
+        stdout = b"ERROR: could not get idle state.\n"
+        stderr = b""
+
+    monkeypatch.setattr("sparsh.device._run", lambda *a, **k: Done())
+    monkeypatch.setattr("sparsh.device.time.sleep", lambda s: None)
+    with pytest.raises(ScreenUnreadable, match="Press back to leave this page"):
+        AdbDevice("emulator-5556", adb="adb").dump()
