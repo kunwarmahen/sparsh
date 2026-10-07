@@ -8,7 +8,8 @@ apps have no website and no way in for a program. **Sparsh** lets an
 agent use an Android phone the way you do: it sees what's on the
 screen, taps, types, scrolls, presses Back, and opens apps. It works
 with a real phone over USB, or with the Android emulator on your
-computer.
+computer. An iPhone works too, once a Mac has signed the small app
+that lets it be driven (see [An iPhone](#an-iphone)).
 
 ## The name
 
@@ -134,6 +135,69 @@ debugging question.
 > messages, emails, names, codes. While you're trying this out, use the
 > emulator or a spare phone, not the phone you live on.
 
+## An iPhone
+
+An iPhone can be driven too, with one difference: it needs a Mac once.
+Apple doesn't let a computer work an iPhone the way `adb` works an
+Android phone. The way in is
+[WebDriverAgent](https://github.com/appium/WebDriverAgent) (WDA), a
+small app that runs on the iPhone and takes taps over the network. It
+has to be built and signed with Xcode, and Xcode only runs on a Mac.
+After that, everything happens from Linux.
+
+**On the Mac (once; again every 7 days with a free Apple ID).** Install
+Xcode, open it, and add your Apple ID under *Xcode → Settings →
+Accounts*. Plug the iPhone into the Mac once and tap *Trust*. Then,
+at the Mac or over SSH from Linux (turn on *System Settings → General
+→ Sharing → Remote Login* first):
+
+```
+scp scripts/build-wda-on-mac.sh mac.local:
+ssh -t mac.local ./build-wda-on-mac.sh
+```
+
+It makes `~/sparsh-wda/WDA.ipa` on the Mac and prints the `PREFIX` it
+used. Over SSH it asks for the Mac user's password to unlock the
+keychain, which signing needs.
+
+**On Linux.** Install [go-ios](https://github.com/danielpaulus/go-ios)
+(`npm install -g go-ios`) and `usbmuxd`, plug the iPhone in, and:
+
+```
+scp mac.local:sparsh-wda/WDA.ipa .
+PREFIX=com.you.sparsh scripts/start-wda-from-linux.sh WDA.ipa
+```
+
+The first time, the iPhone asks you to trust the developer (*Settings
+→ General → VPN & Device Management*) and to turn on *Developer Mode*
+(*Settings → Privacy & Security*). Leave the script running. In
+another terminal:
+
+```
+$ sparsh look --serial http://127.0.0.1:8100
+App: com.apple.Preferences
+1 text "Settings"
+2 field "Search" [type]
+3 list [scroll]
+4 switch "Airplane Mode" [tap, off]
+5 item "Wi-Fi (HomeNet)" [tap]
+```
+
+or set `SPARSH_WDA=http://127.0.0.1:8100` and leave `--serial` off.
+The phone's Wi-Fi address works in place of `127.0.0.1` from any
+machine on the same network.
+
+If you'd rather keep the iPhone plugged into the Mac,
+`./build-wda-on-mac.sh --run` builds WDA and runs it from there, and
+Sparsh reaches it over Wi-Fi.
+
+What's different on an iPhone ([notes/03](notes/03-an-iphone-through-a-mac.md)):
+`back` is the swipe in from the left edge, since there's no Back key.
+`recent`, `search` and the arrow keys don't exist. `sparsh apps` lists
+Apple's own apps plus any you name in `$SPARSH_IOS_APPS`, because WDA
+can't list what's installed. `open settings`, `open messages` and the
+other Apple apps work by name.
+
 ## Install
 
 ```
@@ -148,7 +212,7 @@ Sparsh needs Python 3.12 or newer and has no other dependencies.
 ## Commands
 
 ```
-sparsh devices                      phones adb can see
+sparsh devices                      phones adb can see, and the iPhone at $SPARSH_WDA
 sparsh look [--shot FILE] [--json]  the screen, one numbered line per thing
 sparsh look --peek                  the same, leaving an agent's numbers as they were
 sparsh tap 7 [--long]               tap 7 from the last look (--long: press and hold)
@@ -163,7 +227,8 @@ sparsh status [--json]              phones, rules, and how to start the tools
 
 Every command that does something prints the screen it led to. Every
 command takes `--serial` when more than one phone is attached (or set
-`ANDROID_SERIAL`), and `--json` for a script.
+`ANDROID_SERIAL`), and `--json` for a script. For an iPhone, the serial
+is WebDriverAgent's address, like `http://127.0.0.1:8100`.
 
 What the end of each line means:
 
@@ -305,6 +370,8 @@ way.
 | `SPARSH_STATE` | where the last screen of each phone and `rules.toml` live (default `~/.sparsh`; or `--state`) |
 | `SPARSH_RULES` | a rules file somewhere else |
 | `SPARSH_ADB` | the `adb` to use, when it isn't on `PATH` or in `~/Android/Sdk` |
+| `SPARSH_WDA` | an iPhone's WebDriverAgent address (`http://127.0.0.1:8100`), used when no `--serial` is given |
+| `SPARSH_IOS_APPS` | more iPhone apps for `sparsh apps` and `open`, as bundle ids separated by commas |
 
 ## Not here yet
 
@@ -312,8 +379,9 @@ way.
   ASCII.
 * A phone for runs nobody is watching (a schedule): Yantra gives those
   no phone at all for now.
-* iPhones. Driving an iPhone needs a Mac (Apple's tools only run there),
-  and Sparsh runs on Linux.
+* ~~iPhones.~~ Built: [notes/03](notes/03-an-iphone-through-a-mac.md),
+  with a Mac needed once to sign WebDriverAgent. Not yet run on a real
+  iPhone.
 
 ## How it's built
 
@@ -324,6 +392,9 @@ src/sparsh/
 │               (notes/01)
 ├── device.py   the phone itself, through adb: dump, screenshot, tap,
 │               swipe, type, keys, open an app. Nothing installed on it
+├── iphone.py   an iPhone, through WebDriverAgent over HTTP; its screen
+│               rewritten in Android's words so one reader serves both
+│               (notes/03)
 ├── phone.py    numbers in, taps out: the last look is kept, and a number
 │               is checked against the screen now before anything is done
 │               (notes/01)
@@ -335,7 +406,9 @@ src/sparsh/
 │               reads to find the phone, the rules and each tool's kind
 ├── fake.py     a phone made of saved screens, for tests
 └── cli.py      `sparsh`
-tests/screens/  real screens from the Android 15 emulator
+tests/screens/  real screens from the Android 15 emulator; ios/ holds
+                screens written in WDA's shape
+scripts/        build WDA on a Mac; install and start it from Linux
 ```
 
 Why it is shaped this way: [notes/01](notes/01-a-list-not-a-picture.md)

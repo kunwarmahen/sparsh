@@ -350,11 +350,17 @@ class Phone:
         return [a for a in found if like.lower() in a.lower()] if like else found
 
     def which_app(self, name: str) -> str:
-        """``settings`` -> ``com.android.settings``; a package name as is."""
+        """``settings`` -> ``com.android.settings``; a package name as is.
+        An iPhone's bundle ids don't say what an app is called
+        (``com.apple.Preferences``), so its device brings ``nicknames``."""
         apps = self.device.apps()
         wanted = name.strip().lower()
-        if wanted in apps:
-            return wanted
+        nicknames = getattr(self.device, "nicknames", {})
+        if wanted in nicknames:
+            return nicknames[wanted]
+        same = [a for a in apps if a.lower() == wanted]
+        if same:
+            return same[0]
         squashed = wanted.replace(" ", "")
         stem = squashed[: max(4, len(squashed) - 2)]
         found = [

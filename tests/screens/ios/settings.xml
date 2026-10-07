@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<XCUIElementTypeApplication type="XCUIElementTypeApplication" name="Settings" label="Settings" enabled="true" visible="true" accessible="false" x="0" y="0" width="390" height="844" index="0">
+  <XCUIElementTypeWindow type="XCUIElementTypeWindow" enabled="true" visible="true" accessible="false" x="0" y="0" width="390" height="844" index="0">
+    <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="0" width="390" height="844" index="0">
+      <XCUIElementTypeNavigationBar type="XCUIElementTypeNavigationBar" name="Settings" enabled="true" visible="true" accessible="false" x="0" y="47" width="390" height="96" index="0">
+        <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="Settings" name="Settings" label="Settings" enabled="true" visible="true" accessible="true" x="16" y="91" width="140" height="41" index="0"/>
+      </XCUIElementTypeNavigationBar>
+      <XCUIElementTypeSearchField type="XCUIElementTypeSearchField" value="Search" name="Search" label="Search" enabled="true" visible="true" accessible="true" x="16" y="143" width="358" height="36" placeholderValue="Search" index="1"/>
+      <XCUIElementTypeTable type="XCUIElementTypeTable" enabled="true" visible="true" accessible="false" x="0" y="0" width="390" height="844" index="2">
+        <XCUIElementTypeCell type="XCUIElementTypeCell" enabled="true" visible="true" accessible="false" x="0" y="200" width="390" height="52" index="0">
+          <XCUIElementTypeImage type="XCUIElementTypeImage" name="airplane" enabled="true" visible="true" accessible="false" x="16" y="211" width="30" height="30" index="0"/>
+          <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="Airplane Mode" name="Airplane Mode" label="Airplane Mode" enabled="true" visible="true" accessible="true" x="62" y="214" width="120" height="24" index="1"/>
+          <XCUIElementTypeSwitch type="XCUIElementTypeSwitch" value="0" name="Airplane Mode" label="Airplane Mode" enabled="true" visible="true" accessible="true" x="309" y="210" width="65" height="32" index="2"/>
+        </XCUIElementTypeCell>
+        <XCUIElementTypeCell type="XCUIElementTypeCell" value="HomeNet" name="com.apple.settings.wifi" label="Wi-Fi" enabled="true" visible="true" accessible="true" x="0" y="252" width="390" height="52" index="1">
+          <XCUIElementTypeImage type="XCUIElementTypeImage" name="wifi" enabled="true" visible="true" accessible="false" x="16" y="263" width="30" height="30" index="0"/>
+          <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="Wi-Fi" name="Wi-Fi" label="Wi-Fi" enabled="true" visible="true" accessible="false" x="62" y="266" width="50" height="24" index="1"/>
+          <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="HomeNet" name="HomeNet" label="HomeNet" enabled="true" visible="true" accessible="false" x="270" y="266" width="80" height="24" index="2"/>
+        </XCUIElementTypeCell>
+        <XCUIElementTypeCell type="XCUIElementTypeCell" enabled="true" visible="true" accessible="false" x="0" y="304" width="390" height="52" index="2">
+          <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="Bluetooth" name="Bluetooth" label="Bluetooth" enabled="true" visible="true" accessible="false" x="62" y="318" width="90" height="24" index="0"/>
+          <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="On" name="On" label="On" enabled="true" visible="true" accessible="false" x="320" y="318" width="30" height="24" index="1"/>
+        </XCUIElementTypeCell>
+        <XCUIElementTypeCell type="XCUIElementTypeCell" name="Privacy &amp; Security" label="Privacy &amp; Security" enabled="true" visible="false" accessible="true" x="0" y="900" width="390" height="52" index="3">
+          <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="Privacy &amp; Security" name="Privacy &amp; Security" label="Privacy &amp; Security" enabled="true" visible="false" accessible="false" x="62" y="914" width="160" height="24" index="0"/>
+        </XCUIElementTypeCell>
+      </XCUIElementTypeTable>
+    </XCUIElementTypeOther>
+  </XCUIElementTypeWindow>
+</XCUIElementTypeApplication>

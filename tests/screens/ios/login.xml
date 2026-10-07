@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<XCUIElementTypeApplication type="XCUIElementTypeApplication" name="Example" label="Example" enabled="true" visible="true" accessible="false" x="0" y="0" width="390" height="844" index="0">
+  <XCUIElementTypeWindow type="XCUIElementTypeWindow" enabled="true" visible="true" accessible="false" x="0" y="0" width="390" height="844" index="0">
+    <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="0" width="390" height="844" index="0">
+      <XCUIElementTypeTextField type="XCUIElementTypeTextField" value="Email" name="email" label="" placeholderValue="Email" enabled="true" visible="true" accessible="true" x="24" y="200" width="342" height="44" index="0"/>
+      <XCUIElementTypeSecureTextField type="XCUIElementTypeSecureTextField" value="••••••" name="password" label="" placeholderValue="Password" enabled="true" visible="true" accessible="true" x="24" y="260" width="342" height="44" index="1"/>
+      <XCUIElementTypeButton type="XCUIElementTypeButton" name="Sign In" label="Sign In" enabled="false" visible="true" accessible="true" x="24" y="330" width="342" height="50" index="2"/>
+    </XCUIElementTypeOther>
+  </XCUIElementTypeWindow>
+  <XCUIElementTypeKeyboard type="XCUIElementTypeKeyboard" enabled="true" visible="true" accessible="false" x="0" y="553" width="390" height="291" index="1">
+    <XCUIElementTypeKey type="XCUIElementTypeKey" name="q" label="q" enabled="true" visible="true" accessible="true" x="3" y="563" width="39" height="42" index="0"/>
+  </XCUIElementTypeKeyboard>
+</XCUIElementTypeApplication>

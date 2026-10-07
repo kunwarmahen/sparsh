@@ -274,7 +274,7 @@ def answer(tools: Tools, message: dict) -> dict | None:
             "capabilities": {"tools": {}},
             "serverInfo": {"name": "sparsh", "version": __version__},
             "instructions": (
-                "An Android phone: look, then act by number. A held step needs "
+                "A phone (Android or iPhone): look, then act by number. A held step needs "
                 "the person's yes through confirm."),
         })  # fmt: skip
     if method == "ping":

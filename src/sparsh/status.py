@@ -7,8 +7,9 @@ refuses rather than guesses (Yantra's sparsh_link does). Fields:
     version  this program's version
     state    the state folder (the last screen of each phone)
     rules    the person's rules file, whether it exists, and what it holds
-    phones   [{serial, state, model}] -- what adb sees now; [] when adb
-             itself is missing, with ``adb`` saying why
+    phones   [{serial, state, model}] -- what adb sees now, and the
+             iPhone at ``$SPARSH_WDA`` (its serial is that address);
+             adb's are missing when adb itself is, with ``adb`` saying why
     mcp      {command, args}: how to start the agent's tools
     tools    {name: "read" | "act" | "confirm"} -- what each tool is
              (mcp.py says what a harness should do with each kind)
@@ -21,7 +22,7 @@ import sys
 from pathlib import Path
 
 from sparsh import SparshError, __version__
-from sparsh.device import attached
+from sparsh.device import attached, iphones
 from sparsh.mcp import KINDS
 from sparsh.rules import load
 
@@ -41,6 +42,7 @@ def report(state: Path) -> dict:
         adb = "ok"
     except SparshError as e:
         phones, adb = [], str(e)
+    phones += [{"serial": p.serial, "state": p.state, "model": p.model} for p in iphones()]
     rules, path = load(state)
     return {
         "format": FORMAT,

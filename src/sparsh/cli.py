@@ -1,6 +1,6 @@
 """`sparsh`: see a phone's screen as a numbered list, and work it.
 
-    sparsh devices                      phones adb can see
+    sparsh devices                      phones adb can see, and $SPARSH_WDA
     sparsh look [--shot FILE] [--json]  the screen, one numbered line per thing
     sparsh look --peek                  the same, leaving the last look as it was
     sparsh tap 7 [--long]               tap 7 from the last look
@@ -18,7 +18,9 @@ since the last look, nothing is tapped: the new screen is printed and
 the exit code is 3.
 
 Which phone: the only one attached, or ``--serial`` / ``$ANDROID_SERIAL``
-(``sparsh devices`` shows the names). The last screen is kept in
+(``sparsh devices`` shows the names). An iPhone is named by its
+WebDriverAgent's address: ``--serial http://192.168.1.40:8100``, or
+``$SPARSH_WDA``. The last screen is kept in
 ``~/.sparsh`` (``--state`` or ``$SPARSH_STATE``), next to the rules
 an agent's steps are held by (``rules.toml``, rules.py). These commands
 are your own hands and are never held.
@@ -32,7 +34,7 @@ import sys
 
 from sparsh import SparshError, __version__
 from sparsh import mcp
-from sparsh.device import KEYS, attached, pick
+from sparsh.device import KEYS, attached, iphones, pick
 from sparsh.phone import DIRECTIONS, Phone, ScreenChanged, state_root
 from sparsh.rules import load
 from sparsh.screen import Screen
@@ -126,7 +128,14 @@ def _show(args, screen: Screen) -> int:
 
 
 def _devices(args) -> int:
-    phones = attached()
+    found = iphones()
+    try:
+        phones = attached()
+    except SparshError:
+        if not found:
+            raise
+        phones = []
+    phones += found
     if not phones:
         print("No phone attached. Plug one in with USB debugging on, or start the emulator.")
     for phone in phones:

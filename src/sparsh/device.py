@@ -17,7 +17,8 @@ installed on the phone. What each method runs:
 The methods take coordinates; numbers from the screen list are turned
 into coordinates one level up (phone.py), so a backend never has to
 know about them. :class:`sparsh.fake.FakeDevice` is the same shape with
-saved screens, for tests.
+saved screens, for tests, and :class:`sparsh.iphone.WdaDevice` is an
+iPhone -- picked when the phone's name is a web address.
 
 TYPING. ``input text`` takes one shell word on the phone: it is quoted
 here, and a space is sent as ``%s`` (which ``input`` turns back into a
@@ -37,6 +38,7 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from sparsh import SparshError
+from sparsh.iphone import WdaDevice, is_wda
 from sparsh.screen import ScreenUnreadable
 
 #: Names a model (or a person) may use for a key -> Android's key code.
@@ -83,7 +85,11 @@ class Attached:
     def line(self) -> str:
         note = {
             "unauthorized": "  (unlock the phone and allow USB debugging)",
-            "offline": "  (not answering -- unplug it and plug it back in)",
+            "offline": (
+                "  (not answering -- start WebDriverAgent on it)"
+                if is_wda(self.serial)
+                else "  (not answering -- unplug it and plug it back in)"
+            ),
         }.get(self.state, "")
         return f"{self.serial}  {self.model or '?'}  {self.state}{note}"
 
@@ -114,10 +120,28 @@ def attached(adb: str | None = None) -> list[Attached]:
     return found
 
 
-def pick(serial: str | None = None, adb: str | None = None) -> AdbDevice:
-    """The phone to use: the one named, or the only one there is."""
+def iphones() -> list[Attached]:
+    """The iPhone named by ``$SPARSH_WDA``, if any, and whether it answers."""
+    url = os.environ.get("SPARSH_WDA", "")
+    if not is_wda(url):
+        return []
+    try:
+        WdaDevice(url, timeout=5).status()
+        state = "device"
+    except SparshError:
+        state = "offline"
+    return [Attached(url, state, "iPhone")]
+
+
+def pick(serial: str | None = None, adb: str | None = None) -> Device:
+    """The phone to use: the one named, or the only one there is.
+
+    A name that is a web address is an iPhone's WebDriverAgent
+    (iphone.py); so is ``$SPARSH_WDA`` when nothing else is named."""
+    serial = serial or os.environ.get("ANDROID_SERIAL") or os.environ.get("SPARSH_WDA") or None
+    if is_wda(serial):
+        return WdaDevice(serial)
     adb = adb or adb_path()
-    serial = serial or os.environ.get("ANDROID_SERIAL") or None
     phones = attached(adb)
     if serial:
         match = [p for p in phones if p.serial == serial]

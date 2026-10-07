@@ -160,3 +160,5 @@ A tap, wait included, took 5.3 seconds.
   and a cloud model reading screenshots.
 * The phone over Wi-Fi (`adb pair`), so a container can reach it with
   no USB cable; typing beyond ASCII.
+* An iPhone. Built: [note 03](03-an-iphone-through-a-mac.md), read
+  through the same list.
