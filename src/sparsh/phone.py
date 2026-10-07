@@ -133,11 +133,15 @@ class Phone:
 
     # -- seeing --------------------------------------------------------
 
-    def look(self, shot: str | os.PathLike | None = None) -> Screen:
+    def look(self, shot: str | os.PathLike | None = None, keep: bool = True) -> Screen:
+        """Read the screen. ``keep=False`` is a PEEK: someone else looking
+        (a person's page beside a running agent) must not change what the
+        agent's numbers mean, so the last screen is left as it was."""
         xml = self.device.dump()
         screen = read(xml)
-        self.folder.mkdir(parents=True, exist_ok=True)
-        (self.folder / "last.xml").write_text(xml)
+        if keep:
+            self.folder.mkdir(parents=True, exist_ok=True)
+            (self.folder / "last.xml").write_text(xml)
         if self._off_limits(screen.app):
             return Screen(screen.app, size=screen.size, note=_OFF_LIMITS)
         if shot is not None:

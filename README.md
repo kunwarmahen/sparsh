@@ -150,6 +150,7 @@ Sparsh needs Python 3.12 or newer and has no other dependencies.
 ```
 sparsh devices                      phones adb can see
 sparsh look [--shot FILE] [--json]  the screen, one numbered line per thing
+sparsh look --peek                  the same, leaving an agent's numbers as they were
 sparsh tap 7 [--long]               tap 7 from the last look (--long: press and hold)
 sparsh type "hello" [--into 7] [--clear] [--enter]
 sparsh scroll down [--on 5]         down = show what is further down
@@ -288,6 +289,13 @@ prints the rules in force.
 
 The `sparsh` commands you type yourself are never held: they're your
 own hands.
+
+**Watching an agent work.** Sparsh remembers each look as the screen an
+agent's numbers refer to. To see the phone while an agent is using it,
+use `sparsh look --peek` (with `--shot` for a picture): it reads the
+screen and leaves that memory alone. A plain `sparsh look` would
+renumber the screen under the agent. Yantra's phone panel peeks this
+way.
 
 ### Settings
 

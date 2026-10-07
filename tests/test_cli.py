@@ -67,3 +67,15 @@ def test_devices_explains_a_phone_waiting_for_permission(monkeypatch, capsys):
     monkeypatch.setattr(cli, "attached", lambda: [Attached("R58M", "unauthorized", "")])
     assert cli.main(["devices"]) == 0
     assert "allow USB debugging" in capsys.readouterr().out
+
+
+def test_a_peek_leaves_the_agents_numbers_alone(run, fake):
+    # The person's page looks while an agent works: the agent's 6 must
+    # still be the 6 it read.
+    run("look")
+    fake.current = "home"
+    code, out, _ = run("look", "--peek")
+    assert code == 0 and "nexuslauncher" in out
+    fake.current = "settings"
+    code, _, _ = run("tap", "6")
+    assert code == 0 and fake.actions == [("tap", 540, 820)]

@@ -2,6 +2,7 @@
 
     sparsh devices                      phones adb can see
     sparsh look [--shot FILE] [--json]  the screen, one numbered line per thing
+    sparsh look --peek                  the same, leaving the last look as it was
     sparsh tap 7 [--long]               tap 7 from the last look
     sparsh type "hello" [--into 7] [--clear] [--enter]
     sparsh scroll down [--on 4]         down = show what is further down
@@ -70,6 +71,9 @@ def _parser() -> argparse.ArgumentParser:
 
     s = sub.add_parser("look", parents=[common], help="the screen as a numbered list")
     s.add_argument("--shot", metavar="FILE", help="also save a screenshot (PNG)")
+    s.add_argument("--peek", action="store_true",
+                   help="don't remember this look: an agent's numbers keep meaning "
+                        "what they meant")  # fmt: skip
     s.set_defaults(run=_look)
 
     s = sub.add_parser("tap", parents=[common], help="tap a number from the last look")
@@ -131,7 +135,7 @@ def _devices(args) -> int:
 
 
 def _look(args) -> int:
-    screen = _phone(args).look(shot=args.shot)
+    screen = _phone(args).look(shot=args.shot, keep=not args.peek)
     if args.shot:
         print(f"(screenshot saved to {args.shot})", file=sys.stderr)
     return _show(args, screen)
