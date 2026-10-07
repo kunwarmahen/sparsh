@@ -1,6 +1,8 @@
 """`sparsh`: see a phone's screen as a numbered list, and work it.
 
     sparsh devices                      phones adb can see, and $SPARSH_WDA
+    sparsh pair ADDRESS CODE            trust this computer over Wi-Fi, once
+    sparsh connect ADDRESS              reach a paired phone over Wi-Fi
     sparsh look [--shot FILE] [--json]  the screen, one numbered line per thing
     sparsh look --peek                  the same, leaving the last look as it was
     sparsh tap 7 [--long]               tap 7 from the last look
@@ -22,7 +24,9 @@ the exit code is 3.
 Which phone: the only one attached, or ``--serial`` / ``$ANDROID_SERIAL``
 (``sparsh devices`` shows the names). An iPhone is named by its
 WebDriverAgent's address: ``--serial http://192.168.1.40:8100``, or
-``$SPARSH_WDA``. The last screen is kept in
+``$SPARSH_WDA``. A phone over Wi-Fi is named by its address, and
+``$SPARSH_CONNECT`` reconnects to it whenever phones are looked for.
+The last screen is kept in
 ``~/.sparsh`` (``--state`` or ``$SPARSH_STATE``), next to the rules
 an agent's steps are held by (``rules.toml``, rules.py). These commands
 are your own hands and are never held.
@@ -37,7 +41,7 @@ from datetime import datetime
 
 from sparsh import SparshError, __version__
 from sparsh import log, mcp
-from sparsh.device import KEYS, attached, iphones, pick
+from sparsh.device import KEYS, attached, connect, iphones, pair, pick
 from sparsh.iphone import remember_signature, signature, signature_note
 from sparsh.phone import DIRECTIONS, Phone, ScreenChanged, state_root
 from sparsh.rules import load
@@ -74,6 +78,25 @@ def _parser() -> argparse.ArgumentParser:
 
     s = sub.add_parser("devices", parents=[common], help="phones adb can see")
     s.set_defaults(run=_devices)
+
+    s = sub.add_parser(
+        "pair",
+        parents=[common],
+        help="trust this computer over Wi-Fi, once: the address and six-digit "
+        "code the phone's 'Pair device with pairing code' shows",
+    )
+    s.add_argument("address")
+    s.add_argument("code")
+    s.set_defaults(run=_pair)
+
+    s = sub.add_parser(
+        "connect",
+        parents=[common],
+        help="reach a paired phone over Wi-Fi (the address on its Wireless "
+        "debugging page); $SPARSH_CONNECT does it every time",
+    )
+    s.add_argument("address")
+    s.set_defaults(run=_connect)
 
     s = sub.add_parser("look", parents=[common], help="the screen as a numbered list")
     s.add_argument("--shot", metavar="FILE", help="also save a screenshot (PNG)")
@@ -163,6 +186,21 @@ def _devices(args) -> int:
     if note:
         print(f"Note: {note}.")
     return 0
+
+
+def _pair(args) -> int:
+    print(pair(args.address, args.code))
+    print(
+        "Now connect to the address on the phone's Wireless debugging page "
+        "(not the pairing one): sparsh connect ADDRESS"
+    )
+    return 0
+
+
+def _connect(args) -> int:
+    said = connect(args.address)
+    print(said)
+    return 0 if "connected" in said and "cannot" not in said and "failed" not in said else 1
 
 
 def _look(args) -> int:

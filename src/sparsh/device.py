@@ -17,6 +17,12 @@ installed on the phone. What each method runs:
     front_app   dumpsys activity activities       the app in front, even when
                                                   its screen can't be read
 
+OVER WI-FI. A phone with wireless debugging on is reached by address
+(``adb pair`` once, then ``adb connect``). ``$SPARSH_CONNECT`` names
+such phones, and ``attached`` connects to any that adb has forgotten
+before listing: a restarted computer, or a container started fresh,
+finds the phone again by itself, as a cable would.
+
 The methods take coordinates; numbers from the screen list are turned
 into coordinates one level up (phone.py), so a backend never has to
 know about them. :class:`sparsh.fake.FakeDevice` is the same shape with
@@ -126,7 +132,17 @@ def adb_path() -> str:
 
 
 def attached(adb: str | None = None) -> list[Attached]:
-    out = _run([adb or adb_path(), "devices", "-l"]).stdout.decode()
+    adb = adb or adb_path()
+    out = _run([adb, "devices", "-l"]).stdout.decode()
+    if over_wifi():
+        # A phone named in $SPARSH_CONNECT and not listed is connected to
+        # first: after a restart, or a container's, adb has forgotten it.
+        listed = {row.split()[0] for row in out.splitlines()[1:] if row.split()}
+        missing = [a for a in over_wifi() if a not in listed]
+        for address in missing:
+            connect(address, adb)
+        if missing:
+            out = _run([adb, "devices", "-l"]).stdout.decode()
     found = []
     for row in out.splitlines()[1:]:
         parts = row.split()
@@ -135,6 +151,39 @@ def attached(adb: str | None = None) -> list[Attached]:
         model = next((p.partition(":")[2] for p in parts if p.startswith("model:")), "")
         found.append(Attached(parts[0], parts[1], model))
     return found
+
+
+def over_wifi() -> list[str]:
+    """The phones named in ``$SPARSH_CONNECT`` (``192.168.1.23:41234``,
+    comma-separated): reached over the network, no cable."""
+    raw = os.environ.get("SPARSH_CONNECT", "")
+    return [a.strip() for a in raw.split(",") if a.strip()]
+
+
+def connect(address: str, adb: str | None = None) -> str:
+    """``adb connect``: adb's own words, or a sentence why not. Never
+    raises for a phone that isn't answering -- it is listed as not there."""
+    if not re.fullmatch(r"[A-Za-z0-9.\-\[\]:]{1,80}:\d{1,5}", address):
+        raise SparshError(f"{address!r} is not an address and port (192.168.1.23:41234)")
+    try:
+        done = subprocess.run(
+            [adb or adb_path(), "connect", address], capture_output=True, timeout=10
+        )
+    except subprocess.TimeoutExpired:
+        return f"{address} did not answer in 10s (is the phone on this network?)"
+    except OSError as e:
+        raise SparshError(f"could not run adb ({e})") from e
+    return (done.stdout + done.stderr).decode(errors="replace").strip()
+
+
+def pair(address: str, code: str, adb: str | None = None) -> str:
+    """``adb pair``, once per computer: the phone's "Pair device with
+    pairing code" screen shows both. Afterwards this computer's adb key
+    is trusted over Wi-Fi."""
+    if not re.fullmatch(r"\d{6}", code.strip()):
+        raise SparshError("the pairing code is the six digits the phone shows")
+    done = _run([adb or adb_path(), "pair", address, code.strip()], timeout=30)
+    return (done.stdout + done.stderr).decode(errors="replace").strip()
 
 
 def iphones() -> list[Attached]:

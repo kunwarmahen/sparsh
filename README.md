@@ -361,12 +361,15 @@ Looking isn't a step, so it isn't logged.
 | `SPARSH_STATE` | where the last screen of each phone and `rules.toml` live (default `~/.sparsh`; or `--state`) |
 | `SPARSH_RULES` | a rules file somewhere else |
 | `SPARSH_ADB` | the `adb` to use, when it isn't on `PATH` or in `~/Android/Sdk` |
+| `SPARSH_CONNECT` | phones over Wi-Fi (`192.168.1.23:41234`, comma-separated), connected to whenever phones are looked for |
 | `SPARSH_WDA` | an iPhone's WebDriverAgent address (`http://127.0.0.1:8100`), used when no `--serial` is given |
 | `SPARSH_IOS_APPS` | more iPhone apps for `sparsh apps` and `open`, as bundle ids separated by commas |
 
 ## Not here yet
 
-* The phone over Wi-Fi instead of a cable.
+* ~~The phone over Wi-Fi instead of a cable.~~ `sparsh pair`, `sparsh
+  connect`, and `SPARSH_CONNECT` to reconnect by itself (SETUP.md, B4).
+  Not yet run against a real phone over Wi-Fi.
 * ~~Typing beyond plain ASCII.~~ Built through ADBKeyBoard (SETUP.md,
   Part G); run on the emulator, not yet on a real phone.
 * A phone for runs nobody is watching (a schedule): Yantra gives those

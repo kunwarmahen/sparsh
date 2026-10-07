@@ -79,3 +79,70 @@ def test_a_peek_leaves_the_agents_numbers_alone(run, fake):
     fake.current = "settings"
     code, _, _ = run("tap", "6")
     assert code == 0 and fake.actions == [("tap", 540, 820)]
+
+
+# -- over Wi-Fi ----------------------------------------------------------------
+
+
+class FakeAdb:
+    """`adb` as a little program: devices lists what `connect` added."""
+
+    def __init__(self, tmp_path):
+        self.listed = tmp_path / "listed"
+        self.listed.write_text("")
+        self.calls = tmp_path / "calls"
+        self.path = tmp_path / "adb"
+        self.path.write_text(f"""#!/bin/sh
+echo "$@" >> {self.calls}
+case "$1" in
+  devices) echo "List of devices attached"; cat {self.listed};;
+  connect) echo "$2       device product:p model:Pixel_7 device:d" >> {self.listed}
+           echo "connected to $2";;
+  pair) echo "Successfully paired to $2 [guid=adb-1]";;
+esac
+""")
+        self.path.chmod(0o755)
+
+    def ran(self):
+        return self.calls.read_text().splitlines() if self.calls.exists() else []
+
+
+def test_a_phone_named_for_wifi_is_connected_to_before_listing(tmp_path, monkeypatch):
+    from sparsh.device import attached
+
+    adb = FakeAdb(tmp_path)
+    monkeypatch.setenv("SPARSH_CONNECT", "192.168.1.23:41234")
+    phones = attached(str(adb.path))
+    assert [(p.serial, p.model) for p in phones] == [("192.168.1.23:41234", "Pixel_7")]
+    assert adb.ran() == ["devices -l", "connect 192.168.1.23:41234", "devices -l"]
+    attached(str(adb.path))  # already listed: not connected again
+    assert adb.ran()[-1] == "devices -l" and adb.ran().count("connect 192.168.1.23:41234") == 1
+
+
+def test_without_it_nothing_is_connected_to(tmp_path, monkeypatch):
+    from sparsh.device import attached
+
+    adb = FakeAdb(tmp_path)
+    monkeypatch.delenv("SPARSH_CONNECT", raising=False)
+    assert attached(str(adb.path)) == [] and adb.ran() == ["devices -l"]
+
+
+def test_pair_and_connect_say_what_adb_said(tmp_path, monkeypatch, capsys):
+    adb = FakeAdb(tmp_path)
+    monkeypatch.setenv("SPARSH_ADB", str(adb.path))
+    assert cli.main(["pair", "192.168.1.23:37000", "123456"]) == 0
+    assert "Successfully paired" in capsys.readouterr().out
+    assert cli.main(["connect", "192.168.1.23:41234"]) == 0
+    assert "connected to 192.168.1.23:41234" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize(
+    "argv,said",
+    [
+        (["pair", "192.168.1.23:37000", "12"], "six digits"),
+        (["connect", "not an address"], "not an address and port"),
+    ],
+)
+def test_wifi_mistakes_are_sentences(tmp_path, monkeypatch, capsys, argv, said):
+    monkeypatch.setenv("SPARSH_ADB", str(FakeAdb(tmp_path).path))
+    assert cli.main(argv) == 1 and said in capsys.readouterr().err

@@ -143,13 +143,20 @@ options → Wireless debugging**, turn it on, choose **Pair device with
 pairing code**, and on the computer:
 
 ```
-adb pair 192.168.1.23:37000        # the address and code the phone shows
-adb connect 192.168.1.23:41234     # the address on the Wireless debugging page
-uv run sparsh devices              # 192.168.1.23:41234  ...  device
+uv run sparsh pair 192.168.1.23:37000 123456   # the address and code the phone shows
+uv run sparsh connect 192.168.1.23:41234       # the address on the Wireless debugging page
+uv run sparsh devices                          # 192.168.1.23:41234  ...  device
 ```
 
-Sparsh only talks to `adb`, so this should just work, but it hasn't
-been tried with Sparsh yet.
+(`adb pair` and `adb connect` do the same.) To have Sparsh connect by
+itself every time it looks for phones, after a restart too, set
+`SPARSH_CONNECT=192.168.1.23:41234`. Sarathi's containers reach the
+phone this way (Sarathi's `sarathi phone`).
+
+The address can change when wireless debugging is turned off and on,
+or the phone restarts; check the Wireless debugging page if it stops
+answering. The same commands have been run against the emulator's
+network port; not yet against a real phone over Wi-Fi.
 
 Now go to [Part D](#part-d--check-it-works).
 
