@@ -87,11 +87,33 @@ package check, the keyboard read, the list, enable, set, one broadcast
 `input text`. Without the app, the package check is the only command
 run, and the error names ADBKeyBoard. 124 tests before, 127 after.
 
+## Live, on the emulator
+
+ADBKeyBoard v2.5-dev installed with `adb install`, then Settings'
+search field, Android 15 (API 35):
+
+```
+$ uv run sparsh open settings && uv run sparsh tap 4
+App: com.google.android.settings.intelligence
+1 button "Back" [tap]
+2 field "Search settings" [tap, type, focused]
+3 text "Search settings"
+$ uv run sparsh type "café नमस्ते 😸"
+App: com.google.android.settings.intelligence
+1 button "Back" [tap]
+2 field "café नमस्ते 😸" [tap, type, focused]
+3 button "Clear text" [tap]
+4 text "Try searching in Tips & Support"
+5 text "No results for café नमस्ते 😸"
+```
+
+All of it arrived on the first try, Devanagari and the emoji included.
+Half a second was enough for the keyboard to take over the field. The
+phone was back on its own keyboard afterwards
+(`com.google.android.inputmethod.latin/...LatinIME`).
+
 ## Not yet
 
-**Not run on a phone.** The commands come from ADBKeyBoard's README and
-are checked only against the stand-in, so the first live run is this
-note's receipt. Things to watch:
-whether half a second is long enough for the keyboard to take over the
-field, and whether v2.5's broadcast receiver answers the shell on
-Android 15 (its release notes mention an Android 16 fix).
+**A real phone.** The emulator is the only phone this has run on. A
+phone maker's own keyboard, or a slower phone, may need longer than
+half a second to hand the field over.

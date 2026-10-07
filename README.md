@@ -336,7 +336,7 @@ Looking isn't a step, so it isn't logged.
 
 * The phone over Wi-Fi instead of a cable.
 * ~~Typing beyond plain ASCII.~~ Built through ADBKeyBoard (SETUP.md,
-  Part G); not yet run on a phone.
+  Part G); run on the emulator, not yet on a real phone.
 * A phone for runs nobody is watching (a schedule): Yantra gives those
   no phone at all for now.
 * ~~iPhones.~~ Built: [notes/03](notes/03-an-iphone-through-a-mac.md),

@@ -509,8 +509,8 @@ and never touches it.
 
 To remove it: `adb uninstall com.android.adbkeyboard`.
 
-> **Status:** tested against a stand-in phone that records the commands
-> Sparsh sends; not yet run on a real phone or the emulator.
+> **Status:** works on the Android 15 emulator (é, नमस्ते and emoji typed
+> into Settings' search); not yet run on a real phone.
 
 ---
 
