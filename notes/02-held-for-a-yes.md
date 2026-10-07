@@ -234,7 +234,9 @@ button. The message store still holds only the first message.
 * A phone for runs nobody is watching. A scheduled run would have its
   held steps refused, and its everyday steps done on a phone no one is
   looking at. Yantra gives such runs no phone at all for now.
-* The trial: the same tasks on several local models, and on a cloud
-  model, counted. Two tasks on one model is a receipt, not a measure.
+* ~~The trial: the same tasks on several local models, and on a cloud
+  model, counted.~~ Two local models done
+  ([Yantra's note 120](https://github.com/kunwarmahen/yantra/blob/main/notes/120-thirteen-tasks-on-a-phone.md)): both texts held on both, one message
+  after a yes, none after a no. The cloud model is parked.
 * Screenshots through the agent's tools, for apps whose screens don't
   describe themselves.

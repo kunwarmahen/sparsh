@@ -156,8 +156,11 @@ A tap, wait included, took 5.3 seconds.
 * ~~The agent's tools: `sparsh mcp`, with taps on Send / Pay / Buy /
   Delete and typing into password fields held for a person's yes.~~
   Done: [note 02](02-held-for-a-yes.md).
-* A trial: the same phone tasks on a local model reading this list
-  and a cloud model reading screenshots.
+* ~~A trial: the same phone tasks on a local model reading this list
+  and a cloud model reading screenshots.~~ The local half is done:
+  thirteen tasks, `qwen3.8:latest` and `gemma4:26b` reading this list,
+  12 of 13 each ([Yantra's note 120](https://github.com/kunwarmahen/yantra/blob/main/notes/120-thirteen-tasks-on-a-phone.md)). The cloud model reading
+  screenshots is parked.
 * The phone over Wi-Fi (`adb pair`), so a container can reach it with
   no USB cable; typing beyond ASCII.
 * An iPhone. Built: [note 03](03-an-iphone-through-a-mac.md), read

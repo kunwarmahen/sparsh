@@ -195,6 +195,9 @@ done.
   describing it, and gives up on one that never is. Sparsh tries twice
   and then says so, and tells an agent to press Back and find what it
   needs another way. You can pause the video, or use `look --shot`.
+  An app that reopens on such a page (apps reopen where they were left)
+  is backed out of it: `open` presses back up to twice and says so above
+  the list.
 * **Apps that don't describe themselves.** Some games, and some apps
   built with tools that skip the accessibility description, show up as
   a few unlabelled lines. A screenshot is the way in there.
