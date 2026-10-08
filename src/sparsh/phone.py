@@ -173,6 +173,8 @@ class Phone:
         self._acted: dict[str, float] = {}
         #: The app in front when the screen last couldn't be described.
         self._restless: str | None = None
+        #: The grant the last step was done under, for the log (log.py).
+        self.granted: str | None = None
 
     # -- seeing --------------------------------------------------------
 
@@ -273,10 +275,29 @@ class Phone:
         if self.rules and (refused := self.rules.refused(target, app)):
             raise SparshError(refused)
         why = self.rules.why_tap(target, app) if self.rules else None
-        if why:
+        granted = self._granted(target, app) if why else None
+        if why and granted is None:
             self._hold("tap", why, target, long=long)
         self._pace(app)
-        return self._tap(target, long)
+        screen = self._tap(target, long)
+        if granted is not None:
+            self.granted = granted.said
+            screen.remark = f'(Done without asking: the schedule allows "{granted.said}".)' + (
+                f"\n{screen.remark}" if screen.remark else ""
+            )
+        return screen
+
+    def _granted(self, target: Element, app: str):
+        """The grant that lets this held tap through, or None (rules.py).
+        Checked against the screen as it is NOW, which ``_still_there``
+        has just read."""
+        if not self.rules or not self.rules.grants:
+            return None
+        screen = self.last().text()
+        for g in self.rules.grants:
+            if g.covers(target.label, app, screen, self.which_app):
+                return g
+        return None
 
     def tap_at(self, x: int, y: int, long: bool = False) -> Screen:
         """A spot on the screenshot, each of x and y 0 to 1000 across and
@@ -573,6 +594,30 @@ class Phone:
                 "the screen is not the one in the picture any more (it moved, or "
                 f"something opened or closed); nothing was {done}. Look again"
             )
+
+    # -- whether it is free ----------------------------------------------
+
+    def state(self) -> dict:
+        """Whether a run nobody started may use the phone now:
+
+            in_use   the screen is on and unlocked: someone has it in hand
+            locked   the lock screen is up: only its person can open it
+            asleep   the screen is off and there is no lock: wake it, go
+            unknown  the phone didn't say (an iPhone says only "locked")
+
+        A harness decides what to do about each (Dvara: wait, ask, wake)."""
+        on, locked = self.device.awake()
+        if locked:
+            state = "locked"
+        elif locked is None or on is None:
+            state = "unknown"
+        else:
+            state = "in_use" if on else "asleep"
+        return {
+            "screen": None if on is None else ("on" if on else "off"),
+            "locked": locked,
+            "state": state,
+        }
 
     # -- apps ----------------------------------------------------------
 

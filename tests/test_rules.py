@@ -323,3 +323,88 @@ def test_rules_arrive_as_json_and_a_bad_one_is_a_sentence(tmp_path, monkeypatch)
         monkeypatch.setenv("SPARSH_APP_RULES", bad)
         with pytest.raises(SparshError, match=said):
             load(tmp_path)
+
+
+# -- a schedule's grants: a held tap done without a yes, narrowly --------
+
+
+def granted(fake, tmp_path, *sentences):
+    from sparsh.rules import grant
+
+    fake.screens["send"] = SEND
+    fake.current = "send"
+    return Phone(fake, state=tmp_path, settle=0,
+                 rules=Rules(grants=tuple(grant(s) for s in sentences)))  # fmt: skip
+
+
+def test_a_grant_lets_its_send_through_while_its_text_is_on_the_screen(fake, tmp_path):
+    phone = granted(fake, tmp_path, "send in Messages when the screen shows running late")
+    phone.look()
+    screen = phone.tap(2)
+    assert fake.actions == [("tap", 990, 2100)]
+    assert 'the schedule allows "send in Messages when the screen shows running late"' in (
+        screen.text()
+    )
+
+
+def test_a_grant_whose_text_is_not_on_the_screen_still_holds(fake, tmp_path):
+    phone = granted(fake, tmp_path, "send in Messages when the screen shows 555-0123")
+    phone.look()
+    with pytest.raises(Held):
+        phone.tap(2)
+    assert fake.actions == []
+
+
+def test_a_grant_for_another_app_or_word_still_holds(fake, tmp_path):
+    for sentence in (
+        "send in YouTube when the screen shows running late",
+        "delete in Messages when the screen shows running late",
+    ):
+        phone = granted(fake, tmp_path, sentence)
+        phone.look()
+        with pytest.raises(Held):
+            phone.tap(2)
+    assert fake.actions == []
+
+
+def test_a_grant_never_covers_a_password(fake, tmp_path):
+    phone = granted(fake, tmp_path, "send in Messages when the screen shows running late")
+    phone.look()
+    with pytest.raises(Held):
+        phone.type("1234", into=3)
+
+
+def test_a_grant_that_cant_be_read_is_an_error_not_dropped():
+    from sparsh.rules import grants
+
+    assert grants('["send in Messages when the screen shows 555-0123"]')[0].shows == "555-0123"
+    for bad in ('["send to 555-0123"]', '"send"', "not json", "[3]"):
+        with pytest.raises(SparshError):
+            grants(bad)
+
+
+def test_the_phone_says_whether_a_schedule_may_use_it(fake, tmp_path):
+    phone = Phone(fake, state=tmp_path, settle=0)
+    for on, locked, state in (
+        (True, False, "in_use"),
+        (False, True, "locked"),
+        (True, True, "locked"),
+        (False, False, "asleep"),
+    ):
+        fake.screen_on, fake.locked = on, locked
+        assert phone.state()["state"] == state
+    fake.screen_on, fake.locked = None, False  # an iPhone says only "locked"
+    assert phone.state()["state"] == "unknown"
+
+
+def test_a_step_done_under_a_grant_says_so_in_the_log(fake, tmp_path):
+    from sparsh import log
+
+    phone = granted(fake, tmp_path, "send in Messages when the screen shows running late")
+    phone.look()
+    log.recorded(phone, "agent", "tap", {"n": 2}, lambda: phone.tap(2))
+    step = log.recent(phone, 1)[0]
+    assert step["outcome"] == "done"
+    assert step["said"] == 'granted ahead: "send in Messages when the screen shows running late"'
+    log.recorded(phone, "agent", "look", {}, phone.look)
+    assert "said" not in log.recent(phone, 1)[0]  # said once, not carried over

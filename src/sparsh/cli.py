@@ -12,6 +12,8 @@
     sparsh open settings                open an app by name or package
     sparsh apps [FILTER]                apps that can be opened
     sparsh log [-n 20] [--json]         what was done on the phone, by the agent and by you
+    sparsh state [--json]               in use, locked, or asleep: may a schedule use it now
+    sparsh wake                         turn the screen on (it stays locked if it was)
     sparsh mcp                          the agent's tools (MCP, stdio), held by the rules
     sparsh status [--json]              phones, rules, and how a harness starts the tools
     sparsh wda [WDA.ipa]                when the iPhone's WebDriverAgent signature runs out
@@ -138,6 +140,16 @@ def _parser() -> argparse.ArgumentParser:
     s.add_argument("-n", type=int, default=20, help="how many steps (default 20)")
     s.set_defaults(run=_log)
 
+    s = sub.add_parser(
+        "state",
+        parents=[common],
+        help="in use, locked or asleep: whether a schedule may use it now",
+    )
+    s.set_defaults(run=_state)
+
+    s = sub.add_parser("wake", parents=[common], help="turn the screen on")
+    s.set_defaults(run=_wake)
+
     s = sub.add_parser("mcp", parents=[common], help="the agent's tools, as an MCP server")
     s.add_argument(
         "--shots",
@@ -249,6 +261,27 @@ def _log(args) -> int:
         print("Nothing done on this phone yet.")
     for step in reversed(steps if not args.json else []):
         print(log.line(step))
+    return 0
+
+
+def _state(args) -> int:
+    phone = _phone(args)
+    found = {"serial": phone.device.serial, **phone.state()}
+    if args.json:
+        print(json.dumps(found))
+        return 0
+    words = {"in_use": "in use: the screen is on and unlocked",
+             "locked": "locked: only its person can open it",
+             "asleep": "asleep: the screen is off and there is no lock",
+             "unknown": "unknown: the phone didn't say"}  # fmt: skip
+    print(f"{found['serial']}: {words[found['state']]}")
+    return 0
+
+
+def _wake(args) -> int:
+    phone = _phone(args)
+    phone.device.keys("wakeup")
+    print(f"{phone.device.serial}: screen on ({phone.state()['state']})")
     return 0
 
 

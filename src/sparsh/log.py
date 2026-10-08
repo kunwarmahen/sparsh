@@ -68,7 +68,9 @@ def recorded(phone: Phone, by: str, action: str, args: dict, run: Callable[[], A
         raise
     after = result.text() if isinstance(result, Screen) else str(result)
     app = result.app if isinstance(result, Screen) else _app_of(after)
-    _add(phone, entry, "done", app=app, after=after[:AFTER_CHARS])
+    granted, phone.granted = getattr(phone, "granted", None), None
+    more = {"said": f'granted ahead: "{granted}"'} if granted else {}
+    _add(phone, entry, "done", app=app, after=after[:AFTER_CHARS], **more)
     return result
 
 

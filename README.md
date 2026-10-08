@@ -155,6 +155,8 @@ sparsh key back [home enter ...]    back, home, enter, recent, delete, tab, ...
 sparsh open settings                open an app by name or package
 sparsh apps [FILTER]                apps that can be opened
 sparsh log [-n 20] [--json]         what was done on the phone, by the agent and by you
+sparsh state [--json]               in use, locked, or asleep: may a schedule use it now
+sparsh wake                         turn the screen on (it stays locked if it was)
 sparsh pair ADDRESS CODE            trust this computer over Wi-Fi, once (SETUP.md, B4)
 sparsh connect ADDRESS              reach a paired phone over Wi-Fi
 sparsh mcp [--shots]                the agent's tools (MCP), held by your rules
@@ -375,6 +377,32 @@ for a yes, like your own `ask`. `pace` is the fewest seconds between steps
 there. These only add: nothing a harness sends can loosen your
 `rules.toml` or open an app it keeps out.
 
+**A schedule's steps, granted ahead.** A run nobody is watching (a
+schedule through [Dvara](https://github.com/kunwarmahen/dvara)) can't wait
+for a yes at every Send. When you accept the schedule, you can name the
+held steps it may do by itself, and the harness passes them in
+`SPARSH_GRANTS` (a JSON list of sentences):
+
+```json
+["send in Messages when the screen shows 555-0123"]
+```
+
+A tap held for its words goes through without a yes only when one grant
+covers all of it: the tapped thing says that word, that app is in front,
+and that text is on the screen right then (the number in the
+conversation's title, so a Send in a chat with someone else is still
+held). Nothing else is ever granted: not a tap by position, not typing
+into a password field, not Enter, not a refused word or an app you keep
+out. A grant that can't be read is an error, never dropped. `sparsh log`
+marks each step done this way: `-> done (granted ahead: "…")`.
+
+**Is the phone free?** `sparsh state` says whether a schedule may use the
+phone now: **in use** (screen on and unlocked: someone has it), **locked**
+(only you can open it; an agent can't), or **asleep** (screen off, no
+lock). An iPhone says only whether it's locked. Dvara asks this before a
+scheduled run, and waits, asks you to unlock it, or wakes it
+([notes/07](notes/07-a-phone-for-a-schedule.md)).
+
 **Watching an agent work.** Sparsh remembers each look as the screen an
 agent's numbers refer to. To see the phone while an agent is using it,
 use `sparsh look --peek` (with `--shot` for a picture): it reads the
@@ -419,8 +447,10 @@ Looking isn't a step, so it isn't logged.
   Not yet run against a real phone over Wi-Fi.
 * ~~Typing beyond plain ASCII.~~ Built through ADBKeyBoard (SETUP.md,
   Part G); run on the emulator, not yet on a real phone.
-* A phone for runs nobody is watching (a schedule): Yantra gives those
-  no phone at all for now.
+* ~~A phone for runs nobody is watching (a schedule).~~ Built through
+  Dvara: grants and the phone's state
+  ([notes/07](notes/07-a-phone-for-a-schedule.md)). Yantra on its own
+  (`--unattended`) still gives such a run no phone.
 * ~~Screenshots through the agent's tools.~~ Built: `sparsh mcp --shots`
   ([notes/05](notes/05-a-picture-where-the-list-has-nothing.md)), for
   reading only.
@@ -455,7 +485,8 @@ src/sparsh/
 │               ended; `sparsh log` (notes/02)
 ├── rules.py    what waits for a yes (words on a tap, password fields) and
 │               which apps are off limits; ~/.sparsh/rules.toml (notes/02);
-│               rules a harness adds for one app, SPARSH_APP_RULES
+│               rules a harness adds for one app, SPARSH_APP_RULES; a
+│               schedule's grants, SPARSH_GRANTS (notes/07)
 ├── mcp.py      `sparsh mcp`: the agent's tools, a hand-written MCP server;
 │               reads, acts and `confirm` (notes/02); `--shots`, a picture
 │               where the list has nothing (notes/05); `tap_at` (notes/06)
@@ -474,9 +505,10 @@ Why it is shaped this way: [notes/01](notes/01-a-list-not-a-picture.md)
 [notes/03](notes/03-an-iphone-through-a-mac.md) (an iPhone, through a
 Mac once), [notes/04](notes/04-typing-other-languages.md) (letters beyond
 ASCII), [notes/05](notes/05-a-picture-where-the-list-has-nothing.md)
-(a picture where the list has nothing) and
+(a picture where the list has nothing),
 [notes/06](notes/06-a-tap-by-position.md) (a tap by position, asked every
-time).
+time) and [notes/07](notes/07-a-phone-for-a-schedule.md) (a phone for a
+schedule: grants, and whether it's free).
 
 ## Licence
 

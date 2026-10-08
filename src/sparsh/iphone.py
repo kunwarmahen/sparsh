@@ -284,6 +284,14 @@ class WdaDevice:
         except WdaError as e:
             raise SparshError(f"{package} could not be opened on this iPhone ({e})") from None
 
+    def awake(self) -> tuple[bool | None, bool | None]:
+        """(screen on?, locked?): WDA says only whether it is locked."""
+        try:
+            locked = self._call("GET", "/wda/locked")
+        except WdaError:
+            return None, None
+        return None, bool(locked) if isinstance(locked, bool) else None
+
     def front_app(self) -> str:
         try:
             info = self._call("GET", "/wda/activeAppInfo")

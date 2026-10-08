@@ -39,6 +39,23 @@ agent's tools -- Yantra, from Setu's phone connections (an X app used at
                              "ask": [], "pace": 3.0,
                              "why": "Setu: X (x:personal) is Read only"}}
 
+A SCHEDULE MAY GRANT A HELD TAP AHEAD OF TIME, NARROWLY.
+``$SPARSH_GRANTS`` is a JSON list of sentences from whoever starts the
+tools for a run nobody watches, each the person accepted with the
+schedule::
+
+    ["send in Messages when the screen shows 555-0123"]
+
+A tap HELD for its words is done without a yes when one grant covers it
+all: the tapped thing says that word, that app is in front (an everyday
+name, found as ``open_app`` finds one), and that text is somewhere on
+the screen at that moment -- the number in the conversation's title, so
+a Send in a chat with someone else is still asked. The check is "on the
+screen", not "is the recipient": the narrowest thing a list can say.
+Nothing else is ever granted: not a tap by position (no words to
+match), not typing into a password field, not Enter, not a refused
+word, not an app on the ``never`` list.
+
 ``refuse``: a tap on these words is not done at all, with a sentence --
 no yes gets through it, as a level below it would need changing first.
 ``ask``: held for a yes, like ``ask`` above. ``pace``: seconds between
@@ -82,11 +99,66 @@ class AppRule:
     why: str = ""
 
 
+#: "<word> in <app> when the screen shows <text>"
+GRANT_RE = re.compile(
+    r"^\s*(?P<word>.+?)\s+in\s+(?P<app>.+?)\s+when the screen shows\s+(?P<shows>.+?)\s*$",
+    re.IGNORECASE,
+)
+
+
+@dataclass(frozen=True)
+class Grant:
+    """A held tap a schedule may do without a yes (``$SPARSH_GRANTS``)."""
+
+    word: str
+    app: str  # an everyday name or a package, resolved on the phone
+    shows: str
+    said: str  # the sentence, as the person accepted it
+
+    def covers(self, label: str, package: str, screen: str, which_app) -> bool:
+        """``which_app`` turns this grant's app into a package (Phone's)."""
+        if _says(label, (self.word,)) is None:
+            return False
+        if self.shows.lower() not in screen.lower():
+            return False
+        try:
+            return which_app(self.app) == package
+        except SparshError:
+            return False
+
+
+def grant(sentence: str) -> Grant:
+    found = GRANT_RE.match(sentence or "")
+    if not found or not all(found.group(k).strip() for k in ("word", "app", "shows")):
+        raise SparshError(
+            f"{sentence!r} is not a grant: say <word> in <app> when the screen shows "
+            '<text> ("send in Messages when the screen shows 555-0123")'
+        )
+    return Grant(found["word"].strip().lower(), found["app"].strip(),
+                 found["shows"].strip(), sentence.strip())  # fmt: skip
+
+
+def grants(raw: str | None = None) -> tuple[Grant, ...]:
+    """``$SPARSH_GRANTS``, checked: one that can't be read is an error, so
+    a schedule never runs believing it may do something it may not."""
+    raw = os.environ.get("SPARSH_GRANTS", "") if raw is None else raw
+    if not raw.strip():
+        return ()
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError as e:
+        raise SparshError(f"SPARSH_GRANTS is not JSON: {e}") from e
+    if not isinstance(data, list) or not all(isinstance(s, str) for s in data):
+        raise SparshError("SPARSH_GRANTS is a list of sentences")
+    return tuple(grant(s) for s in data)
+
+
 @dataclass(frozen=True)
 class Rules:
     ask: tuple[str, ...] = ASK_WORDS
     never: tuple[str, ...] = ()
     apps: dict[str, AppRule] = field(default_factory=dict)
+    grants: tuple[Grant, ...] = ()
 
     def why_tap(self, element: Element, app: str = "") -> str | None:
         """Why tapping this needs a yes, or None."""
@@ -171,7 +243,7 @@ def load(state: Path) -> tuple[Rules, Path]:
     try:
         raw = tomllib.loads(path.read_text())
     except FileNotFoundError:
-        return Rules(apps=app_rules()), path
+        return Rules(apps=app_rules(), grants=grants()), path
     except (tomllib.TOMLDecodeError, OSError) as e:
         raise SparshError(f"{path} could not be read: {e}") from e
     unknown = set(raw) - {"ask", "dont_ask", "never"}
@@ -180,7 +252,7 @@ def load(state: Path) -> tuple[Rules, Path]:
                           "(known: ask, dont_ask, never)")  # fmt: skip
     words = {*ASK_WORDS, *(_words(raw, "ask", path))} - set(_words(raw, "dont_ask", path))
     never = tuple(_words(raw, "never", path))
-    return Rules(ask=tuple(sorted(words)), never=never, apps=app_rules()), path
+    return Rules(ask=tuple(sorted(words)), never=never, apps=app_rules(), grants=grants()), path
 
 
 def _words(raw: dict, key: str, path: Path) -> list[str]:

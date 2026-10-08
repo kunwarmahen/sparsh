@@ -68,6 +68,7 @@ KEYS = {
     "tab": "KEYCODE_TAB",
     "search": "KEYCODE_SEARCH",
     "end": "KEYCODE_MOVE_END",
+    "wakeup": "KEYCODE_WAKEUP",
     "up": "KEYCODE_DPAD_UP",
     "down": "KEYCODE_DPAD_DOWN",
     "left": "KEYCODE_DPAD_LEFT",
@@ -95,6 +96,7 @@ class Device(Protocol):
     def launch(self, package: str) -> None: ...
     def apps(self) -> list[str]: ...
     def front_app(self) -> str: ...
+    def awake(self) -> tuple[bool | None, bool | None]: ...
 
 
 @dataclass(frozen=True)
@@ -340,6 +342,19 @@ class AdbDevice:
         )
         found = re.findall(r"^\s*([\w.]+)/", out, flags=re.MULTILINE)
         return sorted(set(found))
+
+    def awake(self) -> tuple[bool | None, bool | None]:
+        """(screen on?, locked?), from Android's own power and window
+        state; None for what it didn't say."""
+        power = self._shell("dumpsys", "power")
+        found = re.search(r"mWakefulness=(\w+)", power)
+        on = None if not found else found.group(1) == "Awake"
+        window = self._shell("dumpsys", "window")
+        found = re.search(r"isKeyguardShowing=(true|false)", window) or re.search(
+            r"mDreamingLockscreen=(true|false)", window
+        )
+        locked = None if not found else found.group(1) == "true"
+        return on, locked
 
     def front_app(self) -> str:
         out = self._shell("dumpsys", "activity", "activities")
