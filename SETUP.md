@@ -15,7 +15,9 @@ differently, so this guide has a part for each.
 | Good for | trying Sparsh with nothing at risk | real apps you already use | the same, on an iPhone |
 | Status | tested | the same road as the emulator; not yet run on a real phone | **written and tested against a stand-in, not yet run on a real iPhone** |
 
-If you've never used Sparsh, start with the emulator. It's a pretend
+If you've never used Sparsh, start with the emulator. To check a phone
+works with an agent in one go, [Part T](#part-t--test-it-end-to-end-one-recipe-per-phone)
+has a copy-and-paste test for each. It's a pretend
 phone in a window on your computer: nothing an agent does to it can
 touch your real messages, money or accounts.
 
@@ -40,8 +42,22 @@ uv run sparsh --help
 ```
 
 Sparsh has no other dependencies. Every command below is run from this
-`sparsh` folder. (`uv run sparsh` is how you call it from here; if you
-put `.venv/bin` on your `PATH`, plain `sparsh` works.)
+`sparsh` folder (`uv run sparsh` is how you call it from here).
+
+**So that agents find it by themselves**, put `sparsh` on your `PATH`
+with one link (the same way Setu's install does):
+
+```
+mkdir -p ~/.local/bin
+ln -sf "$PWD/.venv/bin/sparsh" ~/.local/bin/sparsh
+which sparsh                       # ~/.local/bin/sparsh
+```
+
+Yantra looks for `sparsh` on `PATH`; without the link it needs
+`YANTRA_SPARSH=~/sparsh/.venv/bin/sparsh` every time. Sarathi finds a
+checkout beside its own without the link. Only link one: just this
+folder's `sparsh`, never all of `.venv/bin` (that would put this
+folder's Python first on your `PATH`).
 
 ---
 
@@ -474,6 +490,116 @@ Any harness that takes MCP servers (Claude Code, Cursor, …):
 Leave out `env` for an Android phone. Allow every tool except
 `confirm`, so the risky steps still come to you (README, "Letting an
 agent use it").
+
+---
+
+## Part T · Test it end to end, one recipe per phone
+
+Each recipe ends with the same two checks: **an agent does a harmless
+task on the phone by itself**, and **a text is stopped for your yes**.
+They use a local model through Ollama; with a cloud key, leave off
+`--provider` and `--model`. Run the Yantra lines from your Yantra
+folder, after the link in Step 0 (or with `YANTRA_SPARSH` set).
+
+**What you should see every time:** the first lines include
+`sparsh: 9 tool(s); phone <name> (...)`. No such line means Yantra
+didn't find Sparsh or a phone: run `sparsh devices` to see which.
+
+### T1 · The emulator
+
+```
+~/Android/Sdk/emulator/emulator -avd Medium_Phone_API_35 -no-snapshot-save &
+adb wait-for-device
+sparsh devices                     # emulator-5554  sdk_gphone64_x86_64  device
+
+cd ~/yantra
+uv run yantra --provider ollama --model gemma4:26b \
+  --prompt "Turn on airplane mode on my phone."
+adb shell settings get global airplane_mode_on      # 1 means it worked
+adb shell cmd connectivity airplane-mode disable    # put it back
+
+echo n | uv run yantra --provider ollama --model gemma4:26b \
+  --prompt "Text 555-0123 from my phone: hello from the agent"
+```
+
+The second run stops at a card, `Do this on the phone? … tap … "Send
+SMS"`, showing the message; the `n` piped in says no, and nothing is
+sent. Leave off `echo n |` to answer it yourself.
+
+### T2 · An Android phone on a USB cable
+
+Part B first (USB debugging on, the computer allowed). Then:
+
+```
+sparsh devices                     # R58M...  SM_S911B  device
+cd ~/yantra
+uv run yantra --provider ollama --model gemma4:26b \
+  --prompt "On my phone, open Settings and tell me what the Battery row says."
+echo n | uv run yantra --provider ollama --model gemma4:26b \
+  --prompt "Text <a number of yours> from my phone: hello from the agent"
+```
+
+The first answer should match your phone's Battery row. With the
+emulator running as well, say which: `export ANDROID_SERIAL=R58M...`
+(the name `sparsh devices` prints).
+
+### T3 · An Android phone over Wi-Fi
+
+B4 first (wireless debugging; pair once). Then:
+
+```
+sparsh connect 192.168.1.23:41234              # the Wireless debugging page's address
+export SPARSH_CONNECT=192.168.1.23:41234       # reconnect by itself from now on
+export ANDROID_SERIAL=192.168.1.23:41234
+sparsh devices                                 # 192.168.1.23:41234  Pixel_7  device
+```
+
+and the two Yantra lines from T2.
+
+### T4 · An iPhone
+
+Part C first. In one terminal, leave WDA running:
+
+```
+PREFIX=com.you.sparsh scripts/start-wda-from-linux.sh
+```
+
+In another:
+
+```
+export SPARSH_WDA=http://127.0.0.1:8100
+sparsh devices                     # http://127.0.0.1:8100  iPhone  device
+cd ~/yantra
+uv run yantra --provider ollama --model gemma4:26b \
+  --prompt "On my iPhone, open Settings and tell me what the Battery row says."
+echo n | uv run yantra --provider ollama --model gemma4:26b \
+  --prompt "Text <a number of yours> from my iPhone: hello from the agent"
+```
+
+The first line also says `iPhone`. (Not yet run on a real iPhone: tell
+us what you see.)
+
+### Without a link or a flag: by hand
+
+Any of the above works without the `PATH` link, by naming Sparsh:
+
+```
+YANTRA_SPARSH=~/sparsh/.venv/bin/sparsh uv run yantra ...    # this run
+uv run yantra --sparsh ~/sparsh/.venv/bin/sparsh ...          # the same, as a flag
+```
+
+Or as an ordinary MCP server, in a file Yantra reads (`--mcp-config
+phone.json`):
+
+```json
+{"servers": {"sparsh": {"command": "/home/you/sparsh/.venv/bin/sparsh", "args": ["mcp"]}}}
+```
+
+As a plain MCP server, Yantra can't tell Sparsh's steps apart, so it
+asks before every tap, not only before `confirm`. That's fine for a
+quick test; the link or `YANTRA_SPARSH` is the everyday way. In a running session, `/phone` says what's
+attached and `/phone use` adds the tools for a phone plugged in after
+the start.
 
 ---
 
