@@ -155,7 +155,9 @@ sparsh key back [home enter ...]    back, home, enter, recent, delete, tab, ...
 sparsh open settings                open an app by name or package
 sparsh apps [FILTER]                apps that can be opened
 sparsh log [-n 20] [--json]         what was done on the phone, by the agent and by you
-sparsh mcp                          the agent's tools (MCP), held by your rules
+sparsh pair ADDRESS CODE            trust this computer over Wi-Fi, once (SETUP.md, B4)
+sparsh connect ADDRESS              reach a paired phone over Wi-Fi
+sparsh mcp [--shots]                the agent's tools (MCP), held by your rules
 sparsh status [--json]              phones, rules, and how to start the tools
 sparsh wda [WDA.ipa]                when the iPhone's WebDriverAgent signature runs out
 ```
@@ -414,7 +416,9 @@ Looking isn't a step, so it isn't logged.
   ([notes/05](notes/05-a-picture-where-the-list-has-nothing.md)), for
   reading only.
 * Acting on a screen the list can't read (renaming the phone on the
-  About page). The picture shows it; nothing taps by position.
+  About page). The picture shows it, but nothing taps by position yet.
+  When it does, every such tap will wait for your yes, with the spot
+  marked on the picture.
 * ~~iPhones.~~ Built: [notes/03](notes/03-an-iphone-through-a-mac.md),
   with a Mac needed once to sign WebDriverAgent. Not yet run on a real
   iPhone.
@@ -427,7 +431,9 @@ src/sparsh/
 │               a row takes its words (and its switch) from inside
 │               (notes/01)
 ├── device.py   the phone itself, through adb: dump, screenshot, tap,
-│               swipe, type, keys, open an app. Nothing installed on it
+│               swipe, type, keys, open an app; over Wi-Fi too
+│               (SPARSH_CONNECT). Nothing installed on it, unless you add
+│               ADBKeyBoard for letters beyond ASCII (notes/04)
 ├── iphone.py   an iPhone, through WebDriverAgent over HTTP; its screen
 │               rewritten in Android's words so one reader serves both
 │               (notes/03)
@@ -437,7 +443,8 @@ src/sparsh/
 ├── log.py      every step on the phone, by the agent or by you, however it
 │               ended; `sparsh log` (notes/02)
 ├── rules.py    what waits for a yes (words on a tap, password fields) and
-│               which apps are off limits; ~/.sparsh/rules.toml (notes/02)
+│               which apps are off limits; ~/.sparsh/rules.toml (notes/02);
+│               rules a harness adds for one app, SPARSH_APP_RULES
 ├── mcp.py      `sparsh mcp`: the agent's tools, a hand-written MCP server;
 │               reads, acts and `confirm` (notes/02); `--shots`, a picture
 │               where the list has nothing (notes/05)
@@ -451,8 +458,12 @@ scripts/        build WDA on a Mac; install and start it from Linux
 ```
 
 Why it is shaped this way: [notes/01](notes/01-a-list-not-a-picture.md)
-(the list, and the check before a tap) and
-[notes/02](notes/02-held-for-a-yes.md) (what an agent may do by itself).
+(the list, and the check before a tap),
+[notes/02](notes/02-held-for-a-yes.md) (what an agent may do by itself),
+[notes/03](notes/03-an-iphone-through-a-mac.md) (an iPhone, through a
+Mac once), [notes/04](notes/04-typing-other-languages.md) (letters beyond
+ASCII) and [notes/05](notes/05-a-picture-where-the-list-has-nothing.md)
+(a picture where the list has nothing).
 
 ## Licence
 

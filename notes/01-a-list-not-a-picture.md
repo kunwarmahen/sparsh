@@ -161,7 +161,12 @@ A tap, wait included, took 5.3 seconds.
   thirteen tasks, `qwen3.8:latest` and `gemma4:26b` reading this list,
   12 of 13 each ([Yantra's note 120](https://github.com/kunwarmahen/yantra/blob/main/notes/120-thirteen-tasks-on-a-phone.md)). The cloud model reading
   screenshots is parked.
-* The phone over Wi-Fi (`adb pair`), so a container can reach it with
-  no USB cable. ~~Typing beyond ASCII~~: [note 04](04-typing-other-languages.md).
+* ~~The phone over Wi-Fi (`adb pair`), so a container can reach it with
+  no USB cable.~~ `sparsh pair`, `sparsh connect`, and `SPARSH_CONNECT`
+  to find it again by itself (SETUP.md, B4); Sarathi's containers reach
+  it that way. Not yet run against a real phone over Wi-Fi. ~~Typing
+  beyond ASCII~~: [note 04](04-typing-other-languages.md).
+* ~~The trial repeated.~~ Three times each: 34 of 39 and 32 of 39
+  ([Yantra's note 120](https://github.com/kunwarmahen/yantra/blob/main/notes/120-thirteen-tasks-on-a-phone.md)).
 * An iPhone. Built: [note 03](03-an-iphone-through-a-mac.md), read
   through the same list.

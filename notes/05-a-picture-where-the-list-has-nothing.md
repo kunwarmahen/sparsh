@@ -66,6 +66,11 @@ the About page shows "Device name", but there's no number to tap it
 with. The sentence under the picture says so, so the model goes another
 way (a search, another page) instead of guessing.
 
+A tap there would have to be by position, and that is a tap nobody can
+check against a list. If it comes, it comes HELD EVERY TIME: a step
+waiting for the person's yes, with the spot marked on the picture they
+are shown, and only on a screen the list has nothing for.
+
 ## Live, on the emulator
 
 `gemma4:26b` on Ollama, through Yantra, with the About page open. The
@@ -116,7 +121,7 @@ make it workable.
 
 ## Not here yet
 
-* Acting on what only the picture shows. That would mean tapping by
-  position, which this project decided against.
+* Acting on what only the picture shows: a tap by position, held for
+  the person's yes every time, the spot marked on the picture. Not built.
 * The cloud road. Turned on with `YANTRA_PHONE_SHOTS=on` and untried,
   like the rest of the cloud trial.
