@@ -218,17 +218,36 @@ done.
 Every one of them hands back the screen it led to, so the agent always
 has the next numbers in front of it.
 
-**[Yantra](https://github.com/kunwarmahen/yantra) finds it by itself.**
-With `sparsh` on your `PATH` and a phone attached, a Yantra session
-starts the tools and says so in one line:
+**[Yantra](https://github.com/kunwarmahen/yantra) finds it by itself**
+once `sparsh` is on your `PATH`. A checkout's `sparsh` is inside its
+`.venv`, so link it once, the way Setu's install does:
+
+```
+ln -sf ~/sparsh/.venv/bin/sparsh ~/.local/bin/sparsh    # where you cloned it
+```
+
+(Link only `sparsh`, never all of `.venv/bin`, which would put this
+folder's Python first on your `PATH`.) With that and a phone attached, a
+Yantra session starts the tools and says so in one line:
 
 ```
 sparsh: 9 tool(s); phone emulator-5554 (sdk_gphone64_x86_64) -- via /home/you/sparsh/.venv/bin/sparsh
 ```
 
 Then ask for something on the phone in plain words: "turn on airplane
-mode", "text 5554 saying running late". `YANTRA_SPARSH=/path/to/sparsh`
-names it when it isn't on `PATH`.
+mode", "text 5554 saying running late". Other ways to hand it over:
+
+| | |
+|---|---|
+| `YANTRA_SPARSH=/path/to/sparsh` or `--sparsh /path/to/sparsh` | for one run, without the link |
+| `/phone use` in a running session | a phone plugged in after the start |
+| `--mcp-config` naming `sparsh mcp` | works, but as a plain server every tap asks, not only Send |
+| [Sarathi](https://github.com/kunwarmahen/sarathi) | finds a checkout beside its own and hands it to Yantra's page |
+
+To check it all works, [SETUP.md, Part T](SETUP.md#part-t--test-it-end-to-end-one-recipe-per-phone)
+has a copy-and-paste test for the emulator, an Android phone (cable or
+Wi-Fi) and an iPhone: a task done on the phone, then a text stopped for
+your yes.
 
 **Other harnesses** (Claude Code, Cursor, …) take it like any MCP server:
 
