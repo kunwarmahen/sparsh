@@ -131,6 +131,8 @@ class Phone:
         self.rules = rules
         self.folder = state_root(state) / "phones" / _safe(device.serial)
         self.holds: dict[str, Hold] = {}
+        #: When the last step in each app was taken, for an app's pace.
+        self._acted: dict[str, float] = {}
 
     # -- seeing --------------------------------------------------------
 
@@ -216,10 +218,25 @@ class Phone:
 
     def tap(self, n: int, long: bool = False) -> Screen:
         target = self._still_there(n)
-        why = self.rules.why_tap(target) if self.rules else None
+        app = self.last().app
+        if self.rules and (refused := self.rules.refused(target, app)):
+            raise SparshError(refused)
+        why = self.rules.why_tap(target, app) if self.rules else None
         if why:
             self._hold("tap", why, target, long=long)
+        self._pace(app)
         return self._tap(target, long)
+
+    def _pace(self, app: str) -> None:
+        """AN APP'S PACE IS KEPT BETWEEN STEPS. Rules a harness added may
+        say how fast steps in an app may come (X locks accounts that tap
+        like a program); the wait is here, before the step, not after."""
+        wait = self.rules.pace(app) if self.rules else 0.0
+        if wait and app in self._acted:
+            left = self._acted[app] + wait - time.monotonic()
+            if left > 0:
+                time.sleep(left)
+        self._acted[app] = time.monotonic()
 
     def _tap(self, target: Element, long: bool) -> Screen:
         if not target.enabled:
@@ -263,6 +280,7 @@ class Phone:
         if why:
             self._hold("type", why, target, text=text, tap_first=into is not None,
                        clear=clear, enter=enter)  # fmt: skip
+        self._pace(self.last().app if self._has_last() else "")
         return self._type(target if into is not None else None, text, clear, enter)
 
     def _type(self, field: Element | None, text: str, clear: bool, enter: bool) -> Screen:
@@ -299,6 +317,7 @@ class Phone:
             "right": (cx + dx, cy, cx - dx, cy),
             "left": (cx - dx, cy, cx + dx, cy),
         }[direction]
+        self._pace(self.last().app if self._has_last() else "")
         self.device.swipe(x1, y1, x2, y2, 400)
         return self._after()
 
@@ -328,7 +347,11 @@ class Phone:
         for element in screen.elements:
             if field is not None and not _beside(element, field):
                 continue
-            why = element.tap and self.rules.why_tap(element)
+            refused = element.tap and self.rules.refused(element, screen.app)
+            if refused:
+                # what a tap there may not do, Enter may not do either
+                raise SparshError(f"enter could do what a tap would: {refused}")
+            why = element.tap and self.rules.why_tap(element, screen.app)
             if why:
                 return f"enter could do what {element.kind} {_quoted(element)} does ({why})"
         return None

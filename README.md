@@ -329,6 +329,22 @@ prints the rules in force.
 The `sparsh` commands you type yourself are never held: they're your
 own hands.
 
+**Rules a harness adds for one app.** Whoever starts the agent's tools
+may add rules for a single app, in `SPARSH_APP_RULES` (JSON, by app
+package). Yantra does this from [Setu](https://github.com/kunwarmahen/setu)'s
+phone connections (`setu connect x --phone`):
+
+```json
+{"com.twitter.android": {"refuse": ["buy", "post", "like"], "ask": [],
+                         "pace": 3.0, "why": "Setu keeps X on this phone at Read only"}}
+```
+
+A tap on a `refuse` word in that app is **not done at all**, with no hold
+to confirm: the agent is told to stop and tell you. An `ask` word is held
+for a yes, like your own `ask`. `pace` is the fewest seconds between steps
+there. These only add: nothing a harness sends can loosen your
+`rules.toml` or open an app it keeps out.
+
 **Watching an agent work.** Sparsh remembers each look as the screen an
 agent's numbers refer to. To see the phone while an agent is using it,
 use `sparsh look --peek` (with `--shot` for a picture): it reads the
@@ -361,6 +377,7 @@ Looking isn't a step, so it isn't logged.
 | `SPARSH_STATE` | where the last screen of each phone and `rules.toml` live (default `~/.sparsh`; or `--state`) |
 | `SPARSH_RULES` | a rules file somewhere else |
 | `SPARSH_ADB` | the `adb` to use, when it isn't on `PATH` or in `~/Android/Sdk` |
+| `SPARSH_APP_RULES` | rules a harness adds for one app: refuse, ask, pace (JSON, by package) |
 | `SPARSH_CONNECT` | phones over Wi-Fi (`192.168.1.23:41234`, comma-separated), connected to whenever phones are looked for |
 | `SPARSH_WDA` | an iPhone's WebDriverAgent address (`http://127.0.0.1:8100`), used when no `--serial` is given |
 | `SPARSH_IOS_APPS` | more iPhone apps for `sparsh apps` and `open`, as bundle ids separated by commas |

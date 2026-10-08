@@ -12,7 +12,7 @@ import pytest
 
 from sparsh import SparshError
 from sparsh.phone import Held, Phone, ScreenChanged
-from sparsh.rules import ASK_WORDS, Rules, load
+from sparsh.rules import ASK_WORDS, AppRule, Rules, load
 from sparsh.screen import Element
 
 
@@ -255,3 +255,71 @@ def test_back_is_never_held(guarded, fake):
     guarded.look()
     guarded.key("back")
     assert fake.actions == [("keys", "back")]
+
+
+# -- rules a harness added for one app ($SPARSH_APP_RULES) -------------------
+
+MESSAGES = "com.google.android.apps.messaging"
+
+
+def app_guarded(fake, tmp_path, **rule):
+    fake.screens["send"] = SEND
+    fake.current = "send"
+    rules = Rules(apps={MESSAGES: AppRule(**rule)})
+    return Phone(fake, state=tmp_path, settle=0, rules=rules)
+
+
+def test_a_word_refused_for_an_app_is_not_done_and_no_yes_gets_through(fake, tmp_path):
+    phone = app_guarded(fake, tmp_path, refuse=("send",), why="Setu: Messages is Read only")
+    phone.look()
+    with pytest.raises(SparshError, match="not done here: Setu: Messages is Read only") as e:
+        phone.tap(2)
+    assert not isinstance(e.value, Held) and fake.actions == []
+    with pytest.raises(SparshError, match="enter could do what a tap would"):
+        phone.key("enter")
+    assert fake.actions == []
+
+
+def test_a_word_an_app_asks_about_is_held(fake, tmp_path):
+    phone = app_guarded(fake, tmp_path, ask=("running",))
+    phone.look()
+    with pytest.raises(Held):
+        phone.tap(1)  # the message box says "running late"
+    assert fake.actions == []
+
+
+def test_the_rule_is_only_for_its_app(fake, tmp_path):
+    phone = Phone(
+        fake,
+        state=tmp_path,
+        settle=0,
+        rules=Rules(apps={"com.twitter.android": AppRule(refuse=("network",))}),
+    )
+    phone.look()  # Settings
+    phone.tap(6)  # Network & internet
+    assert fake.actions == [("tap", 540, 820)]
+
+
+def test_an_apps_pace_is_kept_between_steps(fake, tmp_path, monkeypatch):
+    slept = []
+    monkeypatch.setattr("sparsh.phone.time.sleep", lambda s: slept.append(s))
+    phone = app_guarded(fake, tmp_path, pace=3.0)
+    phone.look()
+    phone.tap(3)
+    phone.look()
+    phone.tap(3)
+    assert len(slept) == 1 and 2.5 < slept[0] <= 3.0
+
+
+def test_rules_arrive_as_json_and_a_bad_one_is_a_sentence(tmp_path, monkeypatch):
+    monkeypatch.setenv("SPARSH_APP_RULES", '{"com.x": {"refuse": ["Post"], "pace": 3}}')
+    rules, _ = load(tmp_path)
+    assert rules.apps == {"com.x": AppRule(refuse=("post",), pace=3.0)}
+    for bad, said in (
+        ("{nope", "not JSON"),
+        ('{"com.x": {"allow": ["post"]}}', "takes refuse"),
+        ('{"com.x": {"refuse": "post"}}', "list of words"),
+    ):
+        monkeypatch.setenv("SPARSH_APP_RULES", bad)
+        with pytest.raises(SparshError, match=said):
+            load(tmp_path)
