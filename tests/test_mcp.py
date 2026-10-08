@@ -7,7 +7,8 @@ it is destructive, so any harness asks. The second bias: every failure
 reaches the model as readable text with isError, never a crash of the
 server, and every act hands back the screen it led to. The third: A
 PICTURE ONLY WHERE THE LIST HAS NOTHING, only when turned on, and never
-of an app the person keeps the agent out of.
+of an app the person keeps the agent out of. The fourth: A TAP BY
+POSITION IS HELD EVERY TIME, and the person is shown the spot ringed.
 """
 
 import base64
@@ -16,8 +17,8 @@ import json
 
 import pytest
 
-from sparsh import mcp
-from sparsh.rules import Rules
+from sparsh import mcp, picture
+from sparsh.rules import AppRule, Rules
 from sparsh.status import FORMAT, report
 
 from .test_rules import SEND
@@ -42,7 +43,7 @@ def call(tools, tool, **args):
 def test_the_kinds():
     assert mcp.KINDS == {
         "look": "read", "list_apps": "read", "describe_hold": "read",
-        "tap": "act", "type_text": "act", "scroll": "act", "press_key": "act",
+        "tap": "act", "tap_at": "act", "type_text": "act", "scroll": "act", "press_key": "act",
         "open_app": "act", "confirm": "confirm",
     }  # fmt: skip
     confirm = next(t for t in mcp.TOOLS if t["name"] == "confirm")
@@ -114,7 +115,7 @@ def test_the_wire(tools):
     mcp.serve(tools, io.StringIO("\n".join(json.dumps(m) for m in lines) + "\nnot json\n"), out)
     replies = [json.loads(line) for line in out.getvalue().splitlines()]
     assert replies[0]["result"]["protocolVersion"] == "2024-11-05"
-    assert len(replies[1]["result"]["tools"]) == 9
+    assert len(replies[1]["result"]["tools"]) == 10
     assert replies[2]["error"]["code"] == -32601
     assert replies[3]["error"]["code"] == -32700
 
@@ -171,7 +172,7 @@ def test_with_shots_an_unreadable_screen_comes_with_its_picture(fake, tmp_path):
     assert image["type"] == "image" and image["mimeType"] == "image/png"
     assert base64.b64decode(image["data"]).startswith(b"\x89PNG")
     assert "screenshot of this screen is attached" in text["text"]
-    assert "Only numbered things can be tapped" in text["text"]
+    assert "tap_at its position" in text["text"]
 
 
 def test_with_shots_a_readable_screen_is_still_only_the_list(fake, tmp_path):
@@ -202,3 +203,109 @@ def test_no_picture_of_an_app_that_cant_be_named_while_some_are_kept_out(fake, t
     assert [b["type"] for b in kept] == ["text"]
     free = answer(shots(fake, tmp_path), "look")
     assert [b["type"] for b in free] == ["text", "image"]
+
+
+# -- a tap by position: only where the list has nothing, held every time --
+
+
+def a_png(width=100, height=200, colour=(0, 0, 0), dot=False):
+    rows = [bytearray(colour * width) for _ in range(height)]
+    if dot:  # a few pixels change, as a ticking clock's do
+        rows[0][0:12] = bytes([255] * 12)
+    return picture._encode(width, height, rows)
+
+
+def test_a_tap_by_position_is_held_and_shown_ringed_then_done_on_yes(fake, tmp_path):
+    unreadable(fake)
+    fake.screenshot = lambda: a_png()
+    tools = shots(fake, tmp_path)
+    text, failed = call(tools, "tap_at", x=500, y=250)
+    assert failed and text.startswith("NOT DONE") and fake.actions == []
+    assert "tap the spot ringed on the picture (x 500, y 250 of 1000)" in text
+    hold = text.split('hold "')[1].split('"')[0]
+
+    told, shown = answer(tools, "describe_hold", hold=hold)
+    assert "tap by position" in told["text"] and "com.android.settings" in told["text"]
+    ringed = base64.b64decode(shown["data"])
+    assert picture.size(ringed) == (100, 200) and ringed != a_png()
+
+    text, failed = call(tools, "confirm", hold=hold)
+    assert not failed and text.startswith("Done.")
+    assert fake.actions == [("tap", 49, 49)]  # the same share of the screen
+
+
+def test_no_tap_by_position_where_the_list_has_something(tools, fake):
+    text, failed = call(tools, "tap_at", x=500, y=500)
+    assert failed and "tap by number" in text and fake.actions == []
+
+
+def test_a_tap_by_position_is_not_done_if_the_app_changed(fake, tmp_path):
+    unreadable(fake)
+    fake.screenshot = lambda: a_png()
+    tools = shots(fake, tmp_path)
+    text, _ = call(tools, "tap_at", x=10, y=10)
+    hold = text.split('hold "')[1].split('"')[0]
+    fake.front = "com.google.android.youtube"
+    text, failed = call(tools, "confirm", hold=hold)
+    assert failed and "nothing was tapped" in text and fake.actions == []
+
+
+def test_a_tap_by_position_is_not_done_on_a_screen_unlike_its_picture(fake, tmp_path):
+    unreadable(fake)
+    fake.screenshot = lambda: a_png()
+    tools = shots(fake, tmp_path)
+    text, _ = call(tools, "tap_at", x=10, y=10)
+    hold = text.split('hold "')[1].split('"')[0]
+    fake.screenshot = lambda: a_png(colour=(255, 255, 255))  # a dialog opened, say
+    text, failed = call(tools, "confirm", hold=hold)
+    assert failed and "not the one in the picture" in text and fake.actions == []
+
+
+def test_a_clock_ticking_on_the_screen_is_still_its_picture(fake, tmp_path):
+    unreadable(fake)
+    fake.screenshot = lambda: a_png()
+    tools = shots(fake, tmp_path)
+    text, _ = call(tools, "tap_at", x=10, y=10)
+    hold = text.split('hold "')[1].split('"')[0]
+    fake.screenshot = lambda: a_png(dot=True)
+    text, failed = call(tools, "confirm", hold=hold)
+    assert not failed and fake.actions == [("tap", 0, 1)]
+
+
+def test_no_tap_by_position_in_an_app_whose_words_are_refused(fake, tmp_path):
+    unreadable(fake, app="com.twitter.android")
+    rules = Rules(apps={"com.twitter.android": AppRule(refuse=("post",), why="Setu: read only")})
+    tools = mcp.Tools(rules, state=tmp_path, device=fake, settle=0, shots=True)
+    text, failed = call(tools, "tap_at", x=10, y=10)
+    assert failed and "no words to check" in text and "Setu: read only" in text
+
+
+def test_a_spot_off_the_picture_is_a_sentence(fake, tmp_path):
+    unreadable(fake)
+    text, failed = call(shots(fake, tmp_path), "tap_at", x=1200, y=10)
+    assert failed and "0 to 1000" in text
+
+
+def test_typing_on_a_screen_with_no_list_is_held_with_its_picture(fake, tmp_path):
+    unreadable(fake)
+    fake.screenshot = lambda: a_png()
+    tools = shots(fake, tmp_path)
+    text, failed = call(tools, "type_text", text="Asha's phone", enter=True)
+    assert failed and text.startswith("NOT DONE") and fake.actions == []
+    assert "where the keyboard is, on the screen in the picture" in text
+    hold = text.split('hold "')[1].split('"')[0]
+    told, shown = answer(tools, "describe_hold", hold=hold)
+    assert "Asha's phone" in told["text"] and base64.b64decode(shown["data"]) == a_png()
+    text, failed = call(tools, "confirm", hold=hold)
+    assert not failed
+    assert fake.actions == [("text", "Asha's phone"), ("keys", "enter")]
+
+
+def test_a_yes_on_a_screen_with_no_list_comes_back_with_its_picture(fake, tmp_path):
+    unreadable(fake)
+    fake.screenshot = lambda: a_png()
+    tools = shots(fake, tmp_path)
+    text, _ = call(tools, "tap_at", x=10, y=10)
+    hold = text.split('hold "')[1].split('"')[0]
+    said, shown = answer(tools, "confirm", hold=hold)
+    assert said["text"].startswith("Done.") and shown["type"] == "image"

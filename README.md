@@ -233,7 +233,7 @@ folder's Python first on your `PATH`.) With that and a phone attached, a
 Yantra session starts the tools and says so in one line:
 
 ```
-sparsh: 9 tool(s); phone emulator-5554 (sdk_gphone64_x86_64) -- via /home/you/sparsh/.venv/bin/sparsh
+sparsh: 10 tool(s); phone emulator-5554 (sdk_gphone64_x86_64) -- via /home/you/sparsh/.venv/bin/sparsh
 ```
 
 Then ask for something on the phone in plain words: "turn on airplane
@@ -270,7 +270,7 @@ it, as an image the model can look at:
 ```
 App: com.android.settings
 (this screen can't be read as a list: the screen keeps changing (...). Press back to leave this page, ...)
-(A screenshot of this screen is attached to this result: you can already see it, no tool is needed. Only numbered things can be tapped, ...)
+(A screenshot of this screen is attached to this result: you can already see it, no tool is needed. To act on what it shows, first try another way ...; if there is none, tap_at its position, which the person is asked about.)
 ```
 
 Only then. A screen the list can read never comes with a picture, an
@@ -282,12 +282,21 @@ whether the model can see and whether it runs in the cloud. Yantra
 turns it on for a local model that can see, and for a cloud model only
 when you say so (`YANTRA_PHONE_SHOTS=on`).
 
-The picture is for reading. Nothing taps by position: what isn't on the
-list is reached another way (back, a scroll, a search). On the Android
-emulator, `gemma4:26b` read the IMEI off Settings' About page this way,
-a page the list can't read at all. Renaming the phone, which needs a tap
-on that page, stays out of reach
+On the Android emulator, `gemma4:26b` read the IMEI off Settings' About
+page this way, a page the list can't read at all
 ([notes/05](notes/05-a-picture-where-the-list-has-nothing.md)).
+
+**A tap by position, asked every time.** On such a screen, and only
+there, the agent can tap a spot on the picture: `tap_at` with `x` and
+`y` from 0 to 1000 across and down it. That is a share of the picture,
+so a model shown it smaller still names the same spot. Nothing can
+check what's at a spot, so **every one waits for your yes**, and you
+are shown the picture with the spot ringed. Typing on such a screen
+waits too: nothing says which field has the keyboard, or that it isn't
+a password. When you say yes, Sparsh taps only if the same app is still
+in front and its screen still gives no list. In an app whose rules
+refuse words (a site Setu keeps read-only), there's no tap by position
+at all ([notes/06](notes/06-a-tap-by-position.md)).
 
 ### What it asks you first
 
@@ -415,10 +424,10 @@ Looking isn't a step, so it isn't logged.
 * ~~Screenshots through the agent's tools.~~ Built: `sparsh mcp --shots`
   ([notes/05](notes/05-a-picture-where-the-list-has-nothing.md)), for
   reading only.
-* Acting on a screen the list can't read (renaming the phone on the
-  About page). The picture shows it, but nothing taps by position yet.
-  When it does, every such tap will wait for your yes, with the spot
-  marked on the picture.
+* ~~Acting on a screen the list can't read.~~ Built: a tap by position,
+  held every time, the spot ringed
+  ([notes/06](notes/06-a-tap-by-position.md)). Renaming the emulator
+  takes four yeses.
 * ~~iPhones.~~ Built: [notes/03](notes/03-an-iphone-through-a-mac.md),
   with a Mac needed once to sign WebDriverAgent. Not yet run on a real
   iPhone.
@@ -439,7 +448,9 @@ src/sparsh/
 │               (notes/03)
 ├── phone.py    numbers in, taps out: the last look is kept, and a number
 │               is checked against the screen now before anything is done
-│               (notes/01)
+│               (notes/01); a tap by position, held every time (notes/06)
+├── picture.py  the spot ringed on a screenshot, PNG read and written by
+│               hand, for the person's yes (notes/06)
 ├── log.py      every step on the phone, by the agent or by you, however it
 │               ended; `sparsh log` (notes/02)
 ├── rules.py    what waits for a yes (words on a tap, password fields) and
@@ -447,7 +458,7 @@ src/sparsh/
 │               rules a harness adds for one app, SPARSH_APP_RULES
 ├── mcp.py      `sparsh mcp`: the agent's tools, a hand-written MCP server;
 │               reads, acts and `confirm` (notes/02); `--shots`, a picture
-│               where the list has nothing (notes/05)
+│               where the list has nothing (notes/05); `tap_at` (notes/06)
 ├── status.py   `sparsh status --json` (sparsh.status.v1): what a harness
 │               reads to find the phone, the rules and each tool's kind
 ├── fake.py     a phone made of saved screens, for tests
@@ -462,8 +473,10 @@ Why it is shaped this way: [notes/01](notes/01-a-list-not-a-picture.md)
 [notes/02](notes/02-held-for-a-yes.md) (what an agent may do by itself),
 [notes/03](notes/03-an-iphone-through-a-mac.md) (an iPhone, through a
 Mac once), [notes/04](notes/04-typing-other-languages.md) (letters beyond
-ASCII) and [notes/05](notes/05-a-picture-where-the-list-has-nothing.md)
-(a picture where the list has nothing).
+ASCII), [notes/05](notes/05-a-picture-where-the-list-has-nothing.md)
+(a picture where the list has nothing) and
+[notes/06](notes/06-a-tap-by-position.md) (a tap by position, asked every
+time).
 
 ## Licence
 

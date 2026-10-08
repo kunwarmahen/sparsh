@@ -13,6 +13,7 @@ import pytest
 from sparsh import SparshError
 from sparsh.device import KEYBOARD, AdbDevice, typeable
 from sparsh.phone import Phone, ScreenChanged
+from sparsh.screen import ScreenUnreadable
 
 
 def test_tap_hits_the_middle_of_the_thing_and_shows_where_it_led(phone, fake):
@@ -251,3 +252,14 @@ def test_an_app_that_opens_readable_is_left_alone(phone, fake):
     now = phone.open_app("settings")
     assert fake.actions == [("launch", "com.android.settings")]
     assert "back was pressed" not in now.text()
+
+
+def test_a_screen_that_never_goes_still_is_tried_once_the_next_time(phone, fake):
+    fake.screens["about"] = None
+    fake.current, fake.front = "about", "com.android.settings"
+    for _ in range(2):
+        with pytest.raises(ScreenUnreadable):
+            phone.look()
+    fake.current, fake.front = "settings", "com.google.android.youtube"
+    phone.look()  # another app in front: tried in full again
+    assert fake.tries == [True, False, True]

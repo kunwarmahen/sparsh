@@ -39,13 +39,15 @@ class FakeDevice:
         self.front = ""  # the app in front, when a test says so
         self.actions: list[tuple] = []
         self.after: Callable[[FakeDevice, tuple], None] | None = None
+        self.tries: list[bool] = []  # each dump's ``retry``
 
     def _did(self, *action) -> None:
         self.actions.append(action)
         if self.after is not None:
             self.after(self, action)
 
-    def dump(self) -> str:
+    def dump(self, retry: bool = True) -> str:
+        self.tries.append(retry)
         xml = self.screens[self.current]
         if xml is None:  # a screen the phone can't describe (About phone)
             raise ScreenUnreadable("the screen keeps changing")

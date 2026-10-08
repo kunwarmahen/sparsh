@@ -197,7 +197,7 @@ class WdaDevice:
 
     # -- the Device shape --------------------------------------------------
 
-    def dump(self) -> str:
+    def dump(self, retry: bool = True) -> str:
         source = self._call("GET", "/source?format=xml")
         if not isinstance(source, str) or not source.strip():
             raise ScreenUnreadable("the iPhone did not describe its screen")
@@ -265,12 +265,17 @@ class WdaDevice:
         if typed:
             self._act("/wda/keys", {"value": [typed]})
 
-    def _back(self) -> None:
-        # The swipe in from the left edge most apps take as back.
+    def touch_size(self) -> tuple[int, int]:
+        """The screen in points, which taps are in -- a screenshot is in
+        pixels, two or three to a point (phone.py, a tap by position)."""
         size = self._call("GET", "/window/size")
         if not isinstance(size, dict):
             size = {}
-        width, height = int(size.get("width", 390)), int(size.get("height", 844))
+        return int(size.get("width", 390)), int(size.get("height", 844))
+
+    def _back(self) -> None:
+        # The swipe in from the left edge most apps take as back.
+        width, height = self.touch_size()
         self.swipe(2, height // 2, width * 2 // 3, height // 2, 250)
 
     def launch(self, package: str) -> None:

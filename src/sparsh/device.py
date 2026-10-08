@@ -84,7 +84,7 @@ KEYBOARD = KEYBOARD_APP + "/.AdbIME"
 class Device(Protocol):
     serial: str
 
-    def dump(self) -> str: ...
+    def dump(self, retry: bool = True) -> str: ...
     def screenshot(self) -> bytes: ...
     def tap(self, x: int, y: int) -> None: ...
     def long_press(self, x: int, y: int) -> None: ...
@@ -239,11 +239,13 @@ class AdbDevice:
         done = _run([self.adb, "-s", self.serial, "shell", *args], timeout=timeout)
         return done.stdout.decode(errors="replace")
 
-    def dump(self) -> str:
+    def dump(self, retry: bool = True) -> str:
         # An animating screen (a video, a spinner) makes uiautomator give
         # up waiting for it to be still; one more try usually lands.
+        # ``retry=False`` when this screen is already known not to: each
+        # try waits about twelve seconds for a stillness that won't come.
         said = ""
-        for attempt in range(2):
+        for attempt in range(2 if retry else 1):
             done = _run(
                 [self.adb, "-s", self.serial, "exec-out", "uiautomator", "dump", "/dev/tty"],
                 timeout=30,

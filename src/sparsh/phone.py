@@ -8,6 +8,8 @@ person) actually read:
     tap(7)          look again; is 7 still the same thing in the same
                     place? -> tap the middle of it. Not there any more
                     -> ScreenChanged, carrying the screen as it is now
+    tap_at(500, 300)   a spot on the picture, 0-1000 each way: only where
+                    the list has nothing, and ALWAYS held (below)
     type("hi", into=7, clear=True, enter=True)
     scroll("down", on=4)       "down" = show what is further down
     key("back") / open_app("settings") / apps("goo")
@@ -29,6 +31,18 @@ raised with its id; ``confirm(id)`` -- called once the person has said yes -- fi
 same thing on the screen as it is then, and does it. Holds live in this
 process only (what was going to be typed into a password field never
 touches the disk) and lapse after ``HOLD_FOR`` seconds.
+
+A TAP BY POSITION IS HELD EVERY TIME. Some screens give the list
+nothing (Settings' About page, its clock ticking; an app drawn as one
+picture), and the agent sees them only as a screenshot. ``tap_at`` taps
+a spot on that picture -- refused wherever the list has something (tap
+by number there) and in an app whose rules refuse words, since a spot
+has no words to check. No rule can tell what is at a spot, so every one
+is held, and the person is shown the picture with the spot ringed
+(picture.py). ``confirm`` taps only if the same app is in front and a
+new screenshot matches the one the person saw (``_as_pictured``); the
+spot is the same share of the screen as it was of the picture. Typing on such a screen is held too
+(``_type_unseen``): nothing says which field has the keyboard.
 """
 
 from __future__ import annotations
@@ -38,8 +52,9 @@ import secrets
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import NoReturn
 
-from sparsh import SparshError
+from sparsh import SparshError, picture
 from sparsh.device import Device
 from sparsh.rules import Rules
 from sparsh.screen import Element, Screen, ScreenUnreadable, read
@@ -48,6 +63,9 @@ from sparsh.screen import Element, Screen, ScreenUnreadable, read
 SETTLE = 0.8
 #: Seconds a held step waits for its yes.
 HOLD_FOR = 600
+#: The share of a screenshot that may differ from the one a person said
+#: yes to by looking (a ticking clock, a blinking cursor) -- no more.
+CHANGED = 0.02
 
 DIRECTIONS = ("down", "up", "left", "right")
 
@@ -70,7 +88,7 @@ class Hold:
     """A step waiting for a person's yes."""
 
     id: str
-    action: str  # "tap", "type" or "key"
+    action: str  # "tap", "tap_at", "type" or "key"
     why: str
     app: str
     target: Element | None  # what to tap, or the field typed into
@@ -79,6 +97,13 @@ class Hold:
     made: float = field(default_factory=time.monotonic)
 
     def sentence(self) -> str:
+        if self.action == "tap_at":
+            what = "press and hold" if self.args.get("long") else "tap"
+            return (
+                f"{what} the spot ringed on the picture (x {self.args['x']}, "
+                f"y {self.args['y']} of 1000) in {self.app or 'the app in front'} "
+                f"-- held because {self.why}"
+            )
         if self.action == "key":
             return f"press {', '.join(self.args['keys'])} in {self.app} -- held because {self.why}"
         if self.action == "tap":
@@ -87,6 +112,8 @@ class Hold:
                 what = "press and hold " + what[4:]
         else:
             where = f"into {self.target.kind} {_quoted(self.target)}" if self.target else ""
+            if not self.target and "picture" in self.args:
+                where = "where the keyboard is, on the screen in the picture"
             shown = "(a password; not shown)" if self._secret else repr(self.args["text"])
             what = f"type {shown} {where}".strip()
             if self.args.get("enter"):
@@ -102,6 +129,17 @@ class Hold:
             f"On the phone {serial}: {self.sentence()}.\n"
             f"The screen when it was asked for:\n{self.screen}"
         )
+
+    def picture(self) -> bytes | None:
+        """For a step on a screen with no list: the screenshot -- for a tap
+        by position with the spot ringed (made once), or as it was if it
+        can't be marked here; None otherwise."""
+        shot = self.args.get("picture")
+        if shot is None or "x" not in self.args:
+            return shot
+        if "marked" not in self.args:
+            self.args["marked"] = picture.mark(shot, self.args["x"], self.args["y"])
+        return self.args["marked"] or shot
 
 
 class Held(SparshError):
@@ -133,14 +171,27 @@ class Phone:
         self.holds: dict[str, Hold] = {}
         #: When the last step in each app was taken, for an app's pace.
         self._acted: dict[str, float] = {}
+        #: The app in front when the screen last couldn't be described.
+        self._restless: str | None = None
 
     # -- seeing --------------------------------------------------------
 
     def look(self, shot: str | os.PathLike | None = None, keep: bool = True) -> Screen:
         """Read the screen. ``keep=False`` is a PEEK: someone else looking
         (a person's page beside a running agent) must not change what the
-        agent's numbers mean, so the last screen is left as it was."""
-        xml = self.device.dump()
+        agent's numbers mean, so the last screen is left as it was.
+
+        A SCREEN THAT NEVER GOES STILL IS TRIED ONCE. While the app that
+        last couldn't be described is still in front, one try, not two:
+        each waits about twelve seconds, and a look of two tries plus an
+        act's look after it outran a harness's thirty-second call."""
+        retry = self._restless is None or self._front() != self._restless
+        try:
+            xml = self.device.dump(retry=retry)
+        except ScreenUnreadable:
+            self._restless = self._front()
+            raise
+        self._restless = None
         screen = read(xml)
         if keep:
             self.folder.mkdir(parents=True, exist_ok=True)
@@ -227,6 +278,49 @@ class Phone:
         self._pace(app)
         return self._tap(target, long)
 
+    def tap_at(self, x: int, y: int, long: bool = False) -> Screen:
+        """A spot on the screenshot, each of x and y 0 to 1000 across and
+        down it. Only where the list has nothing, and held every time
+        (module docstring)."""
+        for value in (x, y):
+            if not 0 <= value <= 1000:
+                raise SparshError(f"x and y run from 0 to 1000 across the picture, not {value}")
+        screen = self.see()
+        if screen.elements:
+            raise SparshError(
+                "this screen can be read as a list, so tap by number, not by position. "
+                "The screen now:\n" + screen.text()
+            )
+        if not self.shown(screen):
+            raise SparshError("no picture of this screen may be shown, so it has no spot to tap")
+        rule = self.rules.apps.get(screen.app) if self.rules else None
+        if rule and rule.refuse:
+            raise SparshError(
+                f"a spot has no words to check against what {screen.app} refuses "
+                f"({rule.why or 'its rules'}), so nothing is tapped by position there"
+            )
+        if self.rules is None:  # the person's own hands
+            return self._tap_spot(x, y, long, self.device.screenshot())
+        self._hold("tap_at", "it is a tap by position: the screen gives no list, so what "
+                   "is at that spot is known only from the picture", None,
+                   where=(screen.app, screen.text()), x=x, y=y, long=long,
+                   picture=self.device.screenshot())  # fmt: skip
+
+    def _tap_spot(self, x: int, y: int, long: bool, shot: bytes) -> Screen:
+        """The spot as the same share of the screen: an Android phone taps in
+        the picture's pixels, an iPhone in points (``touch_size``)."""
+        touch = getattr(self.device, "touch_size", None)
+        size = touch() if touch else picture.size(shot)
+        if not size:
+            raise SparshError("the screen's size is not known, so nothing was tapped")
+        width, height = size
+        px, py = x * (width - 1) // 1000, y * (height - 1) // 1000
+        if long:
+            self.device.long_press(px, py)
+        else:
+            self.device.tap(px, py)
+        return self._after()
+
     def _pace(self, app: str) -> None:
         """AN APP'S PACE IS KEPT BETWEEN STEPS. Rules a harness added may
         say how fast steps in an app may come (X locks accounts that tap
@@ -262,7 +356,10 @@ class Phone:
                 )
         elif self.rules:
             # Typing goes wherever the keyboard is: find out where first.
-            now = self.look()
+            try:
+                now = self.look()
+            except ScreenUnreadable as e:
+                return self._type_unseen(text, clear, enter, e)
             self._guard(now.app)
             target = next((e for e in now.elements if e.focused), None)
             if target is None:
@@ -282,6 +379,20 @@ class Phone:
                        clear=clear, enter=enter)  # fmt: skip
         self._pace(self.last().app if self._has_last() else "")
         return self._type(target if into is not None else None, text, clear, enter)
+
+    def _type_unseen(self, text: str, clear: bool, enter: bool, e: ScreenUnreadable) -> NoReturn:
+        """TYPING ON A SCREEN WITH NO LIST IS HELD. A dialog over Settings'
+        About page can't be read either (the page behind it never goes
+        still), so after a tap by position opens it, nothing says which
+        field the keyboard is in -- or that it isn't a password. The
+        person is shown the picture and the words, and decides."""
+        screen = self._unreadable(f"(this screen can't be read as a list: {e}.)")
+        if not self.shown(screen):
+            raise e
+        self._hold("type", "the screen gives no list, so where the words go is known "
+                   "only from the picture", None, where=(screen.app, screen.text()),
+                   text=text, tap_first=False, clear=clear, enter=enter,
+                   picture=self.device.screenshot())  # fmt: skip
 
     def _type(self, field: Element | None, text: str, clear: bool, enter: bool) -> Screen:
         if field is not None:
@@ -381,17 +492,21 @@ class Phone:
 
     # -- holds ---------------------------------------------------------
 
-    def _hold(self, action: str, why: str, target: Element | None, **args) -> None:
+    def _hold(self, action: str, why: str, target: Element | None,
+              where: tuple[str, str] | None = None, **args) -> NoReturn:  # fmt: skip
+        """``where`` is (app, screen) when the last look isn't the screen
+        asked on (one that can't be read is never kept as the last)."""
         now = time.monotonic()
         for old in [h for h in self.holds.values() if now - h.made > HOLD_FOR]:
             del self.holds[old.id]
+        app, screen = where or (self.last().app, self.last().text())
         hold = Hold(
             id="h" + secrets.token_hex(3),
             action=action,
             why=why,
-            app=self.last().app,
+            app=app,
             target=target,
-            screen=self.last().text(),
+            screen=screen,
             args=args,
         )
         self.holds[hold.id] = hold
@@ -420,8 +535,15 @@ class Phone:
                 )
             self.device.keys(*hold.args["keys"])
             return self._after()
+        if hold.action == "tap_at":
+            self._as_pictured(hold, "tapped")
+            self._pace(hold.app)
+            return self._tap_spot(hold.args["x"], hold.args["y"], hold.args["long"],
+                                  hold.args["picture"])  # fmt: skip
         if hold.action == "tap":
             return self._tap(self._find(hold.target), hold.args.get("long", False))
+        if "picture" in hold.args:
+            self._as_pictured(hold, "typed")
         field = hold.target
         if hold.args["tap_first"]:
             field = self._find(field)
@@ -431,6 +553,26 @@ class Phone:
             hold.args["clear"],
             hold.args["enter"],
         )
+
+    def _as_pictured(self, hold: Hold, done: str) -> None:
+        """THE SCREEN MUST STILL BE THE PICTURE. A step the person said yes
+        to by looking is done only on the screen they looked at: the same
+        app in front, and a new screenshot that matches the one they saw
+        (a clock may tick; a page scrolled, a dialog gone, may not). A
+        picture, not a reading: reading a screen that never goes still
+        takes ten seconds or more, and finds nothing."""
+        front = self._front()
+        if front != hold.app:
+            raise SparshError(
+                f"the phone is in {front or 'another app'} now, not "
+                f"{hold.app or 'the app it was'}; nothing was {done}"
+            )
+        changed = picture.changed(hold.args["picture"], self.device.screenshot())
+        if changed is None or changed > CHANGED:
+            raise SparshError(
+                "the screen is not the one in the picture any more (it moved, or "
+                f"something opened or closed); nothing was {done}. Look again"
+            )
 
     # -- apps ----------------------------------------------------------
 
@@ -463,6 +605,12 @@ class Phone:
             raise SparshError(f"more than one app matches {name!r}: {', '.join(found)}")
         shown = [a for a in apps if not self._off_limits(a)]
         raise SparshError(f"no app matches {name!r}. Apps on this phone: {', '.join(shown)}")
+
+    def _front(self) -> str:
+        try:
+            return self.device.front_app()
+        except SparshError:
+            return ""
 
     def _off_limits(self, app: str) -> bool:
         return self.rules is not None and self.rules.forbidden(app)

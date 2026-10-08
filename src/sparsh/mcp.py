@@ -3,12 +3,13 @@
     sparsh mcp [--serial S]
 
 An MCP server on stdin/stdout -- newline-delimited JSON-RPC, written by
-hand like Samay's -- with nine tools in three kinds:
+hand like Samay's -- with ten tools in three kinds:
 
     look           read     the screen, as the numbered list
     list_apps      read     apps that can be opened
     describe_hold  read     a held step, in words, with the screen it was on
     tap            act      tap a number from the last look
+    tap_at         act      tap a spot on a screenshot -- always held
     type_text      act      type, optionally into a numbered field
     scroll         act      show more of the screen, or of one list
     press_key      act      back, home, enter, ...
@@ -42,9 +43,14 @@ unreadable also returns a screenshot of it, as an MCP image. Only then,
 and never of an app on the person's ``never`` list. It is OFF unless
 whoever starts the server turns it on; that harness knows whether its
 model can see, and whether the person lets screenshots go to it (Yantra
-gives them to local models, and to cloud models only when asked). The
-picture is for reading. There is still no tapping by position: what
-isn't on the list is reached another way (back, a scroll, a search).
+gives them to local models, and to cloud models only when asked).
+
+A TAP BY POSITION ONLY ON SUCH A SCREEN, AND HELD EVERY TIME. What the
+picture shows can be tapped with ``tap_at``, a spot 0-1000 across and
+down it (a share of the picture, so a model that sees it smaller still
+names the same spot). Refused wherever the list has something; always
+held, and ``describe_hold`` returns the picture with the spot ringed,
+as an image beside its words, for the harness to show the person.
 
 ONE PHONE PER SERVER. ``--serial`` is fixed by whoever starts the
 server. With none, the only attached phone is used, found again on
@@ -100,6 +106,21 @@ TOOLS: list[dict] = [
          "long": {"type": "boolean", "description": "Press and hold instead."}},
          "required": ["n"]},
      "annotations": _ACT},
+    {"name": "tap_at",
+     "description": (
+         "Tap a spot on the screenshot -- ONLY on a screen that came with one "
+         "because it has no numbered list. x and y each run 0 to 1000 across and "
+         "down the picture (0,0 top left; 1000,1000 bottom right; 500,500 the "
+         "middle). ALWAYS HELD for the person, who is shown the spot ringed on "
+         "the picture: see confirm."),
+     "inputSchema": {"type": "object", "properties": {
+         "x": {"type": "integer", "minimum": 0, "maximum": 1000,
+               "description": "Across the picture: 0 left edge, 1000 right edge."},
+         "y": {"type": "integer", "minimum": 0, "maximum": 1000,
+               "description": "Down the picture: 0 top edge, 1000 bottom edge."},
+         "long": {"type": "boolean", "description": "Press and hold instead."}},
+         "required": ["x", "y"]},
+     "annotations": _ACT},
     {"name": "type_text",
      "description": (
          "Type text. With `into`, the numbered field is tapped first; without, "
@@ -137,14 +158,17 @@ TOOLS: list[dict] = [
          "name": {"type": "string"}}, "required": ["name"]},
      "annotations": _ACT},
     {"name": "describe_hold",
-     "description": "A held step in plain words, with the screen it was asked on.",
+     "description": (
+         "A held step in plain words, with the screen it was asked on (for a tap "
+         "by position, the picture with the spot ringed)."),
      "inputSchema": {"type": "object", "properties": {
          "hold": {"type": "string"}}, "required": ["hold"]},
      "annotations": _READ},
     {"name": "confirm",
      "description": (
          "Carry out a step that was HELD for the person's yes (a tap on Send, "
-         "Pay, Delete...; typing into a password field). Calling this asks the "
+         "Pay, Delete...; typing into a password field; a tap by position). "
+         "Calling this asks the "
          "person; tell them in a sentence what it will do first."),
      "inputSchema": {"type": "object", "properties": {
          "hold": {"type": "string", "description": "The id the held step gave."}},
@@ -202,9 +226,13 @@ class Tools:
     def reply(self, name: str, args: dict) -> tuple[str, bytes | None]:
         """The tool's text, and a screenshot when one goes with it."""
         result = self._result(name, args)
+        if isinstance(result, tuple):
+            return result
         if not isinstance(result, Screen):
             return result, None
         text = result.text()
+        if name == "confirm":
+            text = "Done. " + text
         if not (self.shots and self.phone().shown(result)):
             return text, None
         try:
@@ -241,6 +269,10 @@ class Tools:
     def _tap(self, args: dict) -> Screen:
         return self.phone().tap(_n(args, "n"), long=bool(args.get("long")))
 
+    def _tap_at(self, args: dict) -> Screen:
+        return self.phone().tap_at(_spot(args, "x"), _spot(args, "y"),
+                                   long=bool(args.get("long")))  # fmt: skip
+
     def _type_text(self, args: dict) -> Screen:
         text = args.get("text")
         if not isinstance(text, str):
@@ -269,19 +301,27 @@ class Tools:
             raise ToolFailed("missing: name")
         return self.phone().open_app(name)
 
-    def _describe_hold(self, args: dict) -> str:
+    def _describe_hold(self, args: dict) -> tuple[str, bytes | None]:
         phone = self.phone()
-        return phone.held(str(args.get("hold") or "")).describe(phone.device.serial)
+        hold = phone.held(str(args.get("hold") or ""))
+        shot = hold.picture()
+        if shot is not None and len(shot) > SHOT_BYTES:
+            shot = None
+        return hold.describe(phone.device.serial), shot
 
-    def _confirm(self, args: dict) -> str:
-        return "Done. " + self.phone().confirm(str(args.get("hold") or "")).text()
+    def _confirm(self, args: dict) -> Screen:
+        # A Screen, like every act's: on a screen the list can't read, the
+        # picture comes with it, and the next spot is chosen by looking --
+        # in the trial, without it qwen guessed where OK was, and missed.
+        return self.phone().confirm(str(args.get("hold") or ""))
 
 
 _NOTHING = "(nothing on this screen can be read -- try a screenshot)"
 _SHOT = (
     "(A screenshot of this screen is attached to this result: you can already see "
-    "it, no tool is needed. Only numbered things can be tapped, so to act on what "
-    "it shows, find it another way -- press back, scroll, or search.)"
+    "it, no tool is needed. To act on what it shows, first try another way -- press "
+    "back, scroll, or search; if there is none, tap_at its position, which the "
+    "person is asked about.)"
 )
 
 
@@ -316,6 +356,18 @@ def _n(args: dict, key: str) -> int:
         raise ToolFailed(f"{key} is a number from the screen list, not {value!r}") from None
     if number < 1:
         raise ToolFailed(f"{key} is a number from the screen list (1 or more)")
+    return number
+
+
+def _spot(args: dict, key: str) -> int:
+    value = args.get(key)
+    try:
+        number = round(float(value))
+    except (TypeError, ValueError):
+        raise ToolFailed(f"{key} is a number from 0 to 1000 across the picture, "
+                         f"not {value!r}") from None  # fmt: skip
+    if not 0 <= number <= 1000:
+        raise ToolFailed(f"{key} runs from 0 to 1000 across the picture, not {value!r}")
     return number
 
 
