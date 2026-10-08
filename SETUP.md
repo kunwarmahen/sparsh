@@ -502,7 +502,7 @@ They use a local model through Ollama; with a cloud key, leave off
 folder, after the link in Step 0 (or with `YANTRA_SPARSH` set).
 
 **What you should see every time:** the first lines include
-`sparsh: 9 tool(s); phone <name> (...)`. No such line means Yantra
+`sparsh: 10 tool(s); phone <name> (...)`. No such line means Yantra
 didn't find Sparsh or a phone: run `sparsh devices` to see which.
 
 ### T1 · The emulator

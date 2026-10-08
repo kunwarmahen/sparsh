@@ -436,6 +436,7 @@ Looking isn't a step, so it isn't logged.
 | `SPARSH_RULES` | a rules file somewhere else |
 | `SPARSH_ADB` | the `adb` to use, when it isn't on `PATH` or in `~/Android/Sdk` |
 | `SPARSH_APP_RULES` | rules a harness adds for one app: refuse, ask, pace (JSON, by package) |
+| `SPARSH_GRANTS` | held taps a schedule may do without a yes, as its person accepted them (JSON list of sentences) |
 | `SPARSH_CONNECT` | phones over Wi-Fi (`192.168.1.23:41234`, comma-separated), connected to whenever phones are looked for |
 | `SPARSH_WDA` | an iPhone's WebDriverAgent address (`http://127.0.0.1:8100`), used when no `--serial` is given |
 | `SPARSH_IOS_APPS` | more iPhone apps for `sparsh apps` and `open`, as bundle ids separated by commas |
