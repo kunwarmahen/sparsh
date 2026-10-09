@@ -397,6 +397,17 @@ def test_the_phone_says_whether_a_schedule_may_use_it(fake, tmp_path):
     assert phone.state()["state"] == "unknown"
 
 
+def test_a_lock_screen_says_it_is_one(fake, tmp_path):
+    # Saved from a real Nexus 6P (Android 8.1), locked, asked to open Settings.
+    phone = Phone(fake, state=tmp_path, settle=0)
+    fake.current, fake.locked = "locked", True
+    assert "The phone is locked" in phone.open_app("settings").text()
+    fake.locked = False  # the same system screen, unlocked: the shade pulled down
+    assert "locked" not in phone.see().text()
+    fake.current, fake.locked = "settings", True  # never asked outside the system's screens
+    assert "locked" not in phone.see().text()
+
+
 def test_a_step_done_under_a_grant_says_so_in_the_log(fake, tmp_path):
     from sparsh import log
 

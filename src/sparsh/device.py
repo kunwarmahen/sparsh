@@ -75,6 +75,10 @@ KEYS = {
     "right": "KEYCODE_DPAD_RIGHT",
     "volume_up": "KEYCODE_VOLUME_UP",
     "volume_down": "KEYCODE_VOLUME_DOWN",
+    # Not keys: the panels pulled down from the top of the screen. Android 8
+    # keeps Do Not Disturb's switch only there, and no tap opens them.
+    "notifications": "statusbar expand-notifications",
+    "quick_settings": "statusbar expand-settings",
 }
 
 #: ADBKeyBoard (github.com/senzhk/ADBKeyBoard), for what `input` can't type.
@@ -97,6 +101,7 @@ class Device(Protocol):
     def apps(self) -> list[str]: ...
     def front_app(self) -> str: ...
     def awake(self) -> tuple[bool | None, bool | None]: ...
+    def keyboard_area(self) -> tuple[int, int, int, int] | None: ...
 
 
 @dataclass(frozen=True)
@@ -322,7 +327,17 @@ class AdbDevice:
                     self._shell("ime", "disable", KEYBOARD)
 
     def keys(self, *names: str) -> None:
-        self._shell("input", "keyevent", *(key_code(n) for n in names))
+        codes: list[str] = []
+        for code in (key_code(n) for n in names):
+            if code.startswith("statusbar "):
+                if codes:  # in order: the keys before go first
+                    self._shell("input", "keyevent", *codes)
+                    codes = []
+                self._shell("cmd", *code.split())
+            else:
+                codes.append(code)
+        if codes:
+            self._shell("input", "keyevent", *codes)
 
     def launch(self, package: str) -> None:
         out = self._shell("monkey", "-p", package, "-c", "android.intent.category.LAUNCHER", "1")
@@ -355,6 +370,27 @@ class AdbDevice:
         )
         locked = None if not found else found.group(1) == "true"
         return on, locked
+
+    def keyboard_area(self) -> tuple[int, int, int, int] | None:
+        """Where the on-screen keyboard is (left, top, right, bottom), or
+        None when it isn't up or Android didn't say. The screen's list
+        leaves the keyboard out: what it covers is still listed, and a tap
+        there lands on a key."""
+        if "mInputShown=true" not in self._shell("dumpsys", "input_method"):
+            return None
+        window = self._shell("dumpsys", "window", "windows")
+        start = window.find(" InputMethod}:")
+        if start < 0:
+            return None
+        end = window.find("Window #", start)
+        found = re.search(
+            r"touchable region=SkRegion\(\((\d+),(\d+),(\d+),(\d+)\)\)",
+            window[start : end if end > 0 else None],
+        )
+        if not found:
+            return None
+        left, top, right, bottom = map(int, found.groups())
+        return left, top, right, bottom
 
     def front_app(self) -> str:
         out = self._shell("dumpsys", "activity", "activities")
@@ -402,7 +438,7 @@ def typeable(text: str) -> list[str]:
     return ["'" + p.replace(" ", "%s").replace("'", "'\\''") + "'" for p in pieces(text)]
 
 
-def _run(args: list[str], timeout: float = 30) -> subprocess.CompletedProcess:
+def _run(args: list[str], timeout: float = 30, again: bool = True) -> subprocess.CompletedProcess:
     try:
         done = subprocess.run(args, capture_output=True, timeout=timeout)
     except subprocess.TimeoutExpired as e:
@@ -416,5 +452,14 @@ def _run(args: list[str], timeout: float = 30) -> subprocess.CompletedProcess:
         )
         if "not found" in said and "device" in said:
             raise SparshError("the phone went away (unplugged, or the emulator stopped)")
+        serial = args[args.index("-s") + 1] if "-s" in args else ""
+        if again and ":" in serial and ("error: closed" in said or "offline" in said):
+            # A Wi-Fi link that went stale while the screen was off (a real
+            # Nexus 6P, locked, its Wi-Fi dozing) is still listed as a
+            # device, and its first command says "closed": a schedule read
+            # that as a phone it couldn't reach. Reconnected, it answers.
+            subprocess.run([args[0], "disconnect", serial], capture_output=True, timeout=10)
+            subprocess.run([args[0], "connect", serial], capture_output=True, timeout=10)
+            return _run(args, timeout, again=False)
         raise SparshError(f"adb said: {said or f'exit {done.returncode}'}")
     return done

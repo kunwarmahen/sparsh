@@ -90,5 +90,7 @@ step log says "granted ahead" once; the phone's four states.
 
 ## Not here yet
 
-* A real phone. Its lock, its own Messages, its own screen-off timing.
+* ~~A real phone. Its lock, its own Messages, its own screen-off
+  timing.~~ A Nexus 6P: its lock read right, its Wi-Fi dozing while
+  locked fixed ([note 08](08-a-real-phone.md)).
 * An iPhone's `state` beyond "locked", and `wake` (WDA has no wake key).

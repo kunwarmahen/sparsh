@@ -200,6 +200,11 @@ class Phone:
             (self.folder / "last.xml").write_text(xml)
         if self._off_limits(screen.app):
             return Screen(screen.app, size=screen.size, note=_OFF_LIMITS)
+        if screen.app in _LOCK_HOSTS and self.device.awake()[1]:
+            # A real Nexus 6P, asked to open Settings while locked, printed
+            # its lock screen and nothing else: an agent reads that as
+            # Settings. Only the system's own screens are asked about.
+            screen.remark = _LOCKED
         if shot is not None:
             Path(shot).write_bytes(self.device.screenshot())
         return screen
@@ -358,7 +363,7 @@ class Phone:
             raise SparshError(
                 f'{target.n} ({target.kind} "{target.label}") is switched off on the phone'
             )
-        x, y = target.centre
+        x, y = self._uncovered(target).centre
         if long:
             self.device.long_press(x, y)
         else:
@@ -415,8 +420,27 @@ class Phone:
                    text=text, tap_first=False, clear=clear, enter=enter,
                    picture=self.device.screenshot())  # fmt: skip
 
+    def _uncovered(self, target: Element) -> Element:
+        """THE KEYBOARD HIDES WHAT THE LIST SHOWS. Android's list leaves the
+        keyboard out, so a field under it is listed, and a tap there lands
+        on a key: on a real Nexus 6P, "Last name" and "Phone" under Gboard
+        took a stray letter each, and the agent's words all went into the
+        first field. So a target under the keyboard gets back pressed
+        once (with a keyboard up, back only closes it), the screen read
+        again, and the same thing found there. Asked only while a field
+        had the keyboard, so a plain tap costs nothing."""
+        if not any(e.focused and e.type for e in self.last().elements):
+            return target
+        area = self.device.keyboard_area()
+        x, y = target.centre
+        if area is None or not (area[0] <= x < area[2] and area[1] <= y < area[3]):
+            return target
+        self.device.keys("back")
+        return self._find(target)
+
     def _type(self, field: Element | None, text: str, clear: bool, enter: bool) -> Screen:
         if field is not None:
+            field = self._uncovered(field)
             self.device.tap(*field.centre)
             time.sleep(min(self.settle, 0.5))
         if clear:
@@ -673,6 +697,14 @@ _UNREAD = "Done. But the screen it led to can't be read: "
 _OFF_LIMITS = (
     "(this app is off limits: the person's rules keep the agent out of it, so "
     "nothing on it is shown. Press back or home to leave.)"
+)
+
+#: Apps that draw the lock screen (Android's system bar; an iPhone's home).
+_LOCK_HOSTS = {"com.android.systemui", "com.apple.springboard"}
+
+_LOCKED = (
+    "(The phone is locked: this is its lock screen, not the app asked for. "
+    "Ask its person to unlock it, then look again.)"
 )
 
 

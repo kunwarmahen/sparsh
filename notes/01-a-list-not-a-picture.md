@@ -164,7 +164,7 @@ A tap, wait included, took 5.3 seconds.
 * ~~The phone over Wi-Fi (`adb pair`), so a container can reach it with
   no USB cable.~~ `sparsh pair`, `sparsh connect`, and `SPARSH_CONNECT`
   to find it again by itself (SETUP.md, B4); Sarathi's containers reach
-  it that way. Not yet run against a real phone over Wi-Fi. ~~Typing
+  it that way; a real Nexus 6P too ([note 08](08-a-real-phone.md)). ~~Typing
   beyond ASCII~~: [note 04](04-typing-other-languages.md).
 * ~~The trial repeated.~~ Three times each: 34 of 39 and 32 of 39
   ([Yantra's note 120](https://github.com/kunwarmahen/yantra/blob/main/notes/120-thirteen-tasks-on-a-phone.md)).

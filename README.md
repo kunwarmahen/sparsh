@@ -151,7 +151,7 @@ sparsh look --peek                  the same, leaving an agent's numbers as they
 sparsh tap 7 [--long]               tap 7 from the last look (--long: press and hold)
 sparsh type "hello" [--into 7] [--clear] [--enter]
 sparsh scroll down [--on 5]         down = show what is further down
-sparsh key back [home enter ...]    back, home, enter, recent, delete, tab, ...
+sparsh key back [home enter ...]    back, home, enter, recent, delete, tab, quick_settings, ...
 sparsh open settings                open an app by name or package
 sparsh apps [FILTER]                apps that can be opened
 sparsh log [-n 20] [--json]         what was done on the phone, by the agent and by you
@@ -445,9 +445,10 @@ Looking isn't a step, so it isn't logged.
 
 * ~~The phone over Wi-Fi instead of a cable.~~ `sparsh pair`, `sparsh
   connect`, and `SPARSH_CONNECT` to reconnect by itself (SETUP.md, B4).
-  Not yet run against a real phone over Wi-Fi.
+  Run on a real Nexus 6P over Wi-Fi, from Sarathi's containers too
+  ([notes/08](notes/08-a-real-phone.md)).
 * ~~Typing beyond plain ASCII.~~ Built through ADBKeyBoard (SETUP.md,
-  Part G); run on the emulator, not yet on a real phone.
+  Part G); run on the emulator and a real Nexus 6P.
 * ~~A phone for runs nobody is watching (a schedule).~~ Built through
   Dvara: grants and the phone's state
   ([notes/07](notes/07-a-phone-for-a-schedule.md)). Yantra on its own
@@ -472,14 +473,18 @@ src/sparsh/
 │               (notes/01)
 ├── device.py   the phone itself, through adb: dump, screenshot, tap,
 │               swipe, type, keys, open an app; over Wi-Fi too
-│               (SPARSH_CONNECT). Nothing installed on it, unless you add
-│               ADBKeyBoard for letters beyond ASCII (notes/04)
+│               (SPARSH_CONNECT), reconnected once when it went stale;
+│               where the keyboard covers; the panels at the top. Nothing
+│               installed on it, unless you add ADBKeyBoard for letters
+│               beyond ASCII (notes/04, notes/08)
 ├── iphone.py   an iPhone, through WebDriverAgent over HTTP; its screen
 │               rewritten in Android's words so one reader serves both
 │               (notes/03)
 ├── phone.py    numbers in, taps out: the last look is kept, and a number
 │               is checked against the screen now before anything is done
-│               (notes/01); a tap by position, held every time (notes/06)
+│               (notes/01); a tap by position, held every time (notes/06);
+│               the keyboard put away from a target under it, and a lock
+│               screen that says it is one (notes/08)
 ├── picture.py  the spot ringed on a screenshot, PNG read and written by
 │               hand, for the person's yes (notes/06)
 ├── log.py      every step on the phone, by the agent or by you, however it
@@ -495,7 +500,8 @@ src/sparsh/
 │               reads to find the phone, the rules and each tool's kind
 ├── fake.py     a phone made of saved screens, for tests
 └── cli.py      `sparsh`
-tests/screens/  real screens from the Android 15 emulator; ios/ holds
+tests/screens/  real screens from the Android 15 emulator (locked.xml from a
+                Nexus 6P); ios/ holds
                 screens written in WDA's shape
 scripts/        build WDA on a Mac; install and start it from Linux
 ```
@@ -508,8 +514,9 @@ Mac once), [notes/04](notes/04-typing-other-languages.md) (letters beyond
 ASCII), [notes/05](notes/05-a-picture-where-the-list-has-nothing.md)
 (a picture where the list has nothing),
 [notes/06](notes/06-a-tap-by-position.md) (a tap by position, asked every
-time) and [notes/07](notes/07-a-phone-for-a-schedule.md) (a phone for a
-schedule: grants, and whether it's free).
+time), [notes/07](notes/07-a-phone-for-a-schedule.md) (a phone for a
+schedule: grants, and whether it's free) and
+[notes/08](notes/08-a-real-phone.md) (what a real phone found).
 
 ## Licence
 

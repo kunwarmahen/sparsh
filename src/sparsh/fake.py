@@ -41,6 +41,7 @@ class FakeDevice:
         self.after: Callable[[FakeDevice, tuple], None] | None = None
         self.tries: list[bool] = []  # each dump's ``retry``
         self.screen_on, self.locked = True, False
+        self.keyboard_up: tuple[int, int, int, int] | None = None  # where it covers
 
     def _did(self, *action) -> None:
         self.actions.append(action)
@@ -89,6 +90,9 @@ class FakeDevice:
 
     def awake(self) -> tuple[bool | None, bool | None]:
         return self.screen_on, self.locked
+
+    def keyboard_area(self) -> tuple[int, int, int, int] | None:
+        return self.keyboard_up
 
     def front_app(self) -> str:
         if self.front:

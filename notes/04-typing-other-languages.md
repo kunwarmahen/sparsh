@@ -114,6 +114,8 @@ phone was back on its own keyboard afterwards
 
 ## Not yet
 
-**A real phone.** The emulator is the only phone this has run on. A
-phone maker's own keyboard, or a slower phone, may need longer than
-half a second to hand the field over.
+~~**A real phone.**~~ A Nexus 6P on Android 8.1 typed é, नमस्ते and 👋
+into Settings' search and had Gboard back afterwards
+([note 08](08-a-real-phone.md)). A phone maker's own keyboard, or a
+slower phone, may still need longer than half a second to hand the
+field over.

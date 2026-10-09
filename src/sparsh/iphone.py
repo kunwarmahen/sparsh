@@ -292,6 +292,9 @@ class WdaDevice:
             return None, None
         return None, bool(locked) if isinstance(locked, bool) else None
 
+    def keyboard_area(self) -> tuple[int, int, int, int] | None:
+        return None  # WDA's tree lists the keyboard's own keys
+
     def front_app(self) -> str:
         try:
             info = self._call("GET", "/wda/activeAppInfo")

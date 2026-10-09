@@ -13,7 +13,7 @@ differently, so this guide has a part for each.
 | How long, the first time | 20 minutes (most of it downloading) | 10 minutes | about an hour |
 | Afterwards | start the emulator and go | plug in and go | the Mac's signature lasts 7 days with a free Apple ID; then a 5-minute rebuild |
 | Good for | trying Sparsh with nothing at risk | real apps you already use | the same, on an iPhone |
-| Status | tested | the same road as the emulator; not yet run on a real phone | **written and tested against a stand-in, not yet run on a real iPhone** |
+| Status | tested | tested on a Nexus 6P (Android 8.1), cable and Wi-Fi ([notes/08](notes/08-a-real-phone.md)) | **written and tested against a stand-in, not yet run on a real iPhone** |
 
 If you've never used Sparsh, start with the emulator. To check a phone
 works with an agent in one go, [Part T](#part-t--test-it-end-to-end-one-recipe-per-phone)
@@ -171,8 +171,22 @@ phone this way (Sarathi's `sarathi phone`).
 
 The address can change when wireless debugging is turned off and on,
 or the phone restarts; check the Wireless debugging page if it stops
-answering. The same commands have been run against the emulator's
-network port; not yet against a real phone over Wi-Fi.
+answering.
+
+**Android 10 and older** have no Wireless debugging page. Plug the
+phone in once and tell its `adb` to listen on the network; its Wi-Fi
+address is on *Settings → About phone → Status*, or:
+
+```
+adb shell ip -4 addr show wlan0                # inet 192.168.1.161/24 ...
+adb tcpip 5555                                 # restarting in TCP mode port: 5555
+uv run sparsh connect 192.168.1.161:5555
+```
+
+The key you allowed over the cable is the one that counts, so nothing
+is paired. It lasts until the phone restarts; then plug in and run
+`adb tcpip 5555` again. A Nexus 6P on Android 8.1 was driven this way,
+from this computer and from inside Sarathi's containers.
 
 Now go to [Part D](#part-d--check-it-works).
 
@@ -642,8 +656,9 @@ and never touches it.
 
 To remove it: `adb uninstall com.android.adbkeyboard`.
 
-> **Status:** works on the Android 15 emulator (é, नमस्ते and emoji typed
-> into Settings' search); not yet run on a real phone.
+> **Status:** works on the Android 15 emulator and on a real Nexus 6P
+> (Android 8.1): é, नमस्ते and emoji typed into Settings' search, and the
+> phone's own keyboard back in place afterwards.
 
 ---
 

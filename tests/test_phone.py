@@ -263,3 +263,101 @@ def test_a_screen_that_never_goes_still_is_tried_once_the_next_time(phone, fake)
     fake.current, fake.front = "settings", "com.google.android.youtube"
     phone.look()  # another app in front: tried in full again
     assert fake.tries == [True, False, True]
+
+
+def test_a_target_under_the_keyboard_has_the_keyboard_put_away_first(phone, fake):
+    # A real Nexus 6P: "Last name" sat under Gboard, and the tap meant for
+    # it typed a "y" into the first name instead.
+    fake.current = "settings_search_typed"
+    fake.keyboard_up = (0, 100, 1080, 300)  # over the clear button
+
+    def put_away(f, action):
+        if action == ("keys", "back"):
+            f.keyboard_up = None
+
+    fake.after = put_away
+    phone.look()
+    phone.tap(3)
+    assert fake.actions == [("keys", "back"), ("tap", 1006, 157)]
+
+
+def test_a_field_under_the_keyboard_is_typed_into_not_the_keys(phone, fake):
+    fake.current = "settings_search_typed"
+    fake.keyboard_up = (0, 100, 1080, 300)
+    fake.after = lambda f, a: setattr(f, "keyboard_up", None) if a == ("keys", "back") else None
+    phone.look()
+    phone.type("wifi", into=2)
+    assert fake.actions[:3] == [("keys", "back"), ("tap", 529, 157), ("text", "wifi")]
+
+
+def test_the_keyboard_is_asked_about_only_while_a_field_has_it(phone, fake):
+    fake.keyboard_up = (0, 0, 1080, 2400)  # would cover everything
+    phone.look()  # Settings: no field has the keyboard
+    phone.tap(4)
+    assert [a[0] for a in fake.actions] == ["tap"]
+
+
+IME_WINDOW = """  Window #4 Window{556e637 u0 InputMethod}:
+    mViewVisibility=0x0 mHaveFrame=true mObscured=false
+    mTouchableInsets=3 mGivenInsetsPending=false
+    touchable region=SkRegion((0,1398,1440,2392))
+  Window #5 Window{a7cd7a7 u0 com.google.android.contacts/...EditorActivity}:
+    touchable region=SkRegion((0,0,1440,2392))
+"""
+
+
+def test_where_the_keyboard_is_comes_from_its_own_window():
+    up = Shell({"dumpsys input_method": "mShowRequested=true mInputShown=true",
+                "dumpsys window": IME_WINDOW})  # fmt: skip
+    assert up.keyboard_area() == (0, 1398, 1440, 2392)
+    down = Shell({"dumpsys input_method": "mInputShown=false", "dumpsys window": IME_WINDOW})
+    assert down.keyboard_area() is None
+    assert down.ran == ["dumpsys input_method"]
+
+
+def test_the_panels_at_the_top_open_by_name_in_order():
+    phone = Shell({})
+    phone.keys("home", "quick_settings", "back")
+    assert phone.ran == [
+        "input keyevent KEYCODE_HOME",
+        "cmd statusbar expand-settings",
+        "input keyevent KEYCODE_BACK",
+    ]
+
+
+def test_a_wifi_phone_that_went_stale_is_reconnected_once(monkeypatch):
+    # A real Nexus 6P, locked with its Wi-Fi dozing: still listed as a
+    # device, its first command said "closed", and a schedule skipped.
+    from sparsh.device import _run
+
+    ran, answers = [], iter([(1, b"error: closed"), (0, b"ok")])
+
+    class Done:
+        def __init__(self, code, out):
+            self.returncode, self.stdout, self.stderr = code, out, b""
+
+    def run(args, **k):
+        ran.append(" ".join(args))
+        return Done(*next(answers)) if "shell" in args else Done(0, b"")
+
+    monkeypatch.setattr("sparsh.device.subprocess.run", run)
+    assert _run(["adb", "-s", "192.168.1.161:5555", "shell", "true"]).stdout == b"ok"
+    assert ran == [
+        "adb -s 192.168.1.161:5555 shell true",
+        "adb disconnect 192.168.1.161:5555",
+        "adb connect 192.168.1.161:5555",
+        "adb -s 192.168.1.161:5555 shell true",
+    ]
+
+
+def test_a_cable_phone_that_says_closed_is_not_reconnected(monkeypatch):
+    class Done:
+        returncode, stdout, stderr = 1, b"", b"error: closed"
+
+    ran = []
+    monkeypatch.setattr("sparsh.device.subprocess.run", lambda a, **k: ran.append(a) or Done())
+    from sparsh.device import _run
+
+    with pytest.raises(SparshError, match="error: closed"):
+        _run(["adb", "-s", "84B7N16128001616", "shell", "true"])
+    assert len(ran) == 1
