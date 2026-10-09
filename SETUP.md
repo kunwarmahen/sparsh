@@ -557,6 +557,27 @@ The first answer should match your phone's Battery row. With the
 emulator running as well, say which: `export ANDROID_SERIAL=R58M...`
 (the name `sparsh devices` prints).
 
+**The lock.** Lock the phone and ask the first line again. With a PIN,
+the agent is told *"The phone is locked … Ask its person to unlock it"*
+and says so instead of guessing. `sparsh state` says `locked`. With only
+a swipe lock, `sparsh state` says `asleep` (`"pin": false` with
+`--json`), and the agent's `open_app` swipes it away and carries on.
+
+**The trial, on your own phone.** Yantra's phone trial has a set made
+for a phone you use: nothing sent, nothing wiped, each switch turned and
+turned back (Yantra's note 120):
+
+```
+cd ~/yantra
+YANTRA_SPARSH=~/sparsh/.venv/bin/sparsh uv run python examples/phone_trial.py \
+  --serial R58M... --provider ollama --model qwen3.8:latest \
+  --cases examples/phone_trial_real.jsonl
+```
+
+Each task is graded by reading the phone afterwards. Stay on the cable:
+one task turns Wi-Fi off. Not the emulator set's `alarm` task: it clears
+the Clock app first.
+
 ### T3 · An Android phone over Wi-Fi
 
 B4 first (wireless debugging; pair once). Then:
@@ -568,7 +589,11 @@ export ANDROID_SERIAL=192.168.1.23:41234
 sparsh devices                                 # 192.168.1.23:41234  Pixel_7  device
 ```
 
-and the two Yantra lines from T2.
+and the two Yantra lines from T2. On Android 10 or older there is no
+Wireless debugging page: on the cable, `adb tcpip 5555`, then
+`sparsh connect <its Wi-Fi address>:5555` (B4). If a locked phone's
+dozing Wi-Fi answers `error: closed`, Sparsh connects again once by
+itself.
 
 ### T4 · An iPhone
 
