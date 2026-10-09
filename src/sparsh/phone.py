@@ -521,6 +521,8 @@ class Phone:
         Back is never held, and loses nothing."""
         package = self.which_app(name)
         self._guard(package)
+        if self.device.awake()[1] and self.device.secure() is False:
+            self.device.dismiss_lock()  # a swipe with no PIN: nobody's to open
         self.device.launch(package)
         screen = self._after()
         pressed = 0
@@ -625,13 +627,24 @@ class Phone:
         """Whether a run nobody started may use the phone now:
 
             in_use   the screen is on and unlocked: someone has it in hand
-            locked   the lock screen is up: only its person can open it
-            asleep   the screen is off and there is no lock: wake it, go
+            locked   the lock screen is up and needs a PIN: only its person
+                     can open it
+            asleep   nobody has it and nothing stands in the way: the screen
+                     is off with no lock, or the lock is a swipe with no PIN.
+                     ``wake`` turns it on and swipes that lock away
             unknown  the phone didn't say (an iPhone says only "locked")
 
-        A harness decides what to do about each (Dvara: wait, ask, wake)."""
+        A harness decides what to do about each (Dvara: wait, ask, wake).
+
+        A LOCK WITH NO PIN IS NO ONE'S TO OPEN. A real Nexus 6P with only a
+        swipe lock read as ``locked``, so a schedule asked its person to
+        unlock what anything could have swiped. Its person chose no PIN;
+        a PIN still asks."""
         on, locked = self.device.awake()
-        if locked:
+        secure = self.device.secure() if locked else None
+        if locked and secure is False:
+            state = "asleep"
+        elif locked:
             state = "locked"
         elif locked is None or on is None:
             state = "unknown"
@@ -640,8 +653,23 @@ class Phone:
         return {
             "screen": None if on is None else ("on" if on else "off"),
             "locked": locked,
+            "pin": secure,
             "state": state,
         }
+
+    def wake(self) -> dict:
+        """Screen on; a lock with no PIN swiped away (Android won't
+        dismiss one with a PIN). The state it led to."""
+        on, locked = self.device.awake()
+        if locked and self.device.secure() is False:
+            self.device.dismiss_lock()
+            for _ in range(10):  # the swipe lands a moment later
+                if not self.device.awake()[1]:
+                    break
+                time.sleep(0.2)
+        else:
+            self.device.keys("wakeup")
+        return self.state()
 
     # -- apps ----------------------------------------------------------
 

@@ -7,7 +7,7 @@ This note is the same work on a real phone: a Nexus 6P on Android 8.1,
 seven years older than the emulator, on a USB cable and then over Wi-Fi,
 driven by local models on Ollama.
 
-It found four things the emulator never could. All four are fixed.
+It found five things the emulator never could. All five are fixed.
 
 ## A locked phone said it was Settings
 
@@ -101,6 +101,29 @@ named by its Wi-Fi address that answers "closed" or "offline" is
 disconnected, connected again, and asked once more. A phone on a cable
 that says "closed" is reported as before: there is nothing to reconnect.
 
+## A lock with no PIN is no one's to open
+
+**ASLEEP, NOT LOCKED.** The 6P had only a swipe lock, and `sparsh state`
+called it `locked`: Dvara asked its person on Telegram to unlock a phone
+anything could have swiped. Android says whether its lock needs the
+person (`secure=` in the window manager's keyguard, Android 8 to 15;
+`deviceLocked=` in the trust service as well). A lock that doesn't is
+now `asleep`, with `"pin": false` in `--json`; `sparsh wake` turns the
+screen on and swipes it away (`wm dismiss-keyguard`, which Android
+refuses for a lock with a PIN), and `open_app` does the same before it
+opens an app. A PIN, pattern or password is `locked` as before, and
+still asked about.
+
+```
+$ sparsh state --json
+{"serial": "84B7N16128001616", "screen": "off", "locked": true, "pin": false, "state": "asleep"}
+$ sparsh wake
+84B7N16128001616: screen on (in_use)
+```
+
+Dvara's check before a scheduled run, unchanged, then woke the phone
+and let the run go, and nobody was asked.
+
 ## Older Android over Wi-Fi
 
 Android 10 and older have no *Wireless debugging* page to pair from.
@@ -137,7 +160,8 @@ the system's. `tests/test_phone.py`: a tap and a typed field under the
 keyboard put it away first, and nothing is asked while no field has the
 keyboard; the keyboard's place read from its own window; the panels
 open by name, in order with keys; a stale Wi-Fi phone reconnected once,
-a cable one never. 166 tests before, 174 after.
+a cable one never; a lock with no PIN asleep, swiped by `wake` and
+`open_app`, a PIN still locked. 166 tests before, 177 after.
 
 ## Not here yet
 

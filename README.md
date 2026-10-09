@@ -398,8 +398,9 @@ marks each step done this way: `-> done (granted ahead: "…")`.
 
 **Is the phone free?** `sparsh state` says whether a schedule may use the
 phone now: **in use** (screen on and unlocked: someone has it), **locked**
-(only you can open it; an agent can't), or **asleep** (screen off, no
-lock). An iPhone says only whether it's locked. Dvara asks this before a
+(a PIN, pattern or password: only you can open it), or **asleep**
+(nobody has it, and no PIN stands in the way: the screen off, or a swipe
+lock, which `sparsh wake` and `open_app` swipe away). An iPhone says only whether it's locked. Dvara asks this before a
 scheduled run, and waits, asks you to unlock it, or wakes it
 ([notes/07](notes/07-a-phone-for-a-schedule.md)).
 

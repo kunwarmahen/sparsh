@@ -13,7 +13,7 @@
     sparsh apps [FILTER]                apps that can be opened
     sparsh log [-n 20] [--json]         what was done on the phone, by the agent and by you
     sparsh state [--json]               in use, locked, or asleep: may a schedule use it now
-    sparsh wake                         turn the screen on (it stays locked if it was)
+    sparsh wake                         turn the screen on; a lock with no PIN is swiped away
     sparsh mcp                          the agent's tools (MCP, stdio), held by the rules
     sparsh status [--json]              phones, rules, and how a harness starts the tools
     sparsh wda [WDA.ipa]                when the iPhone's WebDriverAgent signature runs out
@@ -272,7 +272,7 @@ def _state(args) -> int:
         return 0
     words = {"in_use": "in use: the screen is on and unlocked",
              "locked": "locked: only its person can open it",
-             "asleep": "asleep: the screen is off and there is no lock",
+             "asleep": "asleep: nobody has it, and no PIN stands in the way",
              "unknown": "unknown: the phone didn't say"}  # fmt: skip
     print(f"{found['serial']}: {words[found['state']]}")
     return 0
@@ -280,8 +280,7 @@ def _state(args) -> int:
 
 def _wake(args) -> int:
     phone = _phone(args)
-    phone.device.keys("wakeup")
-    print(f"{phone.device.serial}: screen on ({phone.state()['state']})")
+    print(f"{phone.device.serial}: screen on ({phone.wake()['state']})")
     return 0
 
 

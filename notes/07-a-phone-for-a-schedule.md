@@ -55,7 +55,7 @@ with the same sentence.
 |---|---|
 | `in_use` | screen on and unlocked: someone has it in hand |
 | `locked` | the lock screen is up: only its person can open it |
-| `asleep` | screen off, no lock: `sparsh wake` turns it on |
+| `asleep` | nobody has it and no PIN is in the way (screen off, or a swipe lock): `sparsh wake` turns it on and swipes ([note 08](08-a-real-phone.md)) |
 | `unknown` | the phone didn't say; an iPhone (WDA) says only "locked" |
 
 **A LOCKED PHONE CAN'T BE WORKED.** It would take the person's PIN, and

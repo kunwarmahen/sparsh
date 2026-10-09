@@ -295,6 +295,12 @@ class WdaDevice:
     def keyboard_area(self) -> tuple[int, int, int, int] | None:
         return None  # WDA's tree lists the keyboard's own keys
 
+    def secure(self) -> bool | None:
+        return None  # WDA says only "locked"
+
+    def dismiss_lock(self) -> None:
+        raise SparshError("an iPhone's lock can't be opened from here")
+
     def front_app(self) -> str:
         try:
             info = self._call("GET", "/wda/activeAppInfo")

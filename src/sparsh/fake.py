@@ -42,6 +42,7 @@ class FakeDevice:
         self.tries: list[bool] = []  # each dump's ``retry``
         self.screen_on, self.locked = True, False
         self.keyboard_up: tuple[int, int, int, int] | None = None  # where it covers
+        self.pin = True  # the lock, when there is one, needs its person
 
     def _did(self, *action) -> None:
         self.actions.append(action)
@@ -93,6 +94,15 @@ class FakeDevice:
 
     def keyboard_area(self) -> tuple[int, int, int, int] | None:
         return self.keyboard_up
+
+    def secure(self) -> bool | None:
+        return self.pin
+
+    def dismiss_lock(self) -> None:
+        self.screen_on = True
+        if not self.pin:
+            self.locked = False
+        self._did("dismiss_lock")
 
     def front_app(self) -> str:
         if self.front:

@@ -397,6 +397,35 @@ def test_the_phone_says_whether_a_schedule_may_use_it(fake, tmp_path):
     assert phone.state()["state"] == "unknown"
 
 
+def test_a_lock_with_no_pin_is_asleep_and_wake_swipes_it_away(fake, tmp_path):
+    # A real Nexus 6P with only a swipe lock read "locked", and a schedule
+    # asked its person to unlock what anything could have swiped.
+    phone = Phone(fake, state=tmp_path, settle=0)
+    fake.screen_on, fake.locked, fake.pin = False, True, False
+    assert phone.state()["state"] == "asleep" and phone.state()["pin"] is False
+    assert phone.wake()["state"] == "in_use"
+    assert fake.actions == [("dismiss_lock",)]
+
+
+def test_a_pin_is_still_locked_and_wake_only_turns_the_screen_on(fake, tmp_path):
+    phone = Phone(fake, state=tmp_path, settle=0)
+    fake.screen_on, fake.locked, fake.pin = False, True, True
+    assert phone.state()["state"] == "locked"
+    phone.wake()
+    assert fake.actions == [("keys", "wakeup")] and fake.locked
+
+
+def test_opening_an_app_swipes_a_lock_with_no_pin_away_first(fake, tmp_path):
+    phone = Phone(fake, state=tmp_path, settle=0)
+    fake.locked, fake.pin = True, False
+    phone.open_app("settings")
+    assert fake.actions[:2] == [("dismiss_lock",), ("launch", "com.android.settings")]
+    fake.actions.clear()
+    fake.locked, fake.pin = True, True
+    phone.open_app("settings")
+    assert ("dismiss_lock",) not in fake.actions
+
+
 def test_a_lock_screen_says_it_is_one(fake, tmp_path):
     # Saved from a real Nexus 6P (Android 8.1), locked, asked to open Settings.
     phone = Phone(fake, state=tmp_path, settle=0)

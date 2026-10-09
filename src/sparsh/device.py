@@ -102,6 +102,8 @@ class Device(Protocol):
     def front_app(self) -> str: ...
     def awake(self) -> tuple[bool | None, bool | None]: ...
     def keyboard_area(self) -> tuple[int, int, int, int] | None: ...
+    def secure(self) -> bool | None: ...
+    def dismiss_lock(self) -> None: ...
 
 
 @dataclass(frozen=True)
@@ -370,6 +372,24 @@ class AdbDevice:
         )
         locked = None if not found else found.group(1) == "true"
         return on, locked
+
+    def secure(self) -> bool | None:
+        """Whether the lock needs its person (a PIN, pattern, password),
+        from the window manager's keyguard (``secure=``, Android 8 to 15),
+        else the trust service (``deviceLocked=``); None when neither says."""
+        found = re.search(
+            r"^\s+secure=(true|false)", self._shell("dumpsys", "window"), flags=re.MULTILINE
+        )
+        if found:
+            return found.group(1) == "true"
+        found = re.search(r"deviceLocked=([01])", self._shell("dumpsys", "trust"))
+        return None if not found else found.group(1) == "1"
+
+    def dismiss_lock(self) -> None:
+        """Screen on and a lock with no PIN swiped away. Android refuses
+        to dismiss one that has a PIN, so this can't open what it shouldn't."""
+        self.keys("wakeup")
+        self._shell("wm", "dismiss-keyguard")
 
     def keyboard_area(self) -> tuple[int, int, int, int] | None:
         """Where the on-screen keyboard is (left, top, right, bottom), or
