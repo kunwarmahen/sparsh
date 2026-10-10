@@ -12,7 +12,7 @@ import pytest
 
 from sparsh.screen import ScreenUnreadable, read
 
-from .conftest import screen
+from .conftest import BLANK_PAGE, FILLED_PAGE, PLACES, screen
 
 
 def lines(name: str) -> list[str]:
@@ -116,3 +116,32 @@ def test_a_switched_off_button_says_so():
 def test_no_screen_is_a_sentence_not_a_crash(said):
     with pytest.raises(ScreenUnreadable):
         read(said)
+
+
+# -- a list that is there and still says nothing ---------------------------
+
+
+def test_unnamed_places_make_a_screen_partly_blank_but_a_backdrop_does_not_count():
+    s = read(PLACES)
+    assert s.blanks == 3  # the three places; not the screen-sized backdrop
+    assert s.partly_blank and not s.blank_page
+
+
+def test_two_unnamed_things_are_not_enough():
+    s = read(PLACES.replace('<node index="0" text="" resource-id="" class="android.view.View" '
+                            'package="com.google.android.apps.maps" content-desc="" '
+                            'checkable="false" checked="false" clickable="true" enabled="true" '
+                            'focusable="false" focused="false" scrollable="false" '
+                            'long-clickable="false" password="false" selected="false" '
+                            'bounds="[595,1453][1092,1922]"></node>', ""))  # fmt: skip
+    assert s.blanks == 2 and not s.partly_blank
+
+
+def test_a_web_page_with_no_words_in_the_list_is_a_blank_page():
+    assert read(BLANK_PAGE).blank_page and read(BLANK_PAGE).partly_blank
+    assert not read(FILLED_PAGE).blank_page
+
+
+def test_the_saved_screens_are_not_blank():
+    for name in ("settings", "network", "home", "drawer", "settings_search"):
+        assert not read(screen(name)).partly_blank, name

@@ -8,8 +8,8 @@ person) actually read:
     tap(7)          look again; is 7 still the same thing in the same
                     place? -> tap the middle of it. Not there any more
                     -> ScreenChanged, carrying the screen as it is now
-    tap_at(500, 300)   a spot on the picture, 0-1000 each way: only where
-                    the list has nothing, and ALWAYS held (below)
+    tap_at(500, 300)   a spot on the picture, 0-1000 each way: only on a
+                    screen that came with one, and ALWAYS held (below)
     type("hi", into=7, clear=True, enter=True)
     scroll("down", on=4)       "down" = show what is further down
     key("back") / open_app("settings") / apps("goo")
@@ -32,16 +32,26 @@ same thing on the screen as it is then, and does it. Holds live in this
 process only (what was going to be typed into a password field never
 touches the disk) and lapse after ``HOLD_FOR`` seconds.
 
+THE PERSON SEES WHAT THEY SAY YES TO. A hold keeps a screenshot taken
+as it was made, with what would be tapped or typed into ringed, and
+the words filled in on the screen (the message, the number). That and
+one sentence are the question -- not the numbered list, which is the
+model's: on a real Nexus 6P, a yes to "Call" came as forty-one lines of
+the dialler's keys, and its person couldn't find the number in them.
+The list is said only when no picture can be had.
+
 A TAP BY POSITION IS HELD EVERY TIME. Some screens give the list
 nothing (Settings' About page, its clock ticking; an app drawn as one
-picture), and the agent sees them only as a screenshot. ``tap_at`` taps
-a spot on that picture -- refused wherever the list has something (tap
-by number there) and in an app whose rules refuse words, since a spot
-has no words to check. No rule can tell what is at a spot, so every one
-is held, and the person is shown the picture with the spot ringed
-(picture.py). ``confirm`` taps only if the same app is in front and a
-new screenshot matches the one the person saw (``_as_pictured``); the
-spot is the same share of the screen as it was of the picture. Typing on such a screen is held too
+picture), some give it only part (Maps' unnamed places, a web page not
+yet described: ``Screen.partly_blank``), and the agent sees what is
+missing only in a screenshot. ``tap_at`` taps a spot on that picture --
+only on a screen that came with one (``pictured``), never in an app
+whose rules refuse words, since a spot has no words to check. No rule
+can tell what is at a spot, so every one is held, and the person is
+shown the picture with the spot ringed (picture.py). ``confirm`` taps
+only if the same app is in front and a new screenshot matches the one
+the person saw (``_as_pictured``); the spot is the same share of the
+screen as it was of the picture. Typing on such a screen is held too
 (``_type_unseen``): nothing says which field has the keyboard.
 """
 
@@ -93,9 +103,14 @@ class Hold:
     why: str
     app: str
     target: Element | None  # what to tap, or the field typed into
-    screen: str  # the screen as it was, for the person to read
+    screen: str  # the screen as it was, said only when there is no picture
     args: dict = field(default_factory=dict)
     made: float = field(default_factory=time.monotonic)
+    #: The screenshot taken as the step was held, for the person; where
+    #: on it (0-1000 each way) the ring goes; the words filled in on it.
+    card: bytes | None = None
+    ring: tuple[int, int] | None = None
+    filled: tuple[str, ...] = ()
 
     def sentence(self) -> str:
         if self.action == "tap_at":
@@ -126,21 +141,29 @@ class Hold:
         return bool(self.target and self.target.password)
 
     def describe(self, serial: str) -> str:
-        return (
-            f"On the phone {serial}: {self.sentence()}.\n"
-            f"The screen when it was asked for:\n{self.screen}"
-        )
+        """One sentence, and what is filled in on the screen; the numbered
+        list only when there is no picture to show (module docstring)."""
+        said = f"On the phone {serial}: {self.sentence()}."
+        if self.filled:
+            said += "\nOn the screen: " + "; ".join(self.filled)
+        if self.picture() is None:
+            said += f"\nThe screen when it was asked for:\n{self.screen}"
+        return said
 
     def picture(self) -> bytes | None:
-        """For a step on a screen with no list: the screenshot -- for a tap
-        by position with the spot ringed (made once), or as it was if it
-        can't be marked here; None otherwise."""
-        shot = self.args.get("picture")
-        if shot is None or "x" not in self.args:
-            return shot
-        if "marked" not in self.args:
-            self.args["marked"] = picture.mark(shot, self.args["x"], self.args["y"])
-        return self.args["marked"] or shot
+        """The screen as it was held, for the person: a tap by position
+        with its spot ringed, any other step with what it would tap or
+        type into ringed -- made smaller once, or as it was if it can't
+        be marked here. None when no screenshot could be had."""
+        if "marked" in self.args:
+            return self.args["marked"]
+        shot = self.args.get("picture", self.card)
+        if shot is None:
+            return None
+        spot = (self.args["x"], self.args["y"]) if "x" in self.args else self.ring
+        self.args["marked"] = picture.mark(shot, *spot) if spot else picture.mark(shot)
+        self.args["marked"] = self.args["marked"] or shot
+        return self.args["marked"]
 
 
 class Held(SparshError):
@@ -184,6 +207,9 @@ class Phone:
         self._restless: str | None = None
         #: The grant the last step was done under, for the log (log.py).
         self.granted: str | None = None
+        #: The app whose screen last went to the agent with a picture
+        #: (mcp.py): a tap by position is only for a screen it has seen.
+        self.pictured: str | None = None
 
     # -- seeing --------------------------------------------------------
 
@@ -204,6 +230,15 @@ class Phone:
             raise
         self._restless = None
         screen = read(xml)
+        if screen.blank_page and self.settle:
+            # Chrome describes a page a moment after it is first asked
+            # (screen.py): one more look, after two settles, reads it.
+            time.sleep(self.settle * 2)
+            try:
+                xml = self.device.dump(retry=retry)
+                screen = read(xml)
+            except ScreenUnreadable:
+                pass
         if keep:
             self.folder.mkdir(parents=True, exist_ok=True)
             (self.folder / "last.xml").write_text(xml)
@@ -270,12 +305,18 @@ class Phone:
             return Screen(app, note=_OFF_LIMITS)
         return Screen(app, note=note)
 
-    def shown(self, screen: Screen) -> bool:
+    def shown(self, screen: Screen, asked: bool = False) -> bool:
         """Whether a picture of ``screen`` may be shown: only when the list
-        has nothing to give (empty, or the screen can't be read), and never
-        of an app the rules keep the agent out of -- nor of one that can't
-        be named while the rules keep it out of some."""
-        if screen.elements or screen.note == _OFF_LIMITS:
+        has nothing to give (empty, or the screen can't be read), gives
+        only part (``partly_blank``), or the agent ``asked`` for one -- and
+        never of an app the rules keep the agent out of, nor of one that
+        can't be named while the rules keep it out of some."""
+        if screen.note == _OFF_LIMITS:
+            return False
+        # A lock screen's notifications are unnamed boxes, but what it
+        # needs is its person, not a look: it says so (_LOCKED).
+        blank = screen.partly_blank and screen.remark != _LOCKED
+        if screen.elements and not (asked or blank):
             return False
         if not screen.app:
             return not (self.rules and self.rules.never)
@@ -315,18 +356,20 @@ class Phone:
 
     def tap_at(self, x: int, y: int, long: bool = False) -> Screen:
         """A spot on the screenshot, each of x and y 0 to 1000 across and
-        down it. Only where the list has nothing, and held every time
-        (module docstring)."""
+        down it. Only on a screen that came with a picture, and held every
+        time (module docstring)."""
         for value in (x, y):
             if not 0 <= value <= 1000:
                 raise SparshError(f"x and y run from 0 to 1000 across the picture, not {value}")
         screen = self.see()
-        if screen.elements:
+        seen = self.pictured is not None and self.pictured == screen.app
+        if screen.elements and not (screen.partly_blank or seen):
             raise SparshError(
                 "this screen can be read as a list, so tap by number, not by position. "
+                "If what you need isn't in the list, look with picture first. "
                 "The screen now:\n" + screen.text()
             )
-        if not self.shown(screen):
+        if not self.shown(screen, asked=seen):
             raise SparshError("no picture of this screen may be shown, so it has no spot to tap")
         rule = self.rules.apps.get(screen.app) if self.rules else None
         if rule and rule.refuse:
@@ -565,8 +608,46 @@ class Phone:
             screen=screen,
             args=args,
         )
+        if "picture" not in args and where is None:
+            self._card(hold)
         self.holds[hold.id] = hold
         raise Held(hold)
+
+    def _card(self, hold: Hold) -> None:
+        """What the person is shown (module docstring): the screen now,
+        the target's middle as a share of it, the words filled in."""
+        last = self.last()
+        hold.filled = tuple(
+            f'{e.kind} "{_short(e.label)}"'
+            for e in last.elements
+            if e.type and e.label and not e.password
+        )[:3]
+        if self._off_limits(hold.app):
+            return
+        if hold.action == "tap" and hold.target is not None:
+            # A target under the keyboard is shown as the yes will find it:
+            # the keyboard put away (back only closes it), or the ring sits
+            # on a key -- the 6P's Call button, under Gboard's number pad.
+            try:
+                hold.target = self._uncovered(hold.target)
+            except SparshError:
+                pass
+        try:
+            hold.card = self.device.screenshot()
+        except SparshError:
+            return  # the words, and the list, are still asked
+        # The spot as a share of what was photographed: Android's list
+        # leaves the navigation bar out, its screenshot doesn't (the ring
+        # sat on Home); an iPhone's list is in points, like its touches.
+        touch = getattr(self.device, "touch_size", None)
+        try:
+            size = (touch() if touch else picture.size(hold.card)) or last.size
+        except SparshError:
+            size = last.size
+        width, height = size
+        if hold.target is not None and width > 0 and height > 0:
+            x, y = hold.target.centre
+            hold.ring = (min(1000, x * 1000 // width), min(1000, y * 1000 // height))
 
     def held(self, hold_id: str) -> Hold:
         hold = self.holds.get(hold_id.strip())
@@ -760,6 +841,10 @@ def _beside(element: Element, field: Element) -> bool:
     _, top, _, bottom = field.bounds
     reach = bottom - top
     return element.bounds[1] < bottom + reach and element.bounds[3] > top - reach
+
+
+def _short(words: str, most: int = 200) -> str:
+    return words if len(words) <= most else words[: most - 1] + "…"
 
 
 def _quoted(element: Element) -> str:

@@ -243,3 +243,7 @@ button. The message store still holds only the first message.
 * ~~Screenshots through the agent's tools, for apps whose screens don't
   describe themselves.~~ [Note 05](05-a-picture-where-the-list-has-nothing.md):
   `sparsh mcp --shots`, a picture only where the list has nothing.
+* ~~A card a person reads at a glance.~~ The card above is the model's
+  numbered list, and on a real dialler it ran to forty-one lines. Every
+  hold now shows one sentence, the words filled in, and the screen with
+  what it would tap ringed ([note 10](10-where-the-list-falls-short.md)).

@@ -448,3 +448,27 @@ def test_a_step_done_under_a_grant_says_so_in_the_log(fake, tmp_path):
     assert step["said"] == 'granted ahead: "send in Messages when the screen shows running late"'
     log.recorded(phone, "agent", "look", {}, phone.look)
     assert "said" not in log.recent(phone, 1)[0]  # said once, not carried over
+
+
+# -- what the person is shown ------------------------------------------------
+
+
+def test_the_ring_is_a_share_of_the_picture_not_of_the_list(guarded, fake):
+    from .test_mcp import a_png
+
+    # Android's list leaves the navigation bar out; its screenshot doesn't.
+    fake.screenshot = lambda: a_png(1080, 2560)
+    guarded.look()
+    with pytest.raises(Held) as caught:
+        guarded.tap(2)  # Send SMS, its middle at (990, 2100)
+    assert caught.value.hold.ring == (916, 820)
+
+
+def test_a_target_under_the_keyboard_is_shown_with_the_keyboard_put_away(guarded, fake):
+    fake.keyboard_up = (0, 1800, 1080, 2400)  # over the Send button
+    guarded.look()
+    with pytest.raises(Held) as caught:
+        guarded.tap(2)
+    assert fake.actions == [("keys", "back")]  # put away, nothing tapped
+    guarded.confirm(caught.value.hold.id)
+    assert fake.actions[-1] == ("tap", 990, 2100)

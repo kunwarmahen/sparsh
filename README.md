@@ -64,8 +64,8 @@ above. A small local model like `qwen3.8:latest` on Ollama reads lines
 of text well, so it can work a phone without seeing it. A screenshot is
 still there when you want one (`sparsh look --shot screen.png`), for a
 model that can use it or for you. And where the list has nothing to
-give, an agent can be handed the picture too (`sparsh mcp --shots`,
-below).
+give, or leaves out what matters, an agent can be handed the picture
+too (`sparsh mcp --shots`, below).
 
 ## It never taps something that moved
 
@@ -262,12 +262,16 @@ your yes.
 They'll ask you before each tap unless you allow the tools. Allow them
 all except `confirm` (below), and you get what Yantra does.
 
-### A picture, only where the list has nothing
+### A picture, only where the list falls short
 
 Some screens give the list nothing: a page that never goes still, or an
-app drawn as one picture. Started as `sparsh mcp --shots`, a tool whose
-screen comes back empty or unreadable also returns a **screenshot** of
-it, as an image the model can look at:
+app drawn as one picture. Some give it only part: Google Maps lists
+each place in its results as a box with no words, so the list has
+"Call" and "Directions" but no restaurant names. Started as
+`sparsh mcp --shots`, a tool whose screen comes back empty, unreadable
+or **partly blank** (three or more things to tap with no words, or a
+web page whose words haven't reached the list) also returns a
+**screenshot** of it, as an image the model can look at:
 
 ```
 App: com.android.settings
@@ -275,8 +279,28 @@ App: com.android.settings
 (A screenshot of this screen is attached to this result: you can already see it, no tool is needed. To act on what it shows, first try another way ...; if there is none, tap_at its position, which the person is asked about.)
 ```
 
-Only then. A screen the list can read never comes with a picture, an
-app on your `never` list never does, and nor does one whose name can't
+On a partly blank screen the note says why, and to tap by number
+whatever the list has:
+
+```
+(A screenshot is attached -- 6 things on it to tap have no words: you can already see it, no tool is needed. Tap by number whatever the list has; for what only the picture shows, tap_at its position, which the person is asked about.)
+```
+
+The picture is made smaller first, to 720 pixels across: on a real
+phone a full screenshot cost a local model almost four times the
+tokens and read no better.
+
+The model can also ask: `look` with `picture` true, for when it can
+tell the list is missing something. Without `--shots` it's told there
+is no picture, and works from the list.
+
+A web page is looked at twice first. Chrome describes a page a moment
+after it's first asked, so a look straight after a search can read
+only the browser's own bar; Sparsh waits a moment and reads it again,
+and only a page still blank gets a picture.
+
+Only then. A screen the list reads in full never comes with a picture
+unless the model asks, an app on your `never` list never does, and nor does one whose name can't
 be found while you keep the agent out of some. It's **off** unless
 whoever starts the server turns it on, because a phone's screen is your
 messages, names and codes, and the harness is the one that knows
@@ -288,15 +312,15 @@ On the Android emulator, `gemma4:26b` read the IMEI off Settings' About
 page this way, a page the list can't read at all
 ([notes/05](notes/05-a-picture-where-the-list-has-nothing.md)).
 
-**A tap by position, asked every time.** On such a screen, and only
-there, the agent can tap a spot on the picture: `tap_at` with `x` and
+**A tap by position, asked every time.** On a screen that came with a
+picture, and only there, the agent can tap a spot on it: `tap_at` with `x` and
 `y` from 0 to 1000 across and down it. That is a share of the picture,
 so a model shown it smaller still names the same spot. Nothing can
 check what's at a spot, so **every one waits for your yes**, and you
 are shown the picture with the spot ringed. Typing on such a screen
 waits too: nothing says which field has the keyboard, or that it isn't
 a password. When you say yes, Sparsh taps only if the same app is still
-in front and its screen still gives no list. In an app whose rules
+in front and its screen still matches the picture you saw. In an app whose rules
 refuse words (a site Setu keeps read-only), there's no tap by position
 at all ([notes/06](notes/06-a-tap-by-position.md)).
 
@@ -319,29 +343,31 @@ Sparsh **holds** the few that can't be taken back:
 
 A held step isn't done. The agent is told so, and asks you through its
 `confirm` tool. That is the one tool Yantra asks about every time, even
-when you've told it to stop asking (`--yolo`). The question says what
-will happen, with the screen it will happen on:
+when you've told it to stop asking (`--yolo`). The question is one
+sentence, the words filled in on the screen, and a **picture of the
+screen with what it would tap ringed**:
 
 ```
 ╭─ approve mcp__sparsh__confirm()? ────────────────────────────────────────────╮
 │ Do this on the phone?                                                        │
 │ On the phone emulator-5554: tap image "Send SMS" in                          │
 │ com.google.android.apps.messaging -- held because it says "send".            │
-│ The screen when it was asked for:                                            │
-│ App: com.google.android.apps.messaging                                       │
-│ 1 text "Message list"                                                        │
-│ 2 item "7:59 AM — Texting with 5554 (SMS/MMS) ..."                           │
-│ 3 image "Expand attachment buttons"                                          │
-│ 4 field "running late, be there at 7"                                        │
-│ 5 image "Explore emoji"                                                      │
-│ 6 image "Send SMS"                                                           │
-│ ...                                                                          │
+│ On the screen: field "running late, be there at 7"                           │
+│ (The picture shows the phone's screen; what it would tap is ringed.)         │
 ╰──────────────────────────────────────────────────────────────────────────────╯
+the phone's screen, what it would tap ringed: /tmp/yantra-card-....png
 run it? [y/n/e/s] (n):
 ```
 
-If the screen has changed by the time you say yes, nothing is tapped.
-A held step waits 10 minutes, then lapses.
+In Telegram (through Dvara) the picture comes first and the buttons
+under it; on Yantra's page it sits above the words. The numbered list
+is the model's, not yours: it's shown only when no screenshot could be
+taken. If the screen has changed by the time you say yes, nothing is
+tapped. A held step waits 10 minutes, then lapses. After a yes, the
+agent gets "Done: the step was carried out" and the phone's own answer
+("Turn off airplane mode to make a call"), so it can tell you what
+happened rather than guess
+([notes/10](notes/10-where-the-list-falls-short.md)).
 
 ### Your rules
 
@@ -462,6 +488,10 @@ Looking isn't a step, so it isn't logged.
   held every time, the spot ringed
   ([notes/06](notes/06-a-tap-by-position.md)). Renaming the emulator
   takes four yeses.
+* ~~Screens the list reads only in part.~~ Built: a picture with Maps'
+  unnamed places and a still-blank web page, one when the model asks,
+  and every yes asked with a picture
+  ([notes/10](notes/10-where-the-list-falls-short.md)).
 * ~~iPhones.~~ Built: [notes/03](notes/03-an-iphone-through-a-mac.md),
   with a Mac needed once to sign WebDriverAgent. Not yet run on a real
   iPhone.
@@ -472,7 +502,7 @@ Looking isn't a step, so it isn't logged.
 src/sparsh/
 ├── screen.py   the phone's description of its screen -> the numbered list;
 │               a row takes its words (and its switch) from inside
-│               (notes/01)
+│               (notes/01); what it leaves out counted (notes/10)
 ├── device.py   the phone itself, through adb: dump, screenshot, tap,
 │               swipe, type, keys, open an app; over Wi-Fi too
 │               (SPARSH_CONNECT), reconnected once when it went stale;
@@ -486,11 +516,13 @@ src/sparsh/
 │               is checked against the screen now before anything is done
 │               (notes/01); a tap by position, held every time (notes/06);
 │               the keyboard put away from a target under it, and a lock
-│               screen that says it is one (notes/08)
+│               screen that says it is one (notes/08); a held step kept
+│               with its screenshot, a blank web page read twice (notes/10)
 ├── awake.py    the screen kept on while an agent works the phone, the
 │               person's own timeout put back after; SPARSH_AWAKE (notes/09)
-├── picture.py  the spot ringed on a screenshot, PNG read and written by
-│               hand, for the person's yes (notes/06)
+├── picture.py  what a held step would tap ringed on a screenshot, PNG
+│               read and written by hand, for the person's yes (notes/06,
+│               notes/10)
 ├── log.py      every step on the phone, by the agent or by you, however it
 │               ended; `sparsh log` (notes/02)
 ├── rules.py    what waits for a yes (words on a tap, password fields) and
@@ -499,7 +531,8 @@ src/sparsh/
 │               schedule's grants, SPARSH_GRANTS (notes/07)
 ├── mcp.py      `sparsh mcp`: the agent's tools, a hand-written MCP server;
 │               reads, acts and `confirm` (notes/02); `--shots`, a picture
-│               where the list has nothing (notes/05); `tap_at` (notes/06)
+│               where the list falls short or when asked (notes/05,
+│               notes/10); `tap_at` (notes/06)
 ├── status.py   `sparsh status --json` (sparsh.status.v1): what a harness
 │               reads to find the phone, the rules and each tool's kind
 ├── fake.py     a phone made of saved screens, for tests
@@ -520,9 +553,10 @@ ASCII), [notes/05](notes/05-a-picture-where-the-list-has-nothing.md)
 [notes/06](notes/06-a-tap-by-position.md) (a tap by position, asked every
 time), [notes/07](notes/07-a-phone-for-a-schedule.md) (a phone for a
 schedule: grants, and whether it's free),
-[notes/08](notes/08-a-real-phone.md) (what a real phone found) and
+[notes/08](notes/08-a-real-phone.md) (what a real phone found),
 [notes/09](notes/09-the-screen-kept-on.md) (the screen kept on while an
-agent works).
+agent works) and [notes/10](notes/10-where-the-list-falls-short.md)
+(where the list falls short, and what you say yes to).
 
 ## Licence
 

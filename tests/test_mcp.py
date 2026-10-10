@@ -6,9 +6,12 @@ says it changes things; confirm -- the one way through a hold -- says
 it is destructive, so any harness asks. The second bias: every failure
 reaches the model as readable text with isError, never a crash of the
 server, and every act hands back the screen it led to. The third: A
-PICTURE ONLY WHERE THE LIST HAS NOTHING, only when turned on, and never
-of an app the person keeps the agent out of. The fourth: A TAP BY
-POSITION IS HELD EVERY TIME, and the person is shown the spot ringed.
+PICTURE ONLY WHERE THE LIST FALLS SHORT (nothing, part, or asked for),
+only when turned on, and never of an app the person keeps the agent
+out of. The fourth: A TAP BY POSITION IS HELD EVERY TIME, only on a
+screen that came with a picture. The fifth: A PERSON IS ASKED WITH A
+PICTURE AND A SENTENCE, never the model's numbered list, unless no
+picture can be had.
 """
 
 import base64
@@ -17,10 +20,11 @@ import json
 
 import pytest
 
-from sparsh import mcp, picture
+from sparsh import SparshError, mcp, picture
 from sparsh.rules import AppRule, Rules
 from sparsh.status import FORMAT, report
 
+from .conftest import PLACES
 from .test_rules import SEND
 
 
@@ -70,7 +74,7 @@ def test_a_held_send_then_its_yes(tools, fake):
     assert not failed and "running late" in told
 
     text, failed = call(tools, "confirm", hold=hold)
-    assert not failed and text.startswith("Done.")
+    assert not failed and text.startswith("Done:")
     assert fake.actions == [("tap", 990, 2100)]
 
 
@@ -205,7 +209,7 @@ def test_no_picture_of_an_app_that_cant_be_named_while_some_are_kept_out(fake, t
     assert [b["type"] for b in free] == ["text", "image"]
 
 
-# -- a tap by position: only where the list has nothing, held every time --
+# -- a tap by position: only on a screen with a picture, held every time --
 
 
 def a_png(width=100, height=200, colour=(0, 0, 0), dot=False):
@@ -230,7 +234,7 @@ def test_a_tap_by_position_is_held_and_shown_ringed_then_done_on_yes(fake, tmp_p
     assert picture.size(ringed) == (100, 200) and ringed != a_png()
 
     text, failed = call(tools, "confirm", hold=hold)
-    assert not failed and text.startswith("Done.")
+    assert not failed and text.startswith("Done:")
     assert fake.actions == [("tap", 49, 49)]  # the same share of the screen
 
 
@@ -308,4 +312,108 @@ def test_a_yes_on_a_screen_with_no_list_comes_back_with_its_picture(fake, tmp_pa
     text, _ = call(tools, "tap_at", x=10, y=10)
     hold = text.split('hold "')[1].split('"')[0]
     said, shown = answer(tools, "confirm", hold=hold)
-    assert said["text"].startswith("Done.") and shown["type"] == "image"
+    assert said["text"].startswith("Done:") and shown["type"] == "image"
+
+
+# -- a list that falls short: a picture with it, or one asked for ------------
+
+
+def places(fake):
+    fake.screens["places"] = PLACES
+    fake.current = "places"
+
+
+def test_a_partly_blank_screen_comes_with_its_picture_and_says_why(fake, tmp_path):
+    places(fake)
+    text, image = answer(shots(fake, tmp_path), "look")
+    assert image["type"] == "image"
+    assert "3 things on it to tap have no words" in text["text"]
+    assert "Tap by number whatever the list has" in text["text"]
+
+
+def test_a_lock_screen_with_unnamed_notifications_comes_without_a_picture(fake, tmp_path):
+    fake.screens["places"] = PLACES.replace("com.google.android.apps.maps", "com.android.systemui")
+    fake.current, fake.locked = "places", True
+    content = answer(shots(fake, tmp_path), "look")
+    assert [b["type"] for b in content] == ["text"] and "locked" in content[0]["text"]
+
+
+def test_a_partly_blank_screen_without_shots_is_only_the_list(tools, fake):
+    places(fake)
+    assert [b["type"] for b in answer(tools, "look")] == ["text"]
+
+
+def test_a_picture_can_be_asked_for_on_any_screen(fake, tmp_path):
+    text, image = answer(shots(fake, tmp_path), "look", picture=True)
+    assert image["type"] == "image" and "you asked for it" in text["text"]
+
+
+def test_a_picture_asked_for_without_shots_says_there_is_none(tools, fake):
+    content = answer(tools, "look", picture=True)
+    assert [b["type"] for b in content] == ["text"]
+    assert "No picture" in content[0]["text"]
+
+
+def test_a_tap_by_position_is_for_a_screen_that_came_with_a_picture(fake, tmp_path):
+    tools = shots(fake, tmp_path)
+    call(tools, "look", picture=True)
+    text, failed = call(tools, "tap_at", x=500, y=500)
+    assert failed and text.startswith("NOT DONE") and fake.actions == []
+    call(tools, "look")  # the next look, no picture with it
+    text, failed = call(tools, "tap_at", x=500, y=500)
+    assert failed and "look with picture first" in text and fake.actions == []
+
+
+def test_a_tap_by_position_on_a_partly_blank_screen_is_held(fake, tmp_path):
+    places(fake)
+    fake.screenshot = lambda: a_png()
+    text, failed = call(shots(fake, tmp_path), "tap_at", x=300, y=700)
+    assert failed and text.startswith("NOT DONE") and fake.actions == []
+
+
+# -- what the person is shown for a held step --------------------------------
+
+
+def test_a_held_tap_is_shown_as_its_picture_ringed_not_the_list(tools, fake):
+    fake.current = "send"
+    fake.screenshot = lambda: a_png(1080, 2400)
+    call(tools, "look")
+    text, _ = call(tools, "tap", n=2)
+    hold = text.split('hold "')[1].split('"')[0]
+    told, shown = answer(tools, "describe_hold", hold=hold)
+    assert 'tap button "Send SMS"' in told["text"]
+    assert 'On the screen: field "running late"' in told["text"]
+    assert "The screen when it was asked for" not in told["text"]
+    ringed = base64.b64decode(shown["data"])
+    assert picture.size(ringed)[0] <= picture.WIDTH and ringed != a_png(1080, 2400)
+
+
+def test_with_no_screenshot_the_held_step_is_said_with_the_list(tools, fake):
+    fake.current = "send"
+
+    def broken():
+        raise SparshError("screencap failed")
+
+    fake.screenshot = broken
+    call(tools, "look")
+    text, _ = call(tools, "tap", n=2)
+    hold = text.split('hold "')[1].split('"')[0]
+    content = answer(tools, "describe_hold", hold=hold)
+    assert [b["type"] for b in content] == ["text"]
+    assert "The screen when it was asked for" in content[0]["text"]
+
+
+def test_a_yes_comes_back_as_done_with_the_phones_own_answer(tools, fake):
+    fake.current = "send"
+    call(tools, "look")
+    text, _ = call(tools, "tap", n=2)
+    hold = text.split('hold "')[1].split('"')[0]
+    text, failed = call(tools, "confirm", hold=hold)
+    assert not failed and text.startswith("Done: the step was carried out.")
+
+
+def test_the_models_picture_is_made_smaller(fake, tmp_path):
+    unreadable(fake)
+    fake.screenshot = lambda: a_png(1440, 2560)
+    _, image = answer(shots(fake, tmp_path), "look")
+    assert picture.size(base64.b64decode(image["data"])) == (720, 1280)

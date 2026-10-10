@@ -1,9 +1,10 @@
 """A spot marked on a screenshot, for the person to say yes to.
 
-A tap by position (phone.py, ``tap_at``) is held every time, and what
-the person is shown is the picture with the spot ringed: "tap here?"
-is a question a person can answer by looking, where "x 512, y 300" is
-not.
+Every held step (phone.py) is shown to the person as the screen it was
+held on, with what it would tap or type into ringed -- a tap by
+position with its spot: "tap here?" is a question a person can answer
+by looking, where "x 512, y 300" is not, nor a numbered list of
+forty-one lines.
 
 Sparsh has no dependencies, so this reads and writes PNG itself -- the
 kinds phones send (8 bits a channel, grey or colour, with or without
@@ -36,9 +37,10 @@ def size(png: bytes) -> tuple[int, int] | None:
     return struct.unpack(">II", png[16:24])
 
 
-def mark(png: bytes, x: int, y: int) -> bytes | None:
-    """The picture with a ring round (x, y) -- each 0 to 1000 across and
-    down the picture -- as a PNG; None if this PNG can't be read here."""
+def mark(png: bytes, x: int | None = None, y: int | None = None) -> bytes | None:
+    """The picture, made smaller, with a ring round (x, y) -- each 0 to
+    1000 across and down the picture; no ring without them -- as a PNG;
+    None if this PNG can't be read here."""
     try:
         width, height, channels, rows = _decode(png)
     except (ValueError, zlib.error, struct.error):
@@ -49,6 +51,8 @@ def mark(png: bytes, x: int, y: int) -> bytes | None:
     pixels = [bytearray(small_w * 3) for _ in range(small_h)]
     for sy in range(small_h):
         _rgb(rows[sy * step], channels, step, pixels[sy])
+    if x is None or y is None:
+        return _encode(small_w, small_h, pixels)
     cx, cy = x * (small_w - 1) // 1000, y * (small_h - 1) // 1000
     outer = max(10, small_w * 6 // 100)
     _ring(pixels, cx, cy, outer + 3, outer + 6, _EDGE)

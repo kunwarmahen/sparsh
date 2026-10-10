@@ -15,6 +15,8 @@ from sparsh.device import KEYBOARD, AdbDevice, typeable
 from sparsh.phone import Phone, ScreenChanged
 from sparsh.screen import ScreenUnreadable
 
+from .conftest import BLANK_PAGE, FILLED_PAGE
+
 
 def test_tap_hits_the_middle_of_the_thing_and_shows_where_it_led(phone, fake):
     phone.look()
@@ -361,3 +363,25 @@ def test_a_cable_phone_that_says_closed_is_not_reconnected(monkeypatch):
     with pytest.raises(SparshError, match="error: closed"):
         _run(["adb", "-s", "84B7N16128001616", "shell", "true"])
     assert len(ran) == 1
+
+
+def test_a_web_page_not_yet_described_is_looked_at_once_more(fake, tmp_path):
+    fake.screens.update(blank=BLANK_PAGE, filled=FILLED_PAGE)
+    fake.current = "blank"
+
+    def described(f, retry=True, _dump=fake.dump):
+        xml = _dump(retry)
+        f.current = "filled"  # Chrome fills the page in once it is asked
+        return xml
+
+    fake.dump = lambda retry=True: described(fake, retry)
+    seen = Phone(fake, state=tmp_path, settle=0.001).look()
+    assert any(e.label == "Haveli Indian Cuisine" for e in seen.elements)
+    assert len(fake.tries) == 2
+
+
+def test_a_page_that_stays_blank_is_looked_at_only_twice(fake, tmp_path):
+    fake.screens["blank"] = BLANK_PAGE
+    fake.current = "blank"
+    seen = Phone(fake, state=tmp_path, settle=0.001).look()
+    assert seen.blank_page and len(fake.tries) == 2

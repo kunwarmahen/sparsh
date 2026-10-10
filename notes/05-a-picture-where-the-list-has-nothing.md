@@ -121,7 +121,10 @@ make it workable.
 
 ## Not here yet
 
-* Acting on what only the picture shows: a tap by position, held for
-  the person's yes every time, the spot marked on the picture. Not built.
+* ~~Acting on what only the picture shows.~~ A tap by position, held
+  every time, the spot ringed ([note 06](06-a-tap-by-position.md)).
+* ~~A screen the list reads only in part.~~ Google Maps' unnamed places
+  and a web page not yet described now come with their picture, and
+  the model can ask for one ([note 10](10-where-the-list-falls-short.md)).
 * The cloud road. Turned on with `YANTRA_PHONE_SHOTS=on` and untried,
   like the rest of the cloud trial.

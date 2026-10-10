@@ -5,7 +5,8 @@
 An MCP server on stdin/stdout -- newline-delimited JSON-RPC, written by
 hand like Samay's -- with ten tools in three kinds:
 
-    look           read     the screen, as the numbered list
+    look           read     the screen, as the numbered list (and, asked,
+                            its picture)
     list_apps      read     apps that can be opened
     describe_hold  read     a held step, in words, with the screen it was on
     tap            act      tap a number from the last look
@@ -33,14 +34,27 @@ asks a person first. ``describe_hold`` is what a harness shows them.
 A harness that lets ``confirm`` through without asking has given its
 yes on the person's behalf; Sparsh can't tell the difference.
 
-A PICTURE ONLY WHERE THE LIST HAS NOTHING (``--shots``). The model
-works from the numbered list, never from pictures: that is what lets a
+A PICTURE ONLY WHERE THE LIST FALLS SHORT (``--shots``). The model
+works from the numbered list, not from pictures: that is what lets a
 local model do it, and what keeps a phone's screen out of a cloud
 model's request. But some screens give the list nothing -- a page that
-never goes still (Settings' About phone), an app drawn as one picture.
-Started with ``--shots``, a tool whose screen comes back empty or
-unreadable also returns a screenshot of it, as an MCP image. Only then,
-and never of an app on the person's ``never`` list. It is OFF unless
+never goes still (Settings' About phone), an app drawn as one picture
+-- and some give it only part: Google Maps' places are unnamed boxes,
+and on a real Nexus 6P an agent asked for nearby restaurants opened
+each blank row in turn, thirty-odd steps, to read their names. Started
+with ``--shots``, a tool whose screen comes back empty, unreadable or
+partly blank (``Screen.partly_blank``) also returns a screenshot of it,
+as an MCP image; and ``look`` with ``picture`` asks for one on any
+screen, for what the model can tell the list is missing. Only then,
+and never of an app on the person's ``never`` list.
+
+THE MODEL'S PICTURE IS MADE SMALLER, to 720 pixels across (picture.py).
+A Nexus 6P's full screenshot cost ``qwen3.8`` 3635 tokens of its
+context, and Maps shows one place per screen: a turn that scrolled ten
+times carried ten of them, each step took two minutes, and it ran out
+of time before it answered. Halved, the same screen cost 950 tokens and
+read the same names. A tap by position is a share of the picture, not
+a pixel, so a smaller picture names the same spot. It is OFF unless
 whoever starts the server turns it on; that harness knows whether its
 model can see, and whether the person lets screenshots go to it (Yantra
 gives them to local models, and to cloud models only when asked).
@@ -65,7 +79,7 @@ import sys
 from pathlib import Path
 from typing import Any, TextIO
 
-from sparsh import SparshError, __version__, log
+from sparsh import SparshError, __version__, log, picture
 from sparsh.awake import Awake
 from sparsh.device import KEYS, Device, pick
 from sparsh.phone import DIRECTIONS, Held, Phone, ScreenChanged
@@ -90,7 +104,11 @@ TOOLS: list[dict] = [
          'words, and what it does ([tap], [type], [scroll], [on]/[off]). Use the '
          "numbers with tap, type_text and scroll. Every other tool returns the "
          "new screen too, so look only at the start or when unsure."),
-     "inputSchema": {"type": "object", "properties": {}},
+     "inputSchema": {"type": "object", "properties": {
+         "picture": {"type": "boolean", "description": (
+             "Also a screenshot, when what you need is on the screen but not in "
+             "the list (unnamed rows, a map, a page with no words). Only if this "
+             "phone sends pictures; you are told if not.")}}},
      "annotations": _READ},
     {"name": "list_apps",
      "description": "Apps on the phone that can be opened, as package names.",
@@ -109,8 +127,8 @@ TOOLS: list[dict] = [
      "annotations": _ACT},
     {"name": "tap_at",
      "description": (
-         "Tap a spot on the screenshot -- ONLY on a screen that came with one "
-         "because it has no numbered list. x and y each run 0 to 1000 across and "
+         "Tap a spot on the screenshot -- ONLY on a screen that came with one, and "
+         "only for what the numbered list doesn't have. x and y each run 0 to 1000 across and "
          "down the picture (0,0 top left; 1000,1000 bottom right; 500,500 the "
          "middle). ALWAYS HELD for the person, who is shown the spot ringed on "
          "the picture: see confirm."),
@@ -170,7 +188,10 @@ TOOLS: list[dict] = [
          "Carry out a step that was HELD for the person's yes (a tap on Send, "
          "Pay, Delete...; typing into a password field; a tap by position). "
          "Calling this asks the "
-         "person; tell them in a sentence what it will do first."),
+         "person; tell them in a sentence what it will do first. What comes back "
+         "after \"Done\" is the phone's own answer to the step, which WAS carried "
+         "out (a message such as \"Network is not ready\" is the phone's, not a "
+         "lapsed hold)."),
      "inputSchema": {"type": "object", "properties": {
          "hold": {"type": "string", "description": "The id the held step gave."}},
          "required": ["hold"]},
@@ -235,15 +256,24 @@ class Tools:
             return result, None
         text = result.text()
         if name == "confirm":
-            text = "Done. " + text
-        if not (self.shots and self.phone().shown(result)):
+            text = _DONE + text
+        phone = self.phone()
+        asked = name == "look" and bool(args.get("picture"))
+        phone.pictured = None
+        if not (self.shots and phone.shown(result, asked)):
+            if asked:
+                text += "\n" + (_NOT_THIS_APP if self.shots else _NO_SHOTS)
             return text, None
         try:
-            png = self.phone().device.screenshot()
+            png = phone.device.screenshot()
         except SparshError as e:
             return f"{text}\n(No screenshot either: {e}.)", None
+        png = picture.mark(png) or png  # smaller: see the module docstring
         if len(png) > SHOT_BYTES:
             return f"{text}\n(The screenshot was too big to attach.)", None
+        phone.pictured = result.app
+        if result.elements:
+            return text + "\n" + _part(result, asked), png
         text = text.replace(_NOTHING, "(nothing on this screen can be read as a list)")
         return text + "\n" + _SHOT, png
 
@@ -335,6 +365,22 @@ _SHOT = (
 
 
 #: Names other tools use, and what they are called here.
+_DONE = "Done: the step was carried out. The phone now (its answer to the step):\n"
+_NO_SHOTS = "(No picture: this phone's tools send none to this model. Work from the list.)"
+_NOT_THIS_APP = "(No picture: the person's rules keep pictures of this app from the agent.)"
+
+
+def _part(screen: Screen, asked: bool) -> str:
+    why = ("you asked for it" if asked
+           else "the page's words aren't in the list" if screen.blank_page
+           else f"{screen.blanks} things on it to tap have no words")  # fmt: skip
+    return (
+        f"(A screenshot is attached -- {why}: you can already see it, no tool is "
+        "needed. Tap by number whatever the list has; for what only the picture "
+        "shows, tap_at its position, which the person is asked about.)"
+    )
+
+
 _SAID_INSTEAD = {"ref": "n", "index": "n", "number": "n", "element": "n", "id": "n",
                  "field": "into", "value": "text", "key": "keys", "app": "name",
                  "package": "name", "hold_id": "hold"}  # fmt: skip

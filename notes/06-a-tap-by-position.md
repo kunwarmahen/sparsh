@@ -130,6 +130,12 @@ before, 159 after.
 
 * An iPhone. `touch_size` is there and untried, like the rest of the
   iPhone road ([note 03](03-an-iphone-through-a-mac.md)).
-* A real Android phone, with its own sizes and its own dialogs.
-* Showing the ring in a chat (Dvara's Telegram road): a harness gets
-  the picture from `describe_hold`, and Dvara doesn't send it yet.
+* ~~A real Android phone, with its own sizes and its own dialogs.~~ The
+  Nexus 6P ([note 08](08-a-real-phone.md)); its list leaves the
+  navigation bar out of the screen's size, which put a ring low until
+  it was worked out from the picture ([note 10](10-where-the-list-falls-short.md)).
+* ~~Showing the ring in a chat (Dvara's Telegram road).~~ Dvara sends
+  the picture first and the buttons under it.
+* ~~A tap by position only on a screen with no list.~~ Any screen that
+  came with a picture, partly blank or asked for
+  ([note 10](10-where-the-list-falls-short.md)).

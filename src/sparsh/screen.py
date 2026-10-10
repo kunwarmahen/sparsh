@@ -26,6 +26,21 @@ What gets a line: anything that can be tapped, typed into, scrolled or
 switched, and any words not already used as some tappable thing's
 label. Boxes with no size (a row scrolled half off the bottom reports
 upside-down bounds) are left out -- there is nothing there to tap.
+
+A LIST CAN BE THERE AND STILL SAY NOTHING. Two kinds of screen give
+lines that tell the model nothing about what matters on them, and each
+is counted so that a picture can go with it (phone.py, ``shown``):
+
+* ``blank_page`` -- a web page whose words haven't reached the list.
+  Chrome fills in a page's description a moment after it is first
+  asked for, so a look straight after a search on a real Nexus 6P read
+  only ``text "Web View"`` and the browser's own bar around it.
+* ``blanks`` -- things to tap with no words at all. Google Maps draws
+  each place in its results as an unnamed box: the 6P's list of Indian
+  restaurants was six ``item [tap]`` lines and their buttons ("Call",
+  "Directions"), with no restaurant named. A box as big as the screen
+  is a backdrop, not counted. ``BLANKS`` of them make a screen partly
+  blank; across 194 screens the agents had read, only Maps reached it.
 """
 
 from __future__ import annotations
@@ -39,6 +54,8 @@ from sparsh import SparshError
 
 #: Smaller than this (pixels, either way) is not something to tap.
 MIN_SIZE = 10
+#: Unnamed things to tap that make a screen partly blank (module docstring).
+BLANKS = 3
 
 _BOUNDS = re.compile(r"\[(-?\d+),(-?\d+)\]\[(-?\d+),(-?\d+)\]")
 
@@ -130,6 +147,15 @@ class Screen:
     note: str = ""
     #: Said above the list: what Sparsh did on its own to get here.
     remark: str = ""
+    #: Things to tap with no words, and a web page with none in the list
+    #: (module docstring).
+    blanks: int = 0
+    blank_page: bool = False
+
+    @property
+    def partly_blank(self) -> bool:
+        """The list is there, but what matters on the screen isn't in it."""
+        return self.blank_page or self.blanks >= BLANKS
 
     def text(self) -> str:
         lines = [f"App: {self.app or '(unknown)'}"]
@@ -196,7 +222,25 @@ def read(xml: str) -> Screen:
             picked.append((node, line))
 
     elements = [Element(n=i, **line) for i, (_, line) in enumerate(picked, start=1)]
-    return Screen(app=app, elements=elements, size=size)
+    whole = size[0] * size[1] * 9 // 10
+    blanks = sum(1 for e in elements if e.tap and not e.label and _area(e.bounds) < whole)
+    blank_page = any(_kind_name(node).endswith("WebView") and not _has_words(node)
+                     for node in root.iter("node"))  # fmt: skip
+    return Screen(app=app, elements=elements, size=size, blanks=blanks, blank_page=blank_page)
+
+
+def _area(bounds: tuple[int, int, int, int]) -> int:
+    left, top, right, bottom = bounds
+    return max(0, right - left) * max(0, bottom - top)
+
+
+def _kind_name(node: ET.Element) -> str:
+    return node.get("class", "").rpartition(".")[2]
+
+
+def _has_words(node: ET.Element) -> bool:
+    """Whether anything inside (not the node itself) has words."""
+    return any(_own_label(n) for n in node.iter("node") if n is not node)
 
 
 def _describe(node: ET.Element, used: set[int]) -> dict | None:
@@ -290,7 +334,7 @@ def _own_label(node: ET.Element) -> str:
 
 
 def _kind(node: ET.Element) -> str:
-    name = node.get("class", "").rpartition(".")[2]
+    name = _kind_name(node)
     for ending, kind in _KINDS:
         if name.endswith(ending):
             return kind
