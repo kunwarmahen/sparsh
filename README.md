@@ -326,12 +326,16 @@ picture, and only there, the agent can tap a spot on it: `tap_at` with `x` and
 `y` from 0 to 1000 across and down it. That is a share of the picture,
 so a model shown it smaller still names the same spot. Nothing can
 check what's at a spot, so **every one waits for your yes**, and you
-are shown the picture with the spot ringed. Typing on such a screen
-waits too: nothing says which field has the keyboard, or that it isn't
-a password. When you say yes, Sparsh taps only if the same app is still
-in front and its screen still matches the picture you saw. In an app whose rules
-refuse words (a site Setu keeps read-only), there's no tap by position
-at all ([notes/06](notes/06-a-tap-by-position.md)).
+are shown the picture with the spot ringed. A map's pins are the
+everyday case: Google Maps lists none of them, so "open the best-rated
+pin" is a tap by position, and on a real Nexus 6P a yes opened the
+restaurant on the ringed pin. Typing on a screen with no list waits
+too: nothing says which field has the keyboard, or that it isn't a
+password. When you say yes, Sparsh taps only if the same app is still
+in front and its screen still matches the picture you saw. In an app
+whose rules refuse words (a site Setu keeps read-only), there's no tap
+by position at all ([notes/06](notes/06-a-tap-by-position.md),
+[notes/10](notes/10-where-the-list-falls-short.md)).
 
 ### What it asks you first
 

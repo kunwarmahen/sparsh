@@ -485,7 +485,9 @@ sparsh: 9 tool(s); phone emulator-5554 (sdk_gphone64_x86_64) -- via /home/you/sp
 
 Then ask in plain words: *"turn on airplane mode"*, *"what's the newest
 message in Messages?"* When a step would send, pay, delete or type a
-password, Yantra stops and asks you first.
+password, Yantra stops and asks you first: one sentence, and a picture
+of the phone's screen with what it would tap ringed (in the terminal,
+a file whose path is printed under the question).
 
 **iPhone and Yantra:** with `SPARSH_WDA` set, the agent's tools and the
 **phone** panel on Yantra's page both use the iPhone. Yantra is told
@@ -571,6 +573,23 @@ settings get system screen_off_timeout` (`600000`, then yours again).
 `SPARSH_AWAKE=always` keeps the screen on for good (a phone set aside
 for the agent); `SPARSH_AWAKE=off` leaves the timeout alone (README,
 Settings).
+
+**Pictures, and the card.** With a model that can see (`qwen3.8:latest`
+does), try a screen the list reads only in part, and a tap only the
+picture can show:
+
+```
+uv run yantra --provider ollama --model qwen3.8:latest \
+  --prompt "On my phone, search Google Maps for Indian restaurants near me and tell me the top three with their ratings."
+uv run yantra --provider ollama --model qwen3.8:latest \
+  --prompt "On my phone, search Google Maps for Indian restaurants, then tap the pin on the map (not the list) of the best-rated one you can see on the map, to open it, and tell me its name."
+```
+
+The first should name restaurants read off the screenshot, without
+opening each row. The second stops with a question whose picture has a
+pin ringed in red: open the file, check the ring, then answer. On a
+Nexus 6P (Android 8.1) a yes opened the restaurant on that pin
+(notes/10).
 
 **The trial, on your own phone.** Yantra's phone trial has a set made
 for a phone you use: nothing sent, nothing wiped, each switch turned and
