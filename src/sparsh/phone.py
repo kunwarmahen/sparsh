@@ -55,6 +55,7 @@ from pathlib import Path
 from typing import NoReturn
 
 from sparsh import SparshError, picture
+from sparsh.awake import mode as awake_mode
 from sparsh.device import Device
 from sparsh.rules import Rules
 from sparsh.screen import Element, Screen, ScreenUnreadable, read
@@ -147,13 +148,21 @@ class Held(SparshError):
         self.hold = hold
         super().__init__(
             f"NOT DONE -- this needs the person's yes: {hold.sentence()}. "
-            f'Call confirm with hold "{hold.id}" to ask them. Do not try '
-            "another way round it."
+            f'Call confirm with hold "{hold.id}" now, in this same answer: that '
+            "is how they are asked. Do not ask them in words first, and do not "
+            "try another way round it."
         )
 
 
 def state_root(given: str | os.PathLike | None = None) -> Path:
     return Path(given or os.environ.get("SPARSH_STATE") or Path.home() / ".sparsh")
+
+
+def _always_on() -> bool:
+    try:
+        return awake_mode() == "always"
+    except SparshError:
+        return False  # a bad word is said where the server starts, not here
 
 
 class Phone:
@@ -565,7 +574,8 @@ class Phone:
             self.holds.pop(hold_id.strip(), None)
             raise SparshError(
                 f"no step is waiting under {hold_id!r} (a hold lasts {HOLD_FOR // 60} "
-                "minutes) -- look again and ask again"
+                "minutes, and only while these tools run) -- do the step again and "
+                "call confirm straight away"
             )
         return hold
 
@@ -639,7 +649,10 @@ class Phone:
         A LOCK WITH NO PIN IS NO ONE'S TO OPEN. A real Nexus 6P with only a
         swipe lock read as ``locked``, so a schedule asked its person to
         unlock what anything could have swiped. Its person chose no PIN;
-        a PIN still asks."""
+        a PIN still asks.
+
+        With ``SPARSH_AWAKE=always`` the screen never goes dark, so a lit,
+        unlocked one is no sign of a person: it is ``asleep``, free."""
         on, locked = self.device.awake()
         secure = self.device.secure() if locked else None
         if locked and secure is False:
@@ -650,6 +663,8 @@ class Phone:
             state = "unknown"
         else:
             state = "in_use" if on else "asleep"
+            if state == "in_use" and _always_on():
+                state = "asleep"  # lit by SPARSH_AWAKE=always, not by a person (awake.py)
         return {
             "screen": None if on is None else ("on" if on else "off"),
             "locked": locked,

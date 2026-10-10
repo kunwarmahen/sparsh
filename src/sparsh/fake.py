@@ -43,6 +43,8 @@ class FakeDevice:
         self.screen_on, self.locked = True, False
         self.keyboard_up: tuple[int, int, int, int] | None = None  # where it covers
         self.pin = True  # the lock, when there is one, needs its person
+        self.timeout: int | None = 30000  # Screen timeout, ms; None: not said
+        self.timeouts: list[int] = []  # each one set
 
     def _did(self, *action) -> None:
         self.actions.append(action)
@@ -103,6 +105,13 @@ class FakeDevice:
         if not self.pin:
             self.locked = False
         self._did("dismiss_lock")
+
+    def screen_timeout(self) -> int | None:
+        return self.timeout
+
+    def set_screen_timeout(self, ms: int) -> None:
+        self.timeout = ms
+        self.timeouts.append(ms)
 
     def front_app(self) -> str:
         if self.front:

@@ -104,6 +104,8 @@ class Device(Protocol):
     def keyboard_area(self) -> tuple[int, int, int, int] | None: ...
     def secure(self) -> bool | None: ...
     def dismiss_lock(self) -> None: ...
+    def screen_timeout(self) -> int | None: ...
+    def set_screen_timeout(self, ms: int) -> None: ...
 
 
 @dataclass(frozen=True)
@@ -390,6 +392,15 @@ class AdbDevice:
         to dismiss one that has a PIN, so this can't open what it shouldn't."""
         self.keys("wakeup")
         self._shell("wm", "dismiss-keyguard")
+
+    def screen_timeout(self) -> int | None:
+        """How long the screen stays on untouched, in milliseconds (the
+        person's *Screen timeout*); None when Android didn't say."""
+        said = self._shell("settings", "get", "system", "screen_off_timeout").strip()
+        return int(said) if said.isdigit() else None
+
+    def set_screen_timeout(self, ms: int) -> None:
+        self._shell("settings", "put", "system", "screen_off_timeout", str(int(ms)))
 
     def keyboard_area(self) -> tuple[int, int, int, int] | None:
         """Where the on-screen keyboard is (left, top, right, bottom), or

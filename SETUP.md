@@ -563,6 +563,15 @@ and says so instead of guessing. `sparsh state` says `locked`. With only
 a swipe lock, `sparsh state` says `asleep` (`"pin": false` with
 `--json`), and the agent's `open_app` swipes it away and carries on.
 
+**The screen while it works.** A local model can think for longer than
+the phone's screen timeout between steps. So while an agent works it,
+Sparsh raises the timeout to 10 minutes, and puts yours back 2 minutes
+after its last step or when it stops. Check it mid-task with `adb shell
+settings get system screen_off_timeout` (`600000`, then yours again).
+`SPARSH_AWAKE=always` keeps the screen on for good (a phone set aside
+for the agent); `SPARSH_AWAKE=off` leaves the timeout alone (README,
+Settings).
+
 **The trial, on your own phone.** Yantra's phone trial has a set made
 for a phone you use: nothing sent, nothing wiped, each switch turned and
 turned back (Yantra's note 120):
@@ -695,5 +704,6 @@ To remove it: `adb uninstall com.android.adbkeyboard`.
 | Name it with | `--serial R58M...` / `ANDROID_SERIAL` | `--serial http://127.0.0.1:8100` / `SPARSH_WDA` |
 | Check | `uv run sparsh devices` | the same, with `SPARSH_WDA` set |
 | Every day | plug in / start the emulator | `scripts/start-wda-from-linux.sh` |
+| Screen while an agent works | kept on; `SPARSH_AWAKE=always` or `off` | left to Auto-Lock |
 | Other languages (é, नमस्ते, emoji) | install ADBKeyBoard once (Part G) | nothing to do |
 | Every 7 days | — | `ssh -t <mac> ./build-wda-on-mac.sh`, copy `WDA.ipa`, install; `sparsh wda` says when |

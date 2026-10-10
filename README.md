@@ -438,6 +438,7 @@ Looking isn't a step, so it isn't logged.
 | `SPARSH_ADB` | the `adb` to use, when it isn't on `PATH` or in `~/Android/Sdk` |
 | `SPARSH_APP_RULES` | rules a harness adds for one app: refuse, ask, pace (JSON, by package) |
 | `SPARSH_GRANTS` | held taps a schedule may do without a yes, as its person accepted them (JSON list of sentences) |
+| `SPARSH_AWAKE` | the screen while an agent works the phone: `working` (default: kept on, your own timeout back 2 minutes after the last step), `always` (never sleeps: a phone set aside for the agent), `off` ([notes/09](notes/09-the-screen-kept-on.md)) |
 | `SPARSH_CONNECT` | phones over Wi-Fi (`192.168.1.23:41234`, comma-separated), connected to whenever phones are looked for |
 | `SPARSH_WDA` | an iPhone's WebDriverAgent address (`http://127.0.0.1:8100`), used when no `--serial` is given |
 | `SPARSH_IOS_APPS` | more iPhone apps for `sparsh apps` and `open`, as bundle ids separated by commas |
@@ -486,6 +487,8 @@ src/sparsh/
 │               (notes/01); a tap by position, held every time (notes/06);
 │               the keyboard put away from a target under it, and a lock
 │               screen that says it is one (notes/08)
+├── awake.py    the screen kept on while an agent works the phone, the
+│               person's own timeout put back after; SPARSH_AWAKE (notes/09)
 ├── picture.py  the spot ringed on a screenshot, PNG read and written by
 │               hand, for the person's yes (notes/06)
 ├── log.py      every step on the phone, by the agent or by you, however it
@@ -516,8 +519,10 @@ ASCII), [notes/05](notes/05-a-picture-where-the-list-has-nothing.md)
 (a picture where the list has nothing),
 [notes/06](notes/06-a-tap-by-position.md) (a tap by position, asked every
 time), [notes/07](notes/07-a-phone-for-a-schedule.md) (a phone for a
-schedule: grants, and whether it's free) and
-[notes/08](notes/08-a-real-phone.md) (what a real phone found).
+schedule: grants, and whether it's free),
+[notes/08](notes/08-a-real-phone.md) (what a real phone found) and
+[notes/09](notes/09-the-screen-kept-on.md) (the screen kept on while an
+agent works).
 
 ## Licence
 

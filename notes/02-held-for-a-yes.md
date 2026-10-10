@@ -39,7 +39,9 @@ A held step isn't carried out. The agent gets an error it can read:
 ```
 NOT DONE -- this needs the person's yes: tap image "Send SMS" in
 com.google.android.apps.messaging -- held because it says "send". Call
-confirm with hold "h68873c" to ask them. Do not try another way round it.
+confirm with hold "h68873c" now, in this same answer: that is how they
+are asked. Do not ask them in words first, and do not try another way
+round it.
 ```
 
 **`confirm` IS THE ONLY WAY THROUGH, AND EVERY HARNESS ASKS ABOUT IT.**

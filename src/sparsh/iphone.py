@@ -301,6 +301,12 @@ class WdaDevice:
     def dismiss_lock(self) -> None:
         raise SparshError("an iPhone's lock can't be opened from here")
 
+    def screen_timeout(self) -> int | None:
+        return None  # WDA can't read Auto-Lock, so it is left alone
+
+    def set_screen_timeout(self, ms: int) -> None:
+        raise SparshError("an iPhone's Auto-Lock can't be set from here")
+
     def front_app(self) -> str:
         try:
             info = self._call("GET", "/wda/activeAppInfo")

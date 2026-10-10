@@ -43,6 +43,8 @@ from datetime import datetime
 
 from sparsh import SparshError, __version__
 from sparsh import log, mcp
+from sparsh.awake import Awake
+from sparsh.awake import mode as awake_mode
 from sparsh.device import KEYS, attached, connect, iphones, pair, pick
 from sparsh.iphone import remember_signature, signature, signature_note
 from sparsh.phone import DIRECTIONS, Phone, ScreenChanged, state_root
@@ -293,7 +295,11 @@ def _apps(args) -> int:
 def _mcp(args) -> int:
     state = state_root(args.state)
     rules, _ = load(state)
-    mcp.serve(mcp.Tools(rules, state=state, serial=args.serial, shots=args.shots))
+    keeper = Awake(awake_mode())  # $SPARSH_AWAKE, checked before the first call
+    try:
+        mcp.serve(mcp.Tools(rules, state=state, serial=args.serial, shots=args.shots, awake=keeper))
+    finally:
+        keeper.rest()  # the person's own screen timeout back as the server stops
     return 0
 
 

@@ -165,6 +165,10 @@ a cable one never; a lock with no PIN asleep, swiped by `wake` and
 
 ## Not here yet
 
+* ~~**A screen that goes dark mid-task.**~~ A rename from Telegram stopped
+  at the lock screen after the model's long pauses; the screen is now
+  kept on while an agent works ([note 09](09-the-screen-kept-on.md)).
+
 * A phone from another maker. A Samsung or Xiaomi lays out Settings
   its own way, and may describe its keyboard's window differently.
 * The keyboard on an iPhone. WDA lists the keyboard's own keys, so

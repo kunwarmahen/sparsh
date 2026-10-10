@@ -66,6 +66,7 @@ from pathlib import Path
 from typing import Any, TextIO
 
 from sparsh import SparshError, __version__, log
+from sparsh.awake import Awake
 from sparsh.device import KEYS, Device, pick
 from sparsh.phone import DIRECTIONS, Held, Phone, ScreenChanged
 from sparsh.rules import Rules
@@ -202,8 +203,10 @@ class Tools:
         device: Device | None = None,
         settle: float | None = None,
         shots: bool = False,
+        awake: Awake | None = None,
     ) -> None:
         self.shots = shots
+        self.awake = awake  # the screen kept on while working (awake.py); None: left alone
         self.rules = rules
         self.state = state
         self.serial = serial
@@ -250,6 +253,12 @@ class Tools:
         _known_only(name, args)
         handler = getattr(self, f"_{name}")
         try:
+            if self.awake is not None:
+                phone = self.phone()
+                try:
+                    self.awake.step(phone.device, phone.folder)
+                except SparshError:
+                    pass  # a help to the step, never a condition of it
             if KINDS[name] == "read":
                 return handler(args)
             # Every act is written down where the person can read it later
