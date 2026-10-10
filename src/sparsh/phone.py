@@ -66,7 +66,7 @@ from typing import NoReturn
 
 from sparsh import SparshError, picture
 from sparsh.awake import mode as awake_mode
-from sparsh.device import Device
+from sparsh.device import NICKNAMES, Device
 from sparsh.rules import Rules
 from sparsh.screen import Element, Screen, ScreenUnreadable, read
 
@@ -379,8 +379,8 @@ class Phone:
             )
         if self.rules is None:  # the person's own hands
             return self._tap_spot(x, y, long, self.device.screenshot())
-        self._hold("tap_at", "it is a tap by position: the screen gives no list, so what "
-                   "is at that spot is known only from the picture", None,
+        self._hold("tap_at", "it is a tap by position: what is at that spot is known "
+                   "only from the picture", None,
                    where=(screen.app, screen.text()), x=x, y=y, long=long,
                    picture=self.device.screenshot())  # fmt: skip
 
@@ -775,29 +775,53 @@ class Phone:
 
     def which_app(self, name: str) -> str:
         """``settings`` -> ``com.android.settings``; a package name as is.
-        An iPhone's bundle ids don't say what an app is called
-        (``com.apple.Preferences``), so its device brings ``nicknames``."""
+
+        Tried in turn: a nickname (an app whose package doesn't say its
+        name, device.py's ``NICKNAMES``; an iPhone's bundle ids say none,
+        so it brings its own), a package by name, the name in a package's
+        parts. THEN WORD BY WORD, last word first: "Google Maps" is no
+        package's part, "maps" is one app's. A word that fits several
+        apps ("google") is passed over -- a guess would open the wrong
+        one -- and so is one that names no app ("app", ``_FILLER``)."""
         apps = self.device.apps()
-        wanted = name.strip().lower()
-        nicknames = getattr(self.device, "nicknames", {})
-        if wanted in nicknames:
-            return nicknames[wanted]
-        same = [a for a in apps if a.lower() == wanted]
-        if same:
-            return same[0]
-        squashed = wanted.replace(" ", "")
-        stem = squashed[: max(4, len(squashed) - 2)]
-        found = [
-            a
-            for a in apps
-            if any(part == squashed or part.startswith(stem) for part in a.lower().split("."))
-        ]
-        if len(found) == 1:
+        wanted = " ".join(name.strip().lower().split())
+        found = self._apps_for(wanted, apps)
+        if found is None:
+            words = [w for w in reversed(wanted.split()) if len(w) >= 3 and w not in _FILLER]
+            for word in words if " " in wanted else []:
+                one = self._apps_for(word, apps)
+                if one is not None and len(one) == 1:
+                    found = one
+                    break
+        if found is not None and len(found) == 1:
             return found[0]
         if found:
             raise SparshError(f"more than one app matches {name!r}: {', '.join(found)}")
         shown = [a for a in apps if not self._off_limits(a)]
         raise SparshError(f"no app matches {name!r}. Apps on this phone: {', '.join(shown)}")
+
+    def _apps_for(self, wanted: str, apps: list[str]) -> list[str] | None:
+        """The apps ``wanted`` names, or None if it names none."""
+        nicknames = getattr(self.device, "nicknames", None) or NICKNAMES
+        nickname = nicknames.get(wanted)
+        if isinstance(nickname, str):  # an iPhone's: one bundle id, always there
+            return [nickname]
+        if nickname:
+            installed = [p for p in nickname if p in apps]
+            if installed:
+                return installed[:1]  # most likely first
+        same = [a for a in apps if a.lower() == wanted]
+        if same:
+            return same[:1]
+        squashed = wanted.replace(" ", "")
+        whole = [a for a in apps if squashed in a.lower().split(".")]
+        if whole:
+            # a whole part beats a beginning: "chrome" is com.android.chrome,
+            # not also com.google.android.apps.chromecast.app
+            return whole
+        stem = squashed[: max(4, len(squashed) - 2)]
+        found = [a for a in apps if any(part.startswith(stem) for part in a.lower().split("."))]
+        return found or None
 
     def _front(self) -> str:
         try:
@@ -815,6 +839,10 @@ class Phone:
     def _has_last(self) -> bool:
         return (self.folder / "last.xml").exists()
 
+
+#: Words in an app's name that name no app ("the phone app": "app" is a
+#: part of com.google.android.apps.chromecast.app).
+_FILLER = {"app", "apps", "application", "the", "my", "open"}
 
 _UNREAD = "Done. But the screen it led to can't be read: "
 

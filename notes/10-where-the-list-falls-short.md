@@ -236,9 +236,62 @@ Gboard's keys. No was answered. Nothing was dialled, and the agent
 said: *"You declined that — I won't place the call. The number is
 dialed up on your phone if you'd like to press call yourself."*
 
-Not seen live: a tap by position on a partly blank screen. The agent
-read Maps from the picture and never needed to tap what only the
-picture showed.
+Then a tap by position, for something only the picture has: *"On my
+phone, search Google Maps for Indian restaurants, then tap the pin on
+the map (not the list) of the best-rated one you can see on the map,
+to open it, and tell me its name."* A map's pins have no lines in the
+list at all; the map is one backdrop the size of the screen. The agent
+opened Maps (`open_app "Google Maps"`, one step now: see below),
+searched, and asked:
+
+```
+On the phone 84B7N16128001616: tap the spot ringed on the picture (x 412, y 266 of 1000) in com.google.android.apps.maps -- held because it is a tap by position: what is at that spot is known only from the picture.
+(The picture shows the phone's screen; what it would tap is ringed.)
+```
+
+The picture had the red ring on the pin marked 4.7, the best rating
+on the map. Yes, and:
+
+```
+The best-rated pin visible on the map was 4.7, and it opened **Haveli Indian Cuisine** (4.7 stars, 179 reviews, 1125 Hatches Pond Ln Ste 113).
+```
+
+The first yes didn't get that far. **THE APP IN FRONT, ON OLD ANDROID
+TOO.** Sparsh refused the tap, saying *"the phone is in another app now,
+not com.google.android.apps.maps; nothing was tapped"*, five seconds
+after the question and with nobody touching the phone. It finds the app
+in front from the line `topResumedActivity=`, which Android 10 and later
+print. The 6P runs 8.1, which prints only `mResumedActivity:`, so the
+app read as no app, and a yes to any tap by position there was always
+refused. Both are read now. The emulator (Android 15) never showed it.
+
+## Names a package doesn't say
+
+The same runs lost a step at each app. `open_app` found "Google Maps"
+nowhere: no part of `com.google.android.apps.maps` is "googlemaps".
+"phone" isn't in `com.google.android.dialer` at all. The agent got the
+list of packages back, and its next step named one. Android won't tell
+a computer an app's name as the launcher shows it, so it has to come
+from somewhere else. There are three places now:
+
+* **A table, for apps whose package says something else** (`NICKNAMES`
+  in device.py): "phone", "dialer" and "calls" are the dialler, "gmail"
+  and "email" are `com.google.android.gm`, and so on for contacts,
+  camera, clock, calendar, gallery and files. Each name lists the
+  packages that app goes by on Google's, Samsung's and plain Android's
+  phones, most likely first. Only an installed one is opened.
+* **A whole part of a package beats one that only begins with it.**
+  "Chrome" found both `com.android.chrome` and
+  `com.google.android.apps.chromecast.app`, and refused as unclear.
+* **WORD BY WORD, LAST WORD FIRST.** "Google Maps" gets "maps" and
+  finds one app. A word that fits several ("google" fits ten on the 6P)
+  is passed over, not guessed at. Words that name no app ("app", "the",
+  "my") are passed over too: "the phone app" had found Chromecast
+  through `chromecast.app`.
+
+Against the 6P's 37 apps: "Google Maps", "phone", "Phone app", "Chrome",
+"Google Chrome", "Gmail", "Messages app" and "Google Photos" each open
+the app meant. "Google" alone still says it fits several.
 
 ## What the tests hold
 
@@ -251,7 +304,11 @@ of the saved screens is partly blank.
 list; a target under the keyboard is shown with the keyboard put away,
 and the yes still taps it.
 
-`tests/test_phone.py`: a page not yet described is read once more and
+`tests/test_phone.py`: the app in front is read from Android 8's words
+and Android 10's. A nickname finds an app no package names, and
+only one that is installed; "Chrome" is Chrome, not Chromecast too;
+"Google Maps" and "the phone app" go word by word, and "google stuff"
+opens nothing. A page not yet described is read once more and
 found filled; a page that stays blank is read twice, no more.
 
 `tests/test_mcp.py`: a partly blank screen comes with its picture and
@@ -265,7 +322,7 @@ words filled in and no list; with no screenshot to be had, the list
 comes back; a yes says "Done: the step was carried out."; the model's
 picture is 720 pixels across.
 
-190 tests before, 209 after.
+190 tests before, 214 after.
 
 ## Not here yet
 
@@ -274,9 +331,7 @@ picture is 720 pixels across.
   should carry over, but no real iPhone has been read.
 * **Pictures for a cloud model.** As in note 05, on only when its
   person says so (`YANTRA_PHONE_SHOTS=on`), and untried.
-* **Everyday names for some apps.** `open_app` read "Google Maps" and
-  "phone" as no app and listed the packages, and the agent then gave
-  `com.google.android.apps.maps` and `com.google.android.dialer`. One
-  step lost each time.
+* ~~**Everyday names for some apps.**~~ See *Names a package doesn't
+  say*, above.
 * **A threshold that learns.** Three unnamed things is a number from
   194 screens on two phones. Another maker's apps may want another.

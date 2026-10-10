@@ -113,7 +113,9 @@ Screenshots are in pixels, but nothing taps from a screenshot.
   Apple's own apps plus what `$SPARSH_IOS_APPS` names, and everyday
   names ("settings", "messages") come from a table on the device.
   `Phone.which_app` asks the device for `nicknames` first, since
-  `com.apple.Preferences` doesn't say "settings" anywhere.
+  `com.apple.Preferences` doesn't say "settings" anywhere. Android has
+  a table of its own now, for the apps whose packages don't say their
+  names either ([note 10](10-where-the-list-falls-short.md)).
 * **Which field has the keyboard.** Older WDA doesn't say. When the
   keyboard is up and one field is on screen, that field is it. With
   two, none is guessed, and an agent's typing has to name the field

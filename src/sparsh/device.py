@@ -81,6 +81,46 @@ KEYS = {
     "quick_settings": "statusbar expand-settings",
 }
 
+#: Everyday names whose app's package doesn't say them, each with the
+#: packages that app goes by on different phones, most likely first.
+#: Android can't tell a computer an app's name as the launcher shows it,
+#: so "phone" (com.google.android.dialer) had to be guessed at, and on a
+#: real Nexus 6P an agent lost a step to it each time (notes/10). Only an
+#: installed one is opened. An iPhone brings its own (iphone.py).
+NICKNAMES: dict[str, tuple[str, ...]] = {
+    "phone": ("com.google.android.dialer", "com.android.dialer",
+              "com.samsung.android.dialer"),
+    "dialer": ("com.google.android.dialer", "com.android.dialer",
+               "com.samsung.android.dialer"),
+    "calls": ("com.google.android.dialer", "com.android.dialer",
+              "com.samsung.android.dialer"),
+    "messages": ("com.google.android.apps.messaging", "com.samsung.android.messaging",
+                 "com.android.mms"),
+    "texts": ("com.google.android.apps.messaging", "com.samsung.android.messaging",
+              "com.android.mms"),
+    "sms": ("com.google.android.apps.messaging", "com.samsung.android.messaging",
+            "com.android.mms"),
+    "contacts": ("com.google.android.contacts", "com.samsung.android.app.contacts",
+                 "com.android.contacts"),
+    "camera": ("com.google.android.GoogleCamera", "com.sec.android.app.camera",
+               "com.android.camera2", "com.android.camera"),
+    "clock": ("com.google.android.deskclock", "com.sec.android.app.clockpackage",
+              "com.android.deskclock"),
+    "alarm": ("com.google.android.deskclock", "com.sec.android.app.clockpackage",
+              "com.android.deskclock"),
+    "calendar": ("com.google.android.calendar", "com.samsung.android.calendar",
+                 "com.android.calendar"),
+    "photos": ("com.google.android.apps.photos",),
+    "gallery": ("com.sec.android.gallery3d", "com.google.android.apps.photos",
+                "com.android.gallery3d"),
+    "browser": ("com.android.chrome", "com.sec.android.app.sbrowser", "com.android.browser"),
+    "files": ("com.google.android.apps.nbu.files", "com.sec.android.app.myfiles",
+              "com.android.documentsui"),
+    "play store": ("com.android.vending",),
+    "email": ("com.google.android.gm", "com.samsung.android.email.provider"),
+    "gmail": ("com.google.android.gm",),
+}  # fmt: skip
+
 #: ADBKeyBoard (github.com/senzhk/ADBKeyBoard), for what `input` can't type.
 KEYBOARD_APP = "com.android.adbkeyboard"
 KEYBOARD = KEYBOARD_APP + "/.AdbIME"
@@ -424,8 +464,14 @@ class AdbDevice:
         return left, top, right, bottom
 
     def front_app(self) -> str:
+        """The app in front. Android 10 and later say ``topResumedActivity=``;
+        older ones only ``mResumedActivity:`` -- a real Nexus 6P (8.1) said
+        nothing Sparsh read, so every yes to a tap by position there was
+        refused as "the phone is in another app now" (notes/10)."""
         out = self._shell("dumpsys", "activity", "activities")
-        found = re.search(r"topResumedActivity=ActivityRecord\{\S+ \S+ ([\w.]+)/", out)
+        found = re.search(
+            r"(?:topResumedActivity=|mResumedActivity: )ActivityRecord\{\S+ \S+ ([\w.]+)/", out
+        )
         return found.group(1) if found else ""
 
 

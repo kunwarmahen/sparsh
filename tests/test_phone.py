@@ -116,6 +116,46 @@ def test_open_an_app_by_its_everyday_name(phone, fake):
     assert fake.actions == [("launch", "com.google.android.youtube")]
 
 
+#: Some of a real Nexus 6P's packages, where the names below went wrong.
+NEXUS = [
+    "com.android.chrome", "com.android.settings", "com.google.android.apps.maps",
+    "com.google.android.apps.photos", "com.google.android.apps.messaging",
+    "com.google.android.contacts", "com.google.android.dialer", "com.google.android.gm",
+    "com.google.android.googlequicksearchbox", "com.google.android.youtube",
+    "com.google.android.apps.chromecast.app",
+]  # fmt: skip
+
+
+def test_a_name_no_package_says_is_found_by_its_nickname(fake, tmp_path):
+    fake.installed = NEXUS
+    phone = Phone(fake, state=tmp_path, settle=0)
+    assert phone.which_app("phone") == "com.google.android.dialer"
+    assert phone.which_app("Contacts") == "com.google.android.contacts"
+    assert phone.which_app("email") == "com.google.android.gm"
+    assert phone.which_app("Gmail") == "com.google.android.gm"
+
+
+def test_a_whole_part_of_a_package_beats_one_that_only_begins_with_it(fake, tmp_path):
+    fake.installed = NEXUS
+    phone = Phone(fake, state=tmp_path, settle=0)
+    assert phone.which_app("Chrome") == "com.android.chrome"  # not Chromecast too
+    assert phone.which_app("Google Chrome") == "com.android.chrome"
+
+
+def test_a_nickname_opens_only_an_app_that_is_there(fake, tmp_path):
+    fake.installed = ["com.android.dialer", "com.android.settings"]  # no Google dialler
+    assert Phone(fake, state=tmp_path, settle=0).which_app("phone") == "com.android.dialer"
+
+
+def test_two_words_are_tried_one_at_a_time_and_a_word_fitting_many_is_passed_over(fake, tmp_path):
+    fake.installed = NEXUS
+    phone = Phone(fake, state=tmp_path, settle=0)
+    assert phone.which_app("Google Maps") == "com.google.android.apps.maps"
+    assert phone.which_app("the phone app") == "com.google.android.dialer"
+    with pytest.raises(SparshError, match="no app matches 'google stuff'"):
+        phone.which_app("google stuff")  # "google" fits several: no guess
+
+
 def test_an_app_that_is_not_there_lists_the_ones_that_are(phone):
     with pytest.raises(SparshError, match="com.android.chrome"):
         phone.which_app("whatsapp")
@@ -385,3 +425,10 @@ def test_a_page_that_stays_blank_is_looked_at_only_twice(fake, tmp_path):
     fake.current = "blank"
     seen = Phone(fake, state=tmp_path, settle=0.001).look()
     assert seen.blank_page and len(fake.tries) == 2
+
+
+def test_the_app_in_front_is_read_on_old_android_and_new():
+    maps = "com.google.android.apps.maps/com.google.android.maps.MapsActivity t58}"
+    new = Shell({"dumpsys activity": f"  topResumedActivity=ActivityRecord{{45bd0c7 u0 {maps}"})
+    old = Shell({"dumpsys activity": f"    mResumedActivity: ActivityRecord{{45bd0c7 u0 {maps}"})
+    assert new.front_app() == old.front_app() == "com.google.android.apps.maps"

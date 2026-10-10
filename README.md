@@ -222,6 +222,15 @@ done.
 Every one of them hands back the screen it led to, so the agent always
 has the next numbers in front of it.
 
+`open_app` takes an app's everyday name. Android won't tell a computer
+the name the launcher shows, so Sparsh finds it in the package name
+("youtube" is `com.google.android.youtube`), in a short table for apps
+whose package says something else ("phone" is the dialler, "gmail" is
+`com.google.android.gm`), and then word by word: "Google Maps" finds
+Maps through "maps". A word that fits several apps, like "google", is
+passed over rather than guessed at, and so are words like "app" and
+"the" ([notes/10](notes/10-where-the-list-falls-short.md)).
+
 **[Yantra](https://github.com/kunwarmahen/yantra) finds it by itself**
 once `sparsh` is on your `PATH`. A checkout's `sparsh` is inside its
 `.venv`, so link it once, the way Setu's install does:
