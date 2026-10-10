@@ -66,7 +66,7 @@ from typing import NoReturn
 
 from sparsh import SparshError, picture
 from sparsh.awake import mode as awake_mode
-from sparsh.device import NICKNAMES, Device
+from sparsh.device import NICKNAMES, Device, app_name
 from sparsh.rules import Rules
 from sparsh.screen import Element, Screen, ScreenUnreadable, read
 
@@ -106,6 +106,8 @@ class Hold:
     screen: str  # the screen as it was, said only when there is no picture
     args: dict = field(default_factory=dict)
     made: float = field(default_factory=time.monotonic)
+    #: The app as a person calls it ("Phone"), for the question.
+    app_label: str = ""
     #: The screenshot taken as the step was held, for the person; where
     #: on it (0-1000 each way) the ring goes; the words filled in on it.
     card: bytes | None = None
@@ -117,11 +119,11 @@ class Hold:
             what = "press and hold" if self.args.get("long") else "tap"
             return (
                 f"{what} the spot ringed on the picture (x {self.args['x']}, "
-                f"y {self.args['y']} of 1000) in {self.app or 'the app in front'} "
+                f"y {self.args['y']} of 1000) in {self._in or 'the app in front'} "
                 f"-- held because {self.why}"
             )
         if self.action == "key":
-            return f"press {', '.join(self.args['keys'])} in {self.app} -- held because {self.why}"
+            return f"press {', '.join(self.args['keys'])} in {self._in} -- held because {self.why}"
         if self.action == "tap":
             what = f"tap {self.target.kind} {_quoted(self.target)}"
             if self.args.get("long"):
@@ -134,7 +136,13 @@ class Hold:
             what = f"type {shown} {where}".strip()
             if self.args.get("enter"):
                 what += ", then press enter"
-        return f"{what} in {self.app} -- held because {self.why}"
+        return f"{what} in {self._in} -- held because {self.why}"
+
+    @property
+    def _in(self) -> str:
+        """The app, as its person calls it: "in Phone", not "in
+        com.google.android.dialer" (device.py, ``APP_NAMES``)."""
+        return self.app_label or self.app
 
     @property
     def _secret(self) -> bool:
@@ -624,6 +632,7 @@ class Phone:
             target=target,
             screen=screen,
             args=args,
+            app_label=app_name(app, getattr(self.device, "nicknames", None)),
         )
         if "picture" not in args and where is None:
             self._card(hold)

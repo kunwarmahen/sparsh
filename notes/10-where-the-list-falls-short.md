@@ -163,7 +163,12 @@ its person had never seen. A card now says *"On your phone (Nexus
 6P)"*: the name its owner gave it in Settings (`settings get global
 device_name`, Android 7.1 and later), or its model if that's unset, or
 an iPhone's own name from WDA. The serial is said only when the phone
-gives no name.
+gives no name. The app goes the same way: *"in Phone"*, not *"in
+com.google.android.dialer"*. A short table names the apps people know
+(`APP_NAMES`: Phone, Messages, Maps, Chrome, Gmail, Settings …), an
+iPhone's nicknames are read backwards, and any other app is named by
+the last part of its package that isn't a maker's
+(`com.Nishant.Singh.DroidTimelapse` is *DroidTimelapse*).
 
 The first live card put the ring on the phone's Home button, which
 showed two things. **THE RING IS A SHARE OF THE PICTURE.** Android's list
@@ -313,7 +318,7 @@ list; a target under the keyboard is shown with the keyboard put away,
 and the yes still taps it.
 
 `tests/test_phone.py`: a phone is named as its person named it, or by
-its model. The app in front is read from Android 8's words
+its model; an app as a person calls it. The app in front is read from Android 8's words
 and Android 10's. A nickname finds an app no package names, and
 only one that is installed; "Chrome" is Chrome, not Chromecast too;
 "Google Maps" and "the phone app" go word by word, and "google stuff"
@@ -331,7 +336,7 @@ words filled in and no list; with no screenshot to be had, the list
 comes back; a held step names the phone, not its address; a yes says "Done: the step was carried out."; the model's
 picture is 720 pixels across.
 
-190 tests before, 216 after.
+190 tests before, 217 after.
 
 ## Not here yet
 

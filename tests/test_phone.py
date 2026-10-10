@@ -439,3 +439,15 @@ def test_a_phone_is_named_as_its_person_named_it_or_by_its_model():
     assert named.name() == "Asha's Pixel"
     unnamed = Shell({"settings get global device_name": "null\n", "getprop": "Nexus 6P\n"})
     assert unnamed.name() == "Nexus 6P"
+
+
+def test_an_app_is_named_as_a_person_calls_it():
+    from sparsh.device import app_name
+    from sparsh.iphone import NICKNAMES as IPHONE
+
+    assert app_name("com.google.android.dialer") == "Phone"
+    assert app_name("com.google.android.apps.maps") == "Maps"
+    assert app_name("com.apple.mobilephone", IPHONE) == "Phone"
+    assert app_name("com.Nishant.Singh.DroidTimelapse") == "DroidTimelapse"  # its package
+    assert app_name("com.example.android.app") == "Example"  # makers' words passed over
+    assert app_name("") == ""

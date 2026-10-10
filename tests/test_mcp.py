@@ -229,7 +229,7 @@ def test_a_tap_by_position_is_held_and_shown_ringed_then_done_on_yes(fake, tmp_p
     hold = text.split('hold "')[1].split('"')[0]
 
     told, shown = answer(tools, "describe_hold", hold=hold)
-    assert "tap by position" in told["text"] and "com.android.settings" in told["text"]
+    assert "tap by position" in told["text"] and "in Settings" in told["text"]
     ringed = base64.b64decode(shown["data"])
     assert picture.size(ringed) == (100, 200) and ringed != a_png()
 
@@ -426,5 +426,5 @@ def test_a_held_step_names_the_phone_not_its_address(tools, fake):
     text, _ = call(tools, "tap", n=2)
     hold = text.split('hold "')[1].split('"')[0]
     told, failed = call(tools, "describe_hold", hold=hold)
-    assert told.startswith('On your phone (Nexus 6P): tap button "Send SMS"')
+    assert told.startswith('On your phone (Nexus 6P): tap button "Send SMS" in Messages --')
     assert "fake" not in told.split(":")[0]  # the serial, not shown

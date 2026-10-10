@@ -121,6 +121,62 @@ NICKNAMES: dict[str, tuple[str, ...]] = {
     "gmail": ("com.google.android.gm",),
 }  # fmt: skip
 
+#: What a person calls an app, for the question they're asked about a
+#: step in it: "tap Call in Phone", not "in com.google.android.dialer".
+#: Android can't say an app's launcher name (above); an app not here is
+#: named from its package (``app_name``).
+APP_NAMES: dict[str, str] = {
+    "com.google.android.dialer": "Phone", "com.android.dialer": "Phone",
+    "com.samsung.android.dialer": "Phone",
+    "com.google.android.apps.messaging": "Messages", "com.android.mms": "Messages",
+    "com.samsung.android.messaging": "Messages",
+    "com.google.android.contacts": "Contacts", "com.android.contacts": "Contacts",
+    "com.samsung.android.app.contacts": "Contacts",
+    "com.google.android.GoogleCamera": "Camera", "com.android.camera2": "Camera",
+    "com.android.camera": "Camera", "com.sec.android.app.camera": "Camera",
+    "com.google.android.deskclock": "Clock", "com.android.deskclock": "Clock",
+    "com.sec.android.app.clockpackage": "Clock",
+    "com.google.android.calendar": "Calendar", "com.android.calendar": "Calendar",
+    "com.samsung.android.calendar": "Calendar",
+    "com.google.android.apps.photos": "Photos", "com.sec.android.gallery3d": "Gallery",
+    "com.android.gallery3d": "Gallery",
+    "com.android.chrome": "Chrome", "com.sec.android.app.sbrowser": "Samsung Internet",
+    "com.android.browser": "Browser",
+    "com.google.android.apps.nbu.files": "Files", "com.android.documentsui": "Files",
+    "com.sec.android.app.myfiles": "My Files",
+    "com.android.vending": "Play Store", "com.google.android.gm": "Gmail",
+    "com.samsung.android.email.provider": "Email",
+    "com.google.android.apps.maps": "Maps", "com.android.settings": "Settings",
+    "com.google.android.youtube": "YouTube", "com.google.android.calculator": "Calculator",
+    "com.google.android.googlequicksearchbox": "Google",
+    "com.google.android.gms": "Google Play services",
+    "com.android.systemui": "the phone's own screens",
+    "com.whatsapp": "WhatsApp", "com.twitter.android": "X",
+    "com.amazon.mShop.android.shopping": "Amazon",
+}  # fmt: skip
+#: Parts of a package that say who made it or what it runs on, not what
+#: it is: passed over when an app is named from its package.
+_MAKERS = {"com", "org", "net", "android", "google", "apps", "app", "sec", "samsung",
+           "mobile", "ios", "apple"}  # fmt: skip
+
+
+def app_name(package: str, nicknames: dict | None = None) -> str:
+    """What a person calls the app ``package`` is: ``APP_NAMES``, an
+    iPhone's nicknames read backwards ("com.apple.mobilephone" -> "Phone"),
+    or the last part of its package that isn't a maker's ("com.Nishant.
+    Singh.DroidTimelapse" -> "DroidTimelapse"). "" for no package."""
+    if not package:
+        return ""
+    if package in APP_NAMES:
+        return APP_NAMES[package]
+    for said, bundle in (nicknames or {}).items():
+        if bundle == package and isinstance(bundle, str):
+            return said.title()
+    parts = [p for p in package.split(".") if p.lower() not in _MAKERS]
+    word = parts[-1] if parts else package
+    return word[:1].upper() + word[1:]
+
+
 #: ADBKeyBoard (github.com/senzhk/ADBKeyBoard), for what `input` can't type.
 KEYBOARD_APP = "com.android.adbkeyboard"
 KEYBOARD = KEYBOARD_APP + "/.AdbIME"
