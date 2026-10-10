@@ -346,7 +346,7 @@ class Tools:
         shot = hold.picture()
         if shot is not None and len(shot) > SHOT_BYTES:
             shot = None
-        return hold.describe(phone.device.serial), shot
+        return hold.describe(phone.device.serial, phone.name()), shot
 
     def _confirm(self, args: dict) -> Screen:
         # A Screen, like every act's: on a screen the list can't read, the

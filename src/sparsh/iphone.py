@@ -307,6 +307,16 @@ class WdaDevice:
     def set_screen_timeout(self, ms: int) -> None:
         raise SparshError("an iPhone's Auto-Lock can't be set from here")
 
+    def name(self) -> str:
+        """The iPhone's own name ("Asha's iPhone"), from WDA's device info;
+        "iPhone" if it doesn't say."""
+        try:
+            info = self._call("GET", "/wda/device/info")
+        except WdaError:
+            return "iPhone"
+        said = info.get("name", "") if isinstance(info, dict) else ""
+        return said.strip() if isinstance(said, str) and said.strip() else "iPhone"
+
     def front_app(self) -> str:
         try:
             info = self._call("GET", "/wda/activeAppInfo")

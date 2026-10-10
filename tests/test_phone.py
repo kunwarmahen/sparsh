@@ -432,3 +432,10 @@ def test_the_app_in_front_is_read_on_old_android_and_new():
     new = Shell({"dumpsys activity": f"  topResumedActivity=ActivityRecord{{45bd0c7 u0 {maps}"})
     old = Shell({"dumpsys activity": f"    mResumedActivity: ActivityRecord{{45bd0c7 u0 {maps}"})
     assert new.front_app() == old.front_app() == "com.google.android.apps.maps"
+
+
+def test_a_phone_is_named_as_its_person_named_it_or_by_its_model():
+    named = Shell({"settings get global device_name": "Asha's Pixel\n"})
+    assert named.name() == "Asha's Pixel"
+    unnamed = Shell({"settings get global device_name": "null\n", "getprop": "Nexus 6P\n"})
+    assert unnamed.name() == "Nexus 6P"

@@ -140,6 +140,7 @@ class Device(Protocol):
     def launch(self, package: str) -> None: ...
     def apps(self) -> list[str]: ...
     def front_app(self) -> str: ...
+    def name(self) -> str: ...
     def awake(self) -> tuple[bool | None, bool | None]: ...
     def keyboard_area(self) -> tuple[int, int, int, int] | None: ...
     def secure(self) -> bool | None: ...
@@ -462,6 +463,17 @@ class AdbDevice:
             return None
         left, top, right, bottom = map(int, found.groups())
         return left, top, right, bottom
+
+    def name(self) -> str:
+        """What the phone is called, for a person reading a question about
+        it: the name its owner gave it in Settings (Android 7.1 and later),
+        or its model. "" if it says neither -- then the serial is used."""
+        for args in (("settings", "get", "global", "device_name"),
+                     ("getprop", "ro.product.model")):  # fmt: skip
+            said = self._shell(*args).strip()
+            if said and said != "null":
+                return said
+        return ""
 
     def front_app(self) -> str:
         """The app in front. Android 10 and later say ``topResumedActivity=``;

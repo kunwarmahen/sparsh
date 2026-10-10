@@ -157,6 +157,14 @@ the number being called, the message being sent. Dvara sends the
 picture to Telegram first and the buttons under it. Yantra's page
 shows it above the words, and its terminal saves it to a file.
 
+**THE PHONE BY ITS NAME.** The cards above start *"On the phone
+192.168.1.161:5555"* or *"84B7N16128001616"*, an address and a serial
+its person had never seen. A card now says *"On your phone (Nexus
+6P)"*: the name its owner gave it in Settings (`settings get global
+device_name`, Android 7.1 and later), or its model if that's unset, or
+an iPhone's own name from WDA. The serial is said only when the phone
+gives no name.
+
 The first live card put the ring on the phone's Home button, which
 showed two things. **THE RING IS A SHARE OF THE PICTURE.** Android's list
 measures the screen without its navigation bar (2392 pixels tall on
@@ -304,7 +312,8 @@ of the saved screens is partly blank.
 list; a target under the keyboard is shown with the keyboard put away,
 and the yes still taps it.
 
-`tests/test_phone.py`: the app in front is read from Android 8's words
+`tests/test_phone.py`: a phone is named as its person named it, or by
+its model. The app in front is read from Android 8's words
 and Android 10's. A nickname finds an app no package names, and
 only one that is installed; "Chrome" is Chrome, not Chromecast too;
 "Google Maps" and "the phone app" go word by word, and "google stuff"
@@ -319,10 +328,10 @@ any screen, and without `--shots` the answer says there is none;
 after the next look without one; on a partly blank screen it's held; a
 held tap is shown as its picture, ringed and made smaller, with the
 words filled in and no list; with no screenshot to be had, the list
-comes back; a yes says "Done: the step was carried out."; the model's
+comes back; a held step names the phone, not its address; a yes says "Done: the step was carried out."; the model's
 picture is 720 pixels across.
 
-190 tests before, 214 after.
+190 tests before, 216 after.
 
 ## Not here yet
 

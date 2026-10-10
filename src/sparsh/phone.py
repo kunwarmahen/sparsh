@@ -140,10 +140,14 @@ class Hold:
     def _secret(self) -> bool:
         return bool(self.target and self.target.password)
 
-    def describe(self, serial: str) -> str:
+    def describe(self, serial: str, name: str = "") -> str:
         """One sentence, and what is filled in on the screen; the numbered
-        list only when there is no picture to show (module docstring)."""
-        said = f"On the phone {serial}: {self.sentence()}."
+        list only when there is no picture to show (module docstring). The
+        phone by its NAME, not its serial: on a real chat the card said
+        "On the phone 192.168.1.161:5555", an address its person had never
+        seen."""
+        where = f"On your phone ({name})" if name else f"On the phone {serial}"
+        said = f"{where}: {self.sentence()}."
         if self.filled:
             said += "\nOn the screen: " + "; ".join(self.filled)
         if self.picture() is None:
@@ -207,9 +211,22 @@ class Phone:
         self._restless: str | None = None
         #: The grant the last step was done under, for the log (log.py).
         self.granted: str | None = None
+        #: What the phone is called (``name``), asked once.
+        self._name: str | None = None
         #: The app whose screen last went to the agent with a picture
         #: (mcp.py): a tap by position is only for a screen it has seen.
         self.pictured: str | None = None
+
+    def name(self) -> str:
+        """What a person calls this phone ("Nexus 6P"), or "" if it doesn't
+        say. Asked of the phone once."""
+        if self._name is None:
+            ask = getattr(self.device, "name", None)
+            try:
+                self._name = ask().strip() if ask else ""
+            except SparshError:
+                self._name = ""
+        return self._name
 
     # -- seeing --------------------------------------------------------
 

@@ -363,7 +363,7 @@ screen with what it would tap ringed**:
 ```
 ╭─ approve mcp__sparsh__confirm()? ────────────────────────────────────────────╮
 │ Do this on the phone?                                                        │
-│ On the phone emulator-5554: tap image "Send SMS" in                          │
+│ On your phone (Nexus 6P): tap image "Send SMS" in                            │
 │ com.google.android.apps.messaging -- held because it says "send".            │
 │ On the screen: field "running late, be there at 7"                           │
 │ (The picture shows the phone's screen; what it would tap is ringed.)         │
@@ -372,8 +372,9 @@ the phone's screen, what it would tap ringed: /tmp/yantra-card-....png
 run it? [y/n/e/s] (n):
 ```
 
-In Telegram (through Dvara) the picture comes first and the buttons
-under it; on Yantra's page it sits above the words. The numbered list
+The phone is named as it is in its own Settings (*About phone → Device
+name*, or its model if that's unset), not by its address. In Telegram
+(through Dvara) the picture comes first and the buttons under it; on Yantra's page it sits above the words. The numbered list
 is the model's, not yours: it's shown only when no screenshot could be
 taken. If the screen has changed by the time you say yes, nothing is
 tapped. A held step waits 10 minutes, then lapses. After a yes, the

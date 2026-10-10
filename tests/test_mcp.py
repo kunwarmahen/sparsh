@@ -417,3 +417,14 @@ def test_the_models_picture_is_made_smaller(fake, tmp_path):
     fake.screenshot = lambda: a_png(1440, 2560)
     _, image = answer(shots(fake, tmp_path), "look")
     assert picture.size(base64.b64decode(image["data"])) == (720, 1280)
+
+
+def test_a_held_step_names_the_phone_not_its_address(tools, fake):
+    fake.current = "send"
+    fake.name = lambda: "Nexus 6P"
+    call(tools, "look")
+    text, _ = call(tools, "tap", n=2)
+    hold = text.split('hold "')[1].split('"')[0]
+    told, failed = call(tools, "describe_hold", hold=hold)
+    assert told.startswith('On your phone (Nexus 6P): tap button "Send SMS"')
+    assert "fake" not in told.split(":")[0]  # the serial, not shown
