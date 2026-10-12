@@ -159,6 +159,7 @@ sparsh state [--json]               in use, locked, or asleep: may a schedule us
 sparsh wake                         turn the screen on (it stays locked if it was)
 sparsh pair ADDRESS CODE            trust this computer over Wi-Fi, once (SETUP.md, B4)
 sparsh connect ADDRESS              reach a paired phone over Wi-Fi
+sparsh tcpip [--port 5555]          the phone on the cable listens over Wi-Fi; prints its address
 sparsh mcp [--shots]                the agent's tools (MCP), held by your rules
 sparsh status [--json]              phones, rules, and how to start the tools
 sparsh wda [WDA.ipa]                when the iPhone's WebDriverAgent signature runs out
@@ -489,7 +490,9 @@ Looking isn't a step, so it isn't logged.
 * ~~The phone over Wi-Fi instead of a cable.~~ `sparsh pair`, `sparsh
   connect`, and `SPARSH_CONNECT` to reconnect by itself (SETUP.md, B4).
   Run on a real Nexus 6P over Wi-Fi, from Sarathi's containers too
-  ([notes/08](notes/08-a-real-phone.md)).
+  ([notes/08](notes/08-a-real-phone.md)). `sparsh tcpip` turns it on
+  from the cable after each restart, on any Android
+  ([notes/11](notes/11-the-phone-that-stopped-listening.md)).
 * ~~Typing beyond plain ASCII.~~ Built through ADBKeyBoard (SETUP.md,
   Part G); run on the emulator and a real Nexus 6P.
 * ~~A phone for runs nobody is watching (a schedule).~~ Built through
@@ -520,7 +523,9 @@ src/sparsh/
 │               (notes/01); what it leaves out counted (notes/10)
 ├── device.py   the phone itself, through adb: dump, screenshot, tap,
 │               swipe, type, keys, open an app; over Wi-Fi too
-│               (SPARSH_CONNECT), reconnected once when it went stale;
+│               (SPARSH_CONNECT), reconnected once when it went stale,
+│               listed offline with why when it doesn't answer; `tcpip`,
+│               the phone on the cable told to listen (notes/11);
 │               where the keyboard covers; the panels at the top. Nothing
 │               installed on it, unless you add ADBKeyBoard for letters
 │               beyond ASCII (notes/04, notes/08)
@@ -570,8 +575,10 @@ time), [notes/07](notes/07-a-phone-for-a-schedule.md) (a phone for a
 schedule: grants, and whether it's free),
 [notes/08](notes/08-a-real-phone.md) (what a real phone found),
 [notes/09](notes/09-the-screen-kept-on.md) (the screen kept on while an
-agent works) and [notes/10](notes/10-where-the-list-falls-short.md)
-(where the list falls short, and what you say yes to).
+agent works), [notes/10](notes/10-where-the-list-falls-short.md)
+(where the list falls short, and what you say yes to) and
+[notes/11](notes/11-the-phone-that-stopped-listening.md) (a Wi-Fi phone
+that restarted, and the one command that brings it back).
 
 ## Licence
 

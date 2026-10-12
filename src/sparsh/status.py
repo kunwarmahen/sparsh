@@ -7,9 +7,13 @@ refuses rather than guesses (Yantra's sparsh_link does). Fields:
     version  this program's version
     state    the state folder (the last screen of each phone)
     rules    the person's rules file, whether it exists, and what it holds
-    phones   [{serial, state, model}] -- what adb sees now, and the
+    phones   [{serial, state, model, note}] -- what adb sees now, and the
              iPhone at ``$SPARSH_WDA`` (its serial is that address);
-             adb's are missing when adb itself is, with ``adb`` saying why
+             adb's are missing when adb itself is, with ``adb`` saying why.
+             A ``$SPARSH_CONNECT`` address that doesn't answer is listed
+             ``offline``. ``note`` is why one isn't ready, as a person
+             would fix it ("" when it is); a harness that knows only the
+             first three fields loses nothing
     mcp      {command, args}: how to start the agent's tools
     shots    the flag that adds a screenshot to a screen that can't be
              read as a list (mcp.py); a harness adds it to ``mcp.args``
@@ -46,11 +50,13 @@ def sparsh_command() -> str:
 
 def report(state: Path) -> dict:
     try:
-        phones = [{"serial": p.serial, "state": p.state, "model": p.model} for p in attached()]
+        phones = [{"serial": p.serial, "state": p.state, "model": p.model, "note": p.note()}
+                  for p in attached()]
         adb = "ok"
     except SparshError as e:
         phones, adb = [], str(e)
-    phones += [{"serial": p.serial, "state": p.state, "model": p.model} for p in iphones()]
+    phones += [{"serial": p.serial, "state": p.state, "model": p.model, "note": p.note()}
+               for p in iphones()]
     rules, path = load(state)
     return {
         "format": FORMAT,

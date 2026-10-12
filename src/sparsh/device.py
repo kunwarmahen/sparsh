@@ -21,7 +21,19 @@ OVER WI-FI. A phone with wireless debugging on is reached by address
 (``adb pair`` once, then ``adb connect``). ``$SPARSH_CONNECT`` names
 such phones, and ``attached`` connects to any that adb has forgotten
 before listing: a restarted computer, or a container started fresh,
-finds the phone again by itself, as a cable would.
+finds the phone again by itself, as a cable would. One that still
+doesn't answer is listed as offline, with why, rather than left out: a
+list that just went empty read as "no phone" to a person whose phone was
+on the desk, restarted, and no longer listening.
+
+FROM THE CABLE (``tcpip``). Android 10 and older have no Wireless
+debugging page; any Android will listen on a port when told to over
+USB (``adb tcpip 5555``), trusting the same key the cable does, so
+nothing is paired. A restart of the phone turns that off again, so it
+is one command to repeat, not a setting: ``tcpip`` reads the phone's
+Wi-Fi address while the cable still answers, turns the listening on,
+and connects -- the address it prints is the one to give
+``$SPARSH_CONNECT``.
 
 The methods take coordinates; numbers from the screen list are turned
 into coordinates one level up (phone.py), so a backend never has to
@@ -213,16 +225,23 @@ class Attached:
     state: str  # device, unauthorized, offline
     model: str = ""
 
+    def note(self) -> str:
+        """Why it isn't ready, as a person would fix it; empty when it is."""
+        if self.state == "unauthorized":
+            return "unlock the phone and allow USB debugging"
+        if self.state != "offline":
+            return ""
+        if is_wda(self.serial):
+            return "not answering -- start WebDriverAgent on it"
+        if ":" in self.serial:
+            return ("not answering over Wi-Fi -- a phone that restarted stops listening: "
+                    "plug it in and run `sparsh tcpip` (its address may have changed too), "
+                    "or turn Wireless debugging back on")
+        return "not answering -- unplug it and plug it back in"
+
     def line(self) -> str:
-        note = {
-            "unauthorized": "  (unlock the phone and allow USB debugging)",
-            "offline": (
-                "  (not answering -- start WebDriverAgent on it)"
-                if is_wda(self.serial)
-                else "  (not answering -- unplug it and plug it back in)"
-            ),
-        }.get(self.state, "")
-        return f"{self.serial}  {self.model or '?'}  {self.state}{note}"
+        note = self.note()
+        return f"{self.serial}  {self.model or '?'}  {self.state}" + (f"  ({note})" if note else "")
 
 
 def adb_path() -> str:
@@ -258,6 +277,9 @@ def attached(adb: str | None = None) -> list[Attached]:
             continue
         model = next((p.partition(":")[2] for p in parts if p.startswith("model:")), "")
         found.append(Attached(parts[0], parts[1], model))
+    listed = {p.serial for p in found}
+    # Named and still not there: said, not silently dropped (module docstring).
+    found += [Attached(a, "offline") for a in over_wifi() if a not in listed]
     return found
 
 
@@ -282,6 +304,68 @@ def connect(address: str, adb: str | None = None) -> str:
     except OSError as e:
         raise SparshError(f"could not run adb ({e})") from e
     return (done.stdout + done.stderr).decode(errors="replace").strip()
+
+
+#: The port a phone listens on after ``tcpip``, unless told another.
+TCPIP_PORT = 5555
+
+
+def wifi_address(serial: str, adb: str | None = None) -> str | None:
+    """The phone's own address on its Wi-Fi, asked over the cable; None
+    when it isn't on Wi-Fi."""
+    adb = adb or adb_path()
+    out = _run([adb, "-s", serial, "shell", "ip", "-4", "-o", "addr", "show", "wlan0"],
+               timeout=10).stdout.decode(errors="replace")
+    found = re.search(r"inet (\d+\.\d+\.\d+\.\d+)/", out)
+    if found:
+        return found.group(1)
+    # Phones whose Wi-Fi isn't called wlan0: the address their routes leave from.
+    out = _run([adb, "-s", serial, "shell", "ip", "route"], timeout=10).stdout.decode(
+        errors="replace")
+    found = re.search(r"dev wlan\S* .*?src (\d+\.\d+\.\d+\.\d+)", out) or \
+        re.search(r"src (\d+\.\d+\.\d+\.\d+)", out)
+    return found.group(1) if found else None
+
+
+def tcpip(serial: str | None = None, port: int = TCPIP_PORT, adb: str | None = None,
+          wait: float = 1.0) -> dict:
+    """Turn on listening over Wi-Fi for the phone on the cable, and connect
+    to it (module docstring). ``{"serial", "address", "connected", "said"}``;
+    a sentence as a SparshError when there is no phone on a cable to tell."""
+    if not 1 <= port <= 65535:
+        raise SparshError(f"{port} is not a port")
+    adb = adb or adb_path()
+    cabled = [p for p in attached(adb)
+              if ":" not in p.serial and not p.serial.startswith("emulator-")
+              and not is_wda(p.serial)]
+    if serial:
+        cabled = [p for p in cabled if p.serial == serial]
+        if not cabled:
+            raise SparshError(f"no phone called {serial} is on a USB cable here "
+                              "(`sparsh devices` lists them)")
+    if not cabled:
+        raise SparshError("no phone is on a USB cable here. Plug it in with USB debugging "
+                          "on; Wi-Fi listening can only be turned on over the cable")
+    if len(cabled) > 1:
+        names = ", ".join(p.serial for p in cabled)
+        raise SparshError(f"more than one phone is on a cable ({names}); choose with --serial")
+    phone = cabled[0]
+    if phone.state != "device":
+        raise SparshError(f"the phone is on the cable but not ready: {phone.line()}")
+    ip = wifi_address(phone.serial, adb)
+    if ip is None:
+        raise SparshError("the phone has no Wi-Fi address: join it to the same Wi-Fi as "
+                          "this computer, then run this again")
+    _run([adb, "-s", phone.serial, "tcpip", str(port)], timeout=15)
+    address = f"{ip}:{port}"
+    said = ""
+    for _ in range(6):                  # the phone's adb starts again: a second or two
+        time.sleep(wait)
+        said = connect(address, adb)
+        if said.startswith(("connected to", "already connected")):
+            return {"serial": phone.serial, "address": address, "connected": True,
+                    "said": said}
+    return {"serial": phone.serial, "address": address, "connected": False, "said": said}
 
 
 def pair(address: str, code: str, adb: str | None = None) -> str:
@@ -328,6 +412,10 @@ def pick(serial: str | None = None, adb: str | None = None) -> Device:
                 "no phone is attached. Plug one in with USB debugging on, "
                 "or start the emulator, then `sparsh devices`."
             )
+        ready = [p for p in phones if p.state == "device"]
+        if len(phones) > 1 and len(ready) == 1:
+            # the same phone on its cable, its Wi-Fi address not answering
+            phones = ready
         if len(phones) > 1:
             names = ", ".join(p.serial for p in phones)
             raise SparshError(f"more than one phone is attached ({names}); choose with --serial")

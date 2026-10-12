@@ -3,6 +3,7 @@
     sparsh devices                      phones adb can see, and $SPARSH_WDA
     sparsh pair ADDRESS CODE            trust this computer over Wi-Fi, once
     sparsh connect ADDRESS              reach a paired phone over Wi-Fi
+    sparsh tcpip [--port 5555]          the phone on the cable listens over Wi-Fi
     sparsh look [--shot FILE] [--json]  the screen, one numbered line per thing
     sparsh look --peek                  the same, leaving the last look as it was
     sparsh tap 7 [--long]               tap 7 from the last look
@@ -28,6 +29,9 @@ Which phone: the only one attached, or ``--serial`` / ``$ANDROID_SERIAL``
 WebDriverAgent's address: ``--serial http://192.168.1.40:8100``, or
 ``$SPARSH_WDA``. A phone over Wi-Fi is named by its address, and
 ``$SPARSH_CONNECT`` reconnects to it whenever phones are looked for.
+A phone with no Wireless debugging page (Android 10 and older), or one
+that just restarted, is told to listen over the cable: ``sparsh tcpip``
+prints the address to use.
 The last screen is kept in
 ``~/.sparsh`` (``--state`` or ``$SPARSH_STATE``), next to the rules
 an agent's steps are held by (``rules.toml``, rules.py). These commands
@@ -45,7 +49,7 @@ from sparsh import SparshError, __version__
 from sparsh import log, mcp
 from sparsh.awake import Awake
 from sparsh.awake import mode as awake_mode
-from sparsh.device import KEYS, attached, connect, iphones, pair, pick
+from sparsh.device import KEYS, TCPIP_PORT, attached, connect, iphones, pair, pick, tcpip
 from sparsh.iphone import remember_signature, signature, signature_note
 from sparsh.phone import DIRECTIONS, Phone, ScreenChanged, state_root
 from sparsh.rules import load
@@ -101,6 +105,14 @@ def _parser() -> argparse.ArgumentParser:
     )
     s.add_argument("address")
     s.set_defaults(run=_connect)
+
+    s = sub.add_parser(
+        "tcpip",
+        parents=[common],
+        help="the phone on the USB cable listens over Wi-Fi (again after each restart)",
+    )
+    s.add_argument("--port", type=int, default=TCPIP_PORT, help=f"default {TCPIP_PORT}")
+    s.set_defaults(run=_tcpip)
 
     s = sub.add_parser("look", parents=[common], help="the screen as a numbered list")
     s.add_argument("--shot", metavar="FILE", help="also save a screenshot (PNG)")
@@ -215,6 +227,25 @@ def _connect(args) -> int:
     said = connect(args.address)
     print(said)
     return 0 if "connected" in said and "cannot" not in said and "failed" not in said else 1
+
+
+def _tcpip(args) -> int:
+    done = tcpip(args.serial, args.port)
+    if args.json:
+        print(json.dumps(done))
+        return 0 if done["connected"] else 1
+    if not done["connected"]:
+        print(f"{done['serial']} was told to listen at {done['address']}, but didn't "
+              f"answer there: {done['said']}")
+        print("Is this computer on the same Wi-Fi as the phone? Try "
+              f"`sparsh connect {done['address']}` in a moment.")
+        return 1
+    print(f"{done['serial']} listens over Wi-Fi at {done['address']}, and is connected.")
+    print("The cable can come out. A restart of the phone turns this off: plug it in "
+          "and run `sparsh tcpip` again.")
+    print(f"Elsewhere (a container, another computer): SPARSH_CONNECT={done['address']}, "
+          f"or `sarathi phone {done['address']}`.")
+    return 0
 
 
 def _look(args) -> int:

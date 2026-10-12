@@ -174,19 +174,36 @@ or the phone restarts; check the Wireless debugging page if it stops
 answering.
 
 **Android 10 and older** have no Wireless debugging page. Plug the
-phone in once and tell its `adb` to listen on the network; its Wi-Fi
-address is on *Settings → About phone → Status*, or:
+phone in with the cable and let Sparsh tell it to listen on the
+network. It reads the phone's Wi-Fi address while the cable still
+answers, so you never look it up:
 
 ```
-adb shell ip -4 addr show wlan0                # inet 192.168.1.161/24 ...
-adb tcpip 5555                                 # restarting in TCP mode port: 5555
-uv run sparsh connect 192.168.1.161:5555
+uv run sparsh tcpip
+# 84B7N16128001616 listens over Wi-Fi at 192.168.1.160:5555, and is connected.
+# The cable can come out. A restart of the phone turns this off: plug it in and run `sparsh tcpip` again.
+# Elsewhere (a container, another computer): SPARSH_CONNECT=192.168.1.160:5555, or `sarathi phone 192.168.1.160:5555`.
 ```
 
-The key you allowed over the cable is the one that counts, so nothing
-is paired. It lasts until the phone restarts; then plug in and run
-`adb tcpip 5555` again. A Nexus 6P on Android 8.1 was driven this way,
-from this computer and from inside Sarathi's containers.
+This works on newer phones too, with no pairing, so it's the quickest
+way whenever the phone is on the cable anyway. The key you allowed over
+the cable is the one that counts, so nothing is paired. It lasts until
+the phone restarts; then plug in and run `sparsh tcpip` again — its
+address may have changed too, which it prints. A Nexus 6P on Android
+8.1 was driven this way, from this computer and from inside Sarathi's
+containers. (By hand it is `adb shell ip -4 addr show wlan0` for the
+address, then `adb tcpip 5555` and `adb connect ADDRESS:5555`.)
+
+**When a Wi-Fi phone stops answering.** An address in
+`SPARSH_CONNECT` that doesn't answer is still listed, as offline, with
+what to do:
+
+```
+uv run sparsh devices
+# 192.168.1.161:5555  ?  offline  (not answering over Wi-Fi -- a phone that restarted stops listening: plug it in and run `sparsh tcpip` (its address may have changed too), or turn Wireless debugging back on)
+```
+
+Yantra's phone panel shows the same words under the phone.
 
 Now go to [Part D](#part-d--check-it-works).
 
@@ -618,8 +635,8 @@ sparsh devices                                 # 192.168.1.23:41234  Pixel_7  de
 ```
 
 and the two Yantra lines from T2. On Android 10 or older there is no
-Wireless debugging page: on the cable, `adb tcpip 5555`, then
-`sparsh connect <its Wi-Fi address>:5555` (B4). If a locked phone's
+Wireless debugging page: on the cable, `sparsh tcpip`, and use the
+address it prints (B4). If a locked phone's
 dozing Wi-Fi answers `error: closed`, Sparsh connects again once by
 itself.
 

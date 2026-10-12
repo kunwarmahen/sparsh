@@ -129,7 +129,10 @@ and let the run go, and nobody was asked.
 Android 10 and older have no *Wireless debugging* page to pair from.
 Plugged in once, `adb tcpip 5555` makes the phone's adb listen on its
 Wi-Fi address, and `sparsh connect 192.168.1.161:5555` reaches it with
-the key already allowed over the cable (SETUP.md, B4). From there it is
+the key already allowed over the cable (SETUP.md, B4). A restart of the
+phone undoes it, and the address can move; `sparsh tcpip` now does all
+three steps from the cable and prints the address
+([note 11](11-the-phone-that-stopped-listening.md)). From there it is
 the same road: `sarathi phone 192.168.1.161:5555` handed it to the
 containers, and from inside Yantra's container `qwen3.8-64k:latest`
 answered *"Battery — 98% - charging"* with no cable in the picture.
