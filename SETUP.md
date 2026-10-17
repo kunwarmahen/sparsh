@@ -13,7 +13,7 @@ differently, so this guide has a part for each.
 | How long, the first time | 20 minutes (most of it downloading) | 10 minutes | about an hour |
 | Afterwards | start the emulator and go | plug in and go | the Mac's signature lasts 7 days with a free Apple ID; then a 5-minute rebuild |
 | Good for | trying Sparsh with nothing at risk | real apps you already use | the same, on an iPhone |
-| Status | tested | tested on a Nexus 6P (Android 8.1), cable and Wi-Fi ([notes/08](notes/08-a-real-phone.md)) | **written and tested against a stand-in, not yet run on a real iPhone** |
+| Status | tested | tested on a Nexus 6P (Android 8.1), cable and Wi-Fi ([notes/08](notes/08-a-real-phone.md)) | tested on an iPhone 17 (iOS 26), cable, through Linux ([notes/12](notes/12-a-real-iphone.md)) |
 
 If you've never used Sparsh, start with the emulator. To check a phone
 works with an agent in one go, [Part T](#part-t--test-it-end-to-end-one-recipe-per-phone)
@@ -211,10 +211,10 @@ Now go to [Part D](#part-d--check-it-works).
 
 ## Part C · An iPhone
 
-> **Not yet run on a real iPhone.** Everything here is written and
-> tested against a stand-in, but nobody has gone through it end to end
-> on a real Mac and iPhone yet. If a step fails, the message it prints
-> is the thing to report.
+> **Run end to end** on an iPhone 17 (iOS 26) with a free Apple ID,
+> the Mac over `ssh` ([notes/12](notes/12-a-real-iphone.md)). The
+> walls that run hit are in the C4 table. If a step fails, the message
+> it prints is the thing to report.
 
 ### Why an iPhone needs a Mac
 
@@ -399,6 +399,17 @@ with the PREFIX that C4 printed. The script:
 **The first time only**, the iPhone refuses to open an app from an
 unknown developer. On the iPhone: **Settings → General → VPN & Device
 Management →** your Apple ID → **Trust**. Then run the script again.
+Until you do, the script ends with *"could not get pid from response"*:
+the app is installed but the phone won't start it.
+
+If `ios list` (or the script) says *"dial unix /var/run/usbmuxd: no such
+file"*, Linux doesn't see the phone at all: `lsusb | grep -i apple` is
+empty. Use a cable that carries data, not only charge, and answer
+**Trust** on the phone; usbmuxd starts by itself when it sees an iPhone.
+
+Keep the phone unlocked while an agent works. On a work phone Auto-Lock
+may not offer *Never*; **5 Minutes** is enough, and a locked phone is
+said as locked, not misread.
 
 ### C7 · Check Sparsh sees it
 
@@ -670,8 +681,9 @@ echo n | uv run yantra --provider ollama --model gemma4:26b \
   --prompt "Text <a number of yours> from my iPhone: hello from the agent"
 ```
 
-The first line also says `iPhone`. (Not yet run on a real iPhone: tell
-us what you see.)
+The first line also says `iPhone`. (Sparsh has read and tapped a real
+iPhone, [notes/12](notes/12-a-real-iphone.md); an agent's task through
+Yantra on one is not yet run: tell us what you see.)
 
 ### Without a link or a flag: by hand
 

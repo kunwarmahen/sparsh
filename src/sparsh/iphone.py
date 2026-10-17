@@ -31,7 +31,12 @@ whose value is "1" is a checked switch, a SecureTextField is a password
 field, and a row that has its own words doesn't repeat them from
 inside -- so the list, the check before every tap and the rules all work
 the same on both. Coordinates are the iPhone's points, not pixels, and
-the taps are sent in points too, so they agree.
+the taps are sent in points too, so they agree. A real iPhone on iOS 26
+added the rest (notes/12): a widget is one line, since what it holds is
+placed in its own coordinates; scroll bars get none; and where iOS lists
+one thing as several (a row's frame and its button, a switch and its
+knob, a row and the parts VoiceOver reads with it, two identical
+buttons) :func:`_mark_stand_ins` keeps one.
 
 WHAT AN IPHONE HAS NOT GOT. It has no Back key: ``back`` is the swipe
 from the left edge that most apps take to mean back. ``end`` does
@@ -274,9 +279,13 @@ class WdaDevice:
         return int(size.get("width", 390)), int(size.get("height", 844))
 
     def _back(self) -> None:
-        # The swipe in from the left edge most apps take as back.
+        # The swipe in from the left edge most apps take as back. No pause
+        # before it moves: a finger that rests first is a press and drag,
+        # and iOS 26 doesn't take that as back.
         width, height = self.touch_size()
-        self.swipe(2, height // 2, width * 2 // 3, height // 2, 250)
+        self._finger(2, height // 2, [
+            {"type": "pointerMove", "duration": 250, "x": width * 2 // 3, "y": height // 2},
+        ])  # fmt: skip
 
     def launch(self, package: str) -> None:
         try:
@@ -360,31 +369,46 @@ def as_android(source: str, bundle: str = "") -> str:
         f'resource-id="" package={quoteattr(bundle)} bounds={quoteattr(_bounds(root))}>'
     )
     guessed = _focus_guess(root)
+    _mark_stand_ins(root)
     for child in root:
-        _node(child, bundle, out, guessed, quiet=False)
+        _node(child, bundle, out, guessed, quiet=False, above=("", ""))
     out.append("</node></hierarchy>")
     return "".join(out)
 
 
 def _node(
-    el: ET.Element, bundle: str, out: list[str], guessed: ET.Element | None, quiet: bool
+    el: ET.Element,
+    bundle: str,
+    out: list[str],
+    guessed: ET.Element | None,
+    quiet: bool,
+    above: tuple[str, str],
 ) -> None:
     """One node and what's inside. ``quiet``: inside something tappable
-    that already has its words, so plain text here would say them twice."""
+    that already has its words, so plain text here would say them twice.
+    ``above``: the words the node holding this one already said."""
     kind = _type(el)
-    if kind in _SKIP:
+    if kind in _SKIP or el.get(_TWIN) is not None:
+        return
+    label = (el.get("label") or "").strip()
+    value = (el.get("value") or "").strip()
+    # A SCROLL BAR IS NOT A THING TO TAP. iOS lists each scroll indicator
+    # as an adjustable box named "Vertical scroll bar, 4 pages", sometimes
+    # twice; it is a picture of where the list is, nothing to act on. The
+    # name is matched in English, the only words it has.
+    if "Adjustable" in (el.get("traits") or "") and "scroll bar" in label.lower():
         return
     if el.get("visible", "true") != "true":
         # Off screen (a row scrolled away) -- but something inside may not be.
         for child in el:
-            _node(child, bundle, out, guessed, quiet)
+            _node(child, bundle, out, guessed, quiet, above)
         return
-    label = (el.get("label") or "").strip()
-    value = (el.get("value") or "").strip()
     name = (el.get("name") or "").strip()
     field = kind in _FIELDS
     switch = kind in ("Switch", "Toggle", "CheckBox", "RadioButton")
-    tappable = kind in _TAPPABLE
+    tappable = kind in _TAPPABLE and el.get(_ASIDE) is None
+    if switch and el.get(_ASIDE) is not None:
+        switch, label, value = False, "", ""
     # A ROW WITH A SWITCH IS THE SWITCH. On Android tapping the row flips
     # it; on an iPhone only the switch itself does, so the row steps
     # aside and the switch takes the line, under the row's words.
@@ -400,8 +424,10 @@ def _node(
         desc = value  # a row's detail: "Wi-Fi (HomeNet)"
     if not text and not desc and kind == "StaticText":
         text = value
-    if quiet and kind in ("StaticText", "Image"):
+    if quiet and (kind in ("StaticText", "Image") or el.get(_ASIDE) is not None):
         text = desc = ""
+    if (text or desc) and (text, desc) == above and not (tappable or field or switch):
+        text = desc = ""  # the page dots inside a box that already said "Page 4 of 4"
     focused = el.get("focused") == "true" or el.get("hasFocus") == "true" or el is guessed
     attrs = {
         "class": _AS.get(kind, "android.view.View"),
@@ -419,10 +445,85 @@ def _node(
         "bounds": _bounds(el),
     }
     out.append("<node " + " ".join(f"{k}={quoteattr(v)}" for k, v in attrs.items()) + ">")
-    quiet = quiet or (tappable and bool(text or desc))
-    for child in el:
-        _node(child, bundle, out, guessed, quiet)
+    # A WIDGET IS ONE THING. What a home-screen widget holds is placed in
+    # the widget's own coordinates, not the screen's: a button inside the
+    # Calendar widget at (193, 11) is nowhere near (193, 11) on the screen,
+    # and tapping there would tap something else. So a widget is one line,
+    # which opens its app, and nothing inside it gets one.
+    if not (kind == "Icon" and value.startswith("Widget")):
+        quiet = quiet or (tappable and bool(text or desc))
+        for child in el:
+            _node(child, bundle, out, guessed, quiet, (text, desc) if text or desc else above)
     out.append("</node>")
+
+
+#: Set (by :func:`_mark_stand_ins`) on a node something else stands in for,
+#: and on the second of two identical siblings, which is left out whole.
+_ASIDE = "sparsh-aside"
+_TWIN = "sparsh-twin"
+
+
+def _mark_stand_ins(root: ET.Element) -> None:
+    """Mark the nodes that would be a second line for one thing.
+
+    A ROW THAT IS ONLY A FRAME STEPS ASIDE. On iOS 26 a Settings row is a
+    Cell with no words of its own, holding a Button as big as itself that
+    has them ("Wi-Fi, HomeNet"). Both are tappable; listed as they come,
+    every row would be an unnamed item and then a button. The Cell is only
+    the frame, so the Button takes the line. A Cell with its own words, or
+    one whose tappable insides are smaller (a row with an info button),
+    keeps its line.
+
+    A SWITCH INSIDE A SWITCH IS ITS KNOB. The row-sized Switch named
+    "Airplane Mode" holds the small unnamed one that slides. One switch,
+    one line -- the knob's, under the row's name, because on an iPhone
+    the knob is what a tap flips, and the middle of the row may not.
+
+    WHAT VOICEOVER HEARS AS ONE IS ONE. A row in General is a Cell named
+    "About", marked accessible, holding a Button also named "About" and a
+    greyed-out "chevron" arrow, both marked not accessible: VoiceOver reads
+    the row as one thing, and so does this. Tappable things inside an
+    accessible tappable one are its parts, and the row keeps the line.
+
+    TWINS ARE ONE. iOS lists the search field's microphone as two Buttons
+    side by side, same name, same place; the second is left out."""
+    for el in root.iter():
+        seen = set()
+        for c in el:
+            twin = (c.get("type"), c.get("label"), c.get("value"),
+                    c.get("x"), c.get("y"), c.get("width"), c.get("height"))  # fmt: skip
+            if twin in seen and (c.get("label") or c.get("value")):
+                c.set(_TWIN, "")
+            seen.add(twin)
+        kind = _type(el)
+        if kind == "Cell" and not (el.get("label") or "").strip():
+            inner = [c for c in el.iter() if c is not el and _type(c) in _TAPPABLE]
+            if len(inner) == 1 and _area(inner[0]) >= 0.8 * _area(el) > 0:
+                el.set(_ASIDE, "")
+        elif (
+            kind in _TAPPABLE
+            and kind not in ("Switch", "Toggle")
+            and el.get("accessible") == "true"
+            and el.get(_ASIDE) is None
+        ):
+            for c in el.iter():
+                if c is not el and _type(c) in _TAPPABLE and c.get("accessible") != "true":
+                    c.set(_ASIDE, "")
+        elif kind in ("Switch", "Toggle") and el.get(_ASIDE) is None:
+            knobs = [c for c in el.iter() if c is not el and _type(c) in ("Switch", "Toggle")]
+            if knobs:
+                el.set(_ASIDE, "")
+                if not (knobs[0].get("label") or "").strip():
+                    knobs[0].set("label", el.get("label") or "")
+                for extra in knobs[1:]:
+                    extra.set(_ASIDE, "")
+
+
+def _area(el: ET.Element) -> float:
+    try:
+        return float(el.get("width") or 0) * float(el.get("height") or 0)
+    except ValueError:
+        return 0.0
 
 
 def _focus_guess(root: ET.Element) -> ET.Element | None:

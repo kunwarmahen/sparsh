@@ -9,9 +9,12 @@ the check that a number still means what it meant. So the screens go
 through the same reader and the same Phone, and the HTTP calls are
 checked as a stand-in WebDriverAgent received them.
 
-The screens in ``screens/ios`` are written by hand in the shape WDA's
-``/source`` prints (XCUIElementType... nodes with label, value, name
-and x/y/width/height), not captured from a phone.
+The screens in ``screens/ios`` are in the shape WDA's ``/source``
+prints (XCUIElementType... nodes with label, value, name and
+x/y/width/height). ``settings`` and ``login`` are written by hand;
+``home`` is a real iPhone's home screen on iOS 26, its personal words
+(calendar entries, sleep, a street, amounts) replaced and its hidden
+home-screen pages taken out.
 """
 
 import base64
@@ -173,6 +176,91 @@ def test_a_switched_on_switch_reads_on():
     assert '4 switch "Airplane Mode" [tap, on]' in read(as_android(on)).text()
 
 
+def test_a_real_home_screen_is_its_icons_and_widgets_one_line_each():
+    screen = read(as_android(ios("home"), "com.apple.springboard"))
+    assert screen.text().splitlines() == [
+        "App: com.apple.springboard",
+        '1 item "Google Calendar (Widget, Stack)" [tap]',
+        '2 item "Coinbase (Widget)" [tap]',
+        '3 item "Sleep (Widget)" [tap]',
+        '4 item "Home MP3 Hub - YouTube Downloader" [tap]',
+        '5 item "ntfy" [tap]',
+        '6 item "Find My (Widget)" [tap]',
+        '7 item "Amtrak" [tap]',
+        '8 item "WebDriverAgentRunner-Runner" [tap]',
+        '9 text "Page 4 of 4"',
+        '10 text "Dock"',
+        '11 item "Phone" [tap]',
+        '12 item "Messages" [tap]',
+        '13 item "Brave" [tap]',
+        '14 item "Settings" [tap]',
+        '15 text "15:09"',
+        '16 image "Grinning face"',
+        '17 text "Cellular (4 of 4 bars, signal strength)"',
+        '18 text "SSID, 3 of 3 Wi-Fi bars"',
+        '19 text "100% battery power (Charging)"',
+    ]
+
+
+def test_nothing_inside_a_widget_gets_a_line_because_its_places_are_the_widgets_own():
+    # The Calendar widget's event buttons sit at y=11..63 in the widget's
+    # own coordinates: as screen places they would be the status bar.
+    screen = read(as_android(ios("home"), "com.apple.springboard"))
+    assert not any("Entry" in e.label or "October" in e.label for e in screen.elements)
+    assert not any(e.kind == "list" for e in screen.elements)
+
+
+def test_ios_26_settings_is_one_line_a_row_not_a_frame_and_a_button():
+    screen = read(as_android(ios("settings26"), "com.apple.Preferences"))
+    assert screen.text().splitlines() == [
+        "App: com.apple.Preferences",
+        '1 text "Settings"',
+        '2 button "Asha Rao, Apple Account, iCloud, and more" [tap]',
+        '3 button "Family" [tap]',
+        '4 switch "Airplane Mode" [tap, off]',
+        '5 button "Wi-Fi, HomeNet" [tap]',
+        '6 button "Bluetooth, On" [tap]',
+        '7 button "Cellular" [tap]',
+        '8 button "Personal Hotspot, Off" [tap]',
+        '9 button "Battery" [tap]',
+        '10 button "VPN, Not Connected" [tap]',
+        '11 button "General" [tap]',
+        '12 button "Accessibility" [tap]',
+        '13 field "Search" [type]',
+        '14 button "Dictate" [tap]',
+    ]
+
+
+def test_an_ios_26_switch_is_tapped_on_its_knob_not_the_middle_of_its_row():
+    screen = read(as_android(ios("settings26")))
+    [switch] = [e for e in screen.elements if e.kind == "switch"]
+    assert switch.label == "Airplane Mode"
+    assert switch.bounds == (309, 366, 372, 395)  # the knob, at the row's right end
+
+
+def test_a_row_voiceover_reads_as_one_is_one_line_not_row_button_and_arrow():
+    lines = read(as_android(ios("general26"))).text().splitlines()
+    assert lines[5:9] == [
+        '5 item "About" [tap]',
+        '6 item "Software Update" [tap]',
+        '7 item "iPhone Storage" [tap]',
+        '8 item "AppleCare & Warranty" [tap]',
+    ]
+    assert not any("chevron" in line for line in lines)
+
+
+def test_a_scroll_bar_gets_no_line_even_when_it_says_it_is_visible():
+    bar = ios("settings").replace(
+        "</XCUIElementTypeTable>",
+        '<XCUIElementTypeOther type="XCUIElementTypeOther" value="0%" '
+        'label="Vertical scroll bar, 4 pages" enabled="true" visible="true" '
+        'x="360" y="100" width="30" height="600" traits="Adjustable"/>'
+        "</XCUIElementTypeTable>",
+    )
+    assert bar != ios("settings")
+    assert "scroll bar" not in read(as_android(bar)).text()
+
+
 # -- doing --------------------------------------------------------------
 
 
@@ -206,6 +294,9 @@ def test_back_is_the_swipe_in_from_the_left_edge(iphone, wda):
     ((path, body),) = wda.posts()
     steps = body["actions"][0]["actions"]
     assert steps[0]["x"] == 2 and steps[-2]["x"] == 260
+    # No resting before the move: iOS 26 takes a finger that rests first
+    # as a press and drag, and doesn't go back (seen on a real iPhone 17).
+    assert not any(s["type"] == "pause" for s in steps)
 
 
 def test_home_needs_no_session(iphone, wda):

@@ -21,3 +21,7 @@ PLAN-*.md
 
 # Editor / assistant local config
 .claude/
+
+# What an iPhone run leaves beside the code
+WDA.ipa
+selfIdentity.plist

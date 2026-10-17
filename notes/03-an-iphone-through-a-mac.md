@@ -130,21 +130,21 @@ where each tap lands, that a moved screen means nothing is tapped,
 that a lapsed WDA session is opened again once, and that keys an
 iPhone lacks are refused before anything is sent.
 
-**None of it has run on a real iPhone yet.** The screens in
-`tests/screens/ios` are written by hand in WDA's shape, not captured
-from a phone. Neither script has run on a Mac or with go-ios. The first
-real run is where this note gets its receipt, and probably a
-correction or two: how a real Cell labels itself, whether `focused`
-arrives, and the go-ios commands on a current iOS.
+It has since run on a real iPhone 17 on iOS 26, both scripts end to
+end, and it brought the corrections this paragraph expected: how a
+real Cell labels itself (a frame around a Button), widgets, scroll
+bars, and a back swipe that must not rest first
+([note 12](12-a-real-iphone.md)).
 
 ## What is not here yet
 
-* A real iPhone: a captured Settings screen, the scripts run end to
-  end, an agent's task done on it.
+* ~~A real iPhone: a captured Settings screen, the scripts run end to
+  end.~~ Done on an iPhone 17, iOS 26 ([note 12](12-a-real-iphone.md)).
+  An agent's task done on it is still to come.
 * ~~Typing beyond plain ASCII.~~ Each phone now says what it can type
   (`check_text`). An iPhone takes anything; WDA types it as given
-  ([note 04](04-typing-other-languages.md)). Untried on a real iPhone,
-  like the rest.
+  ([note 04](04-typing-other-languages.md)). Typing is not yet tried on a
+  real iPhone ([note 12](12-a-real-iphone.md)).
 * ~~Rebuilding WDA on a schedule, before the free signature runs out.~~
   Said instead of scheduled: the date is read from inside `WDA.ipa`
   (its `embedded.mobileprovision`) when it's installed, and `sparsh

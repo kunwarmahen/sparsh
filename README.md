@@ -511,8 +511,8 @@ Looking isn't a step, so it isn't logged.
   and every yes asked with a picture
   ([notes/10](notes/10-where-the-list-falls-short.md)).
 * ~~iPhones.~~ Built: [notes/03](notes/03-an-iphone-through-a-mac.md),
-  with a Mac needed once to sign WebDriverAgent. Not yet run on a real
-  iPhone.
+  with a Mac needed once to sign WebDriverAgent; read and tapped on a
+  real iPhone 17, iOS 26 ([notes/12](notes/12-a-real-iphone.md)).
 
 ## How it's built
 
@@ -531,7 +531,8 @@ src/sparsh/
 │               beyond ASCII (notes/04, notes/08)
 ├── iphone.py   an iPhone, through WebDriverAgent over HTTP; its screen
 │               rewritten in Android's words so one reader serves both
-│               (notes/03)
+│               (notes/03); widgets, row frames, knobs and twins as one
+│               line each, from a real iPhone (notes/12)
 ├── phone.py    numbers in, taps out: the last look is kept, and a number
 │               is checked against the screen now before anything is done
 │               (notes/01); a tap by position, held every time (notes/06);
@@ -576,9 +577,10 @@ schedule: grants, and whether it's free),
 [notes/08](notes/08-a-real-phone.md) (what a real phone found),
 [notes/09](notes/09-the-screen-kept-on.md) (the screen kept on while an
 agent works), [notes/10](notes/10-where-the-list-falls-short.md)
-(where the list falls short, and what you say yes to) and
+(where the list falls short, and what you say yes to),
 [notes/11](notes/11-the-phone-that-stopped-listening.md) (a Wi-Fi phone
-that restarted, and the one command that brings it back).
+that restarted, and the one command that brings it back) and
+[notes/12](notes/12-a-real-iphone.md) (what a real iPhone found).
 
 ## Licence
 
