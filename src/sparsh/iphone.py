@@ -129,6 +129,10 @@ def _tuning() -> dict:
             "snapshotMaxChildren": max(cap, 1)}  # fmt: skip
 
 
+#: How long the finger rests at the end of a swipe, so the page stops
+#: there instead of coasting on (``swipe``).
+_SWIPE_REST_MS = 200
+
 #: Keys an iPhone's keyboard can be sent as letters.
 _TYPED_KEYS = {"enter": "\n", "delete": "\b", "tab": "\t"}
 _BUTTONS = {"volume_up": "volumeUp", "volume_down": "volumeDown"}
@@ -269,9 +273,16 @@ class WdaDevice:
         self._finger(x, y, [{"type": "pause", "duration": 800}])
 
     def swipe(self, x1: int, y1: int, x2: int, y2: int, ms: int = 300) -> None:
+        # THE FINGER STOPS BEFORE IT LIFTS. A finger lifted while still
+        # moving is a flick, and iOS lets the page coast on past where it
+        # went. On a real iPhone 17, Amazon's Completed refunds scrolled
+        # down from the top three times with the rest put Dec 30 at the
+        # top each time, two rows still on screen from before; without
+        # it, one row further, and that row was never seen.
         self._finger(x1, y1, [
             {"type": "pause", "duration": 50},
             {"type": "pointerMove", "duration": ms, "x": x2, "y": y2},
+            {"type": "pause", "duration": _SWIPE_REST_MS},
         ])  # fmt: skip
 
     def _finger(self, x: int, y: int, between: list[dict]) -> None:

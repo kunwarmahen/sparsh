@@ -11,8 +11,9 @@ only what came back.
 import pytest
 
 from sparsh import SparshError
+from sparsh.rules import Rules
 from sparsh.device import KEYBOARD, AdbDevice, typeable
-from sparsh.phone import Phone, ScreenChanged
+from sparsh.phone import AppChanged, Phone, ScreenChanged
 from sparsh.screen import ScreenUnreadable
 
 from .conftest import BLANK_PAGE, FILLED_PAGE
@@ -101,11 +102,69 @@ def test_scroll_down_pushes_the_page_up(phone, fake):
     assert x1 == x2 == 540 and y1 > y2
 
 
+def test_a_scroll_moves_less_than_a_screen_so_two_screens_share_rows(phone, fake):
+    # At 60% a real iPhone's Amazon refunds shared no row between screens,
+    # and the five newest were never read.
+    phone.look()
+    phone.scroll("down")
+    _, _, y1, _, y2 = fake.actions[0]
+    height = phone.last().size[1]
+    assert y1 - y2 <= height * 0.4
+
+
 def test_scroll_one_list(phone, fake):
     phone.look()
     phone.scroll("up", on=5)  # main content, [0,705][1080,2337]
     _, _, y1, _, y2 = fake.actions[0]
     assert 705 < y1 < y2 < 2337
+
+
+def test_a_scroll_lands_on_nothing_when_another_app_came_to_the_front(phone, fake):
+    # A call that rings in between the look and the scroll must not take
+    # the swipe: on a real iPhone 17 it went to "Answer call" and "Decline".
+    phone.look()  # Settings
+    fake.current = "home"  # something else is in front now
+    with pytest.raises(AppChanged, match="nothing was done|Nothing was done") as e:
+        phone.scroll("down")
+    assert fake.actions == []
+    assert e.value.screen.app == "com.google.android.apps.nexuslauncher"
+
+
+def test_after_a_refused_scroll_the_next_one_is_aimed_at_the_new_screen(phone, fake):
+    phone.look()
+    fake.current = "home"
+    with pytest.raises(AppChanged):
+        phone.scroll("down")
+    phone.scroll("down")  # the agent has now been shown the home screen
+    assert [a[0] for a in fake.actions] == ["swipe"]
+
+
+def test_a_screen_that_never_goes_still_is_scrolled_while_its_app_stays(phone, fake):
+    phone.look()
+    fake.screens["restless"] = None
+    fake.current, fake.front = "restless", "com.android.settings"
+    phone.scroll("down")
+    assert [a[0] for a in fake.actions] == ["swipe"]
+
+
+def test_a_screen_that_never_goes_still_in_another_app_is_not_scrolled(phone, fake):
+    phone.look()
+    fake.screens["restless"] = None
+    fake.current, fake.front = "restless", "com.google.android.dialer"
+    with pytest.raises(AppChanged):
+        phone.scroll("down")
+    assert fake.actions == []
+
+
+def test_typing_where_the_keyboard_is_waits_when_another_app_came_up(fake, tmp_path):
+    for phone in (Phone(fake, state=tmp_path, settle=0),
+                  Phone(fake, state=tmp_path / "rules", settle=0, rules=Rules())):  # fmt: skip
+        fake.current = "settings_search"
+        phone.look()
+        fake.current = "home"
+        with pytest.raises(AppChanged):
+            phone.type("hello")
+    assert fake.actions == []
 
 
 def test_open_an_app_by_its_everyday_name(phone, fake):

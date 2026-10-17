@@ -155,7 +155,7 @@ sparsh look [--shot FILE] [--json]  the screen, one numbered line per thing
 sparsh look --peek                  the same, leaving an agent's numbers as they were
 sparsh tap 7 [--long]               tap 7 from the last look (--long: press and hold)
 sparsh type "hello" [--into 7] [--clear] [--enter]
-sparsh scroll down [--on 5]         down = show what is further down
+sparsh scroll down [--on 5]         down = show what is further down (part of a screen)
 sparsh key back [home enter ...]    back, home, enter, recent, delete, tab, quick_settings, ...
 sparsh open settings                open an app by name or package
 sparsh apps [FILTER]                apps that can be opened
@@ -539,13 +539,16 @@ src/sparsh/
 ├── iphone.py   an iPhone, through WebDriverAgent over HTTP; its screen
 │               rewritten in Android's words so one reader serves both
 │               (notes/03); widgets, row frames, knobs and twins as one
-│               line each, from a real iPhone (notes/12)
+│               line each, from a real iPhone (notes/12); a swipe that
+│               rests before it lifts, so the page doesn't coast (notes/13)
 ├── phone.py    numbers in, taps out: the last look is kept, and a number
 │               is checked against the screen now before anything is done
 │               (notes/01); a tap by position, held every time (notes/06);
 │               the keyboard put away from a target under it, and a lock
 │               screen that says it is one (notes/08); a held step kept
-│               with its screenshot, a blank web page read twice (notes/10)
+│               with its screenshot, a blank web page read twice (notes/10);
+│               a scroll that shares rows with the last screen, refused
+│               when another app came to the front (notes/13)
 ├── awake.py    the screen kept on while an agent works the phone, the
 │               person's own timeout put back after; SPARSH_AWAKE (notes/09)
 ├── picture.py  what a held step would tap ringed on a screenshot, PNG
@@ -586,8 +589,10 @@ schedule: grants, and whether it's free),
 agent works), [notes/10](notes/10-where-the-list-falls-short.md)
 (where the list falls short, and what you say yes to),
 [notes/11](notes/11-the-phone-that-stopped-listening.md) (a Wi-Fi phone
-that restarted, and the one command that brings it back) and
-[notes/12](notes/12-a-real-iphone.md) (what a real iPhone found).
+that restarted, and the one command that brings it back),
+[notes/12](notes/12-a-real-iphone.md) (what a real iPhone found) and
+[notes/13](notes/13-a-scroll-that-skipped-rows.md) (a scroll that
+skipped rows, and one that landed on a call).
 
 ## Licence
 

@@ -465,3 +465,14 @@ def test_the_apps_go_ios_listed_are_kept_and_opened_by_name(tmp_path, monkeypatc
     assert phone.which_app("Fly Delta") == "com.delta.iphone.ver1"
     with pytest.raises(ValueError):
         remember_apps(tmp_path, "nothing useful here")
+
+
+def test_a_scroll_rests_the_finger_before_lifting_it_so_the_page_does_not_coast(iphone, wda):
+    # A finger lifted mid-move is a flick: on a real iPhone 17 one scroll
+    # down Amazon's Completed refunds coasted past the five newest.
+    iphone.look()
+    iphone.scroll("down")
+    ((path, body),) = wda.posts()
+    steps = body["actions"][0]["actions"]
+    assert [s["type"] for s in steps[-3:]] == ["pointerMove", "pause", "pointerUp"]
+    assert steps[-2]["duration"] >= 150

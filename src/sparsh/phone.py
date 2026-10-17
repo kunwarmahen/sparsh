@@ -94,6 +94,20 @@ class ScreenChanged(SparshError):
         )
 
 
+class AppChanged(ScreenChanged):
+    """A step aimed at no number found another app in front: a call, an
+    alert, an app that opened itself. ``screen`` is the screen now."""
+
+    def __init__(self, was: str, screen: Screen) -> None:
+        self.before = None
+        self.screen = screen
+        SparshError.__init__(
+            self,
+            f"the phone is in {screen.app or 'another app'} now, not {was} where the "
+            "screen was last read. Nothing was done. The screen now:\n" + screen.text(),
+        )
+
+
 @dataclass
 class Hold:
     """A step waiting for a person's yes."""
@@ -298,6 +312,32 @@ class Phone:
             raise ScreenChanged(before, now)
         return found
 
+    def _unmoved(self) -> Screen:
+        """THE SAME APP, OR NOTHING DONE. A tap is aimed at a number, and
+        the number is looked for again first (``_find``); a scroll, or
+        typing where the keyboard is, is aimed at whatever is in front.
+        Between the agent's look and its step a call can ring in, and the
+        swipe meant for a list lands on the call: on the real iPhone 17 a
+        scroll went to "Answer call" and "Decline" while it rang. So the
+        screen is read again, and if another app is in front now, nothing
+        is done and the new screen comes back, as for a tap.
+
+        A screen that can't be read (one that never goes still) is checked
+        by the app in front alone, and its ScreenUnreadable passed on."""
+        was = self.last().app if self._has_last() else ""
+        try:
+            now = self.look()
+        except ScreenUnreadable:
+            front = self._front()
+            self._guard(front)
+            if was and front and front != was:
+                raise AppChanged(was, self.see()) from None
+            raise
+        self._guard(now.app)
+        if was and now.app and now.app != was:
+            raise AppChanged(was, now)
+        return now
+
     def _after(self) -> Screen:
         """The screen an act led to. THE ACT WAS DONE either way: a screen
         that can't be read afterwards (a clock ticking on it) is said as
@@ -460,10 +500,9 @@ class Phone:
         elif self.rules:
             # Typing goes wherever the keyboard is: find out where first.
             try:
-                now = self.look()
+                now = self._unmoved()
             except ScreenUnreadable as e:
                 return self._type_unseen(text, clear, enter, e)
-            self._guard(now.app)
             target = next((e for e in now.elements if e.focused), None)
             if target is None:
                 # Typed with no field to take it, the words are lost and
@@ -473,6 +512,10 @@ class Phone:
                     "field with its number (`into`)"
                 )
         else:
+            try:
+                self._unmoved()
+            except ScreenUnreadable:
+                pass  # no rules to say where it may go: typed as before
             target = None
         why = self.rules.why_type(target) if self.rules else None
         if not why and enter and self.rules:
@@ -537,11 +580,20 @@ class Phone:
         if on is not None:
             left, top, right, bottom = self._still_there(on).bounds
         else:
-            screen = self.last() if self._has_last() else self.look()
-            self._guard(screen.app)
+            try:
+                screen = self._unmoved()
+            except ScreenUnreadable:
+                if not self._has_last():
+                    raise
+                screen = self.last()  # the same app, never still: swiped as before
             left, top, right, bottom = 0, 0, *screen.size
         cx, cy = (left + right) // 2, (top + bottom) // 2
-        dx, dy = (right - left) * 3 // 10, (bottom - top) * 3 // 10
+        # TWO SCREENS SHARE ROWS. The finger travels 40% of the screen, not
+        # more: an app's own bars take the rest, and on a real iPhone 17
+        # Amazon's refunds filled 55% of it. A 60% swipe carried every row
+        # on screen off the top, so no row was on both screens and nothing
+        # told the agent it had skipped any; at 40% two rows are shared.
+        dx, dy = (right - left) // 5, (bottom - top) // 5
         # The finger moves the other way to the content: to see what is
         # further down, push the page up.
         x1, y1, x2, y2 = {
