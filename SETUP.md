@@ -707,9 +707,9 @@ echo n | uv run yantra --provider ollama --model gemma4:26b \
   --prompt "Text <a number of yours> from my iPhone: hello from the agent"
 ```
 
-The first line also says `iPhone`. (Sparsh has read and tapped a real
-iPhone, [notes/12](notes/12-a-real-iphone.md); an agent's task through
-Yantra on one is not yet run: tell us what you see.)
+The first line also says `iPhone`. A task like the first one has run
+on a real iPhone 17, from Yantra and from Telegram, with
+`qwen3.8-64k:latest` on Ollama ([notes/12](notes/12-a-real-iphone.md)).
 
 ### Without a link or a flag: by hand
 

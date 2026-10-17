@@ -140,7 +140,8 @@ bars, and a back swipe that must not rest first
 
 * ~~A real iPhone: a captured Settings screen, the scripts run end to
   end.~~ Done on an iPhone 17, iOS 26 ([note 12](12-a-real-iphone.md)).
-  An agent's task done on it is still to come.
+  An agent's task done on it, from Yantra and from Telegram, has run
+  too ([note 12](12-a-real-iphone.md)).
 * ~~Typing beyond plain ASCII.~~ Each phone now says what it can type
   (`check_text`). An iPhone takes anything; WDA types it as given
   ([note 04](04-typing-other-languages.md)). Typing is not yet tried on a

@@ -196,8 +196,11 @@ tests read them, and all seven fail on the reader as note 03 left it.
 
 ## What is not here yet
 
-* An agent's task done on the iPhone through Yantra, local model first
-  (SETUP Part F's prompts).
+* ~~An agent's task done on the iPhone through Yantra, local model
+  first.~~ Done through Sarathi, with the iPhone given out by `sarathi
+  phone iphone`: a task asked of Yantra in its container, and the same
+  from Telegram through Dvara, both worked, with qwen3.8-64k:latest on Ollama (Sarathi's
+  notes/19).
 * Typing, scrolling a long list, and a held step's yes, on the real
   phone.
 * Scroll bars named in other languages: only the English name is
