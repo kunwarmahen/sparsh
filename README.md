@@ -258,7 +258,7 @@ mode", "text 5554 saying running late". Other ways to hand it over:
 | `YANTRA_SPARSH=/path/to/sparsh` or `--sparsh /path/to/sparsh` | for one run, without the link |
 | `/phone use` in a running session | a phone plugged in after the start |
 | `--mcp-config` naming `sparsh mcp` | works, but as a plain server every tap asks, not only Send |
-| [Sarathi](https://github.com/kunwarmahen/sarathi) | finds a checkout beside its own and hands it to Yantra's page |
+| [Sarathi](https://github.com/kunwarmahen/sarathi) | finds a checkout beside its own and hands it to Yantra's page; `sarathi phone` (an Android's address) or `sarathi phone iphone` (an iPhone's WebDriverAgent) gives the phone to Dvara and its containers too |
 
 To check it all works, [SETUP.md, Part T](SETUP.md#part-t--test-it-end-to-end-one-recipe-per-phone)
 has a copy-and-paste test for the emulator, an Android phone (cable or

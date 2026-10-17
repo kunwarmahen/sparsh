@@ -424,7 +424,10 @@ You should see a line ending `iPhone  device`. If it says `offline`,
 WDA isn't running (C6).
 
 `SPARSH_WDA` tells Sparsh which iPhone to use. Instead, you can name it
-on each command with `--serial http://127.0.0.1:8100`. Any computer on
+on each command with `--serial http://127.0.0.1:8100`. With Sarathi,
+`sarathi phone iphone` checks it answers and hands it to Yantra's page
+and Dvara, its containers included (they reach it at
+`host.containers.internal:8100`). Any computer on
 the same Wi-Fi can use the phone's own address in place of `127.0.0.1`
 (**Settings → Wi-Fi → ⓘ** on the iPhone shows it).
 
