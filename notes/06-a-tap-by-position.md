@@ -128,8 +128,9 @@ before, 159 after.
 
 ## Not here yet
 
-* An iPhone. `touch_size` is there and untried, like the rest of the
-  iPhone road ([note 03](03-an-iphone-through-a-mac.md)).
+* An iPhone's tap by position. `touch_size` is there; numbered taps
+  have run on a real iPhone ([note 12](12-a-real-iphone.md)), a tap
+  by position not yet.
 * ~~A real Android phone, with its own sizes and its own dialogs.~~ The
   Nexus 6P ([note 08](08-a-real-phone.md)); its list leaves the
   navigation bar out of the screen's size, which put a ring low until

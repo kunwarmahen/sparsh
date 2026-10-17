@@ -110,9 +110,11 @@ In short:
   `scripts/build-wda-on-mac.sh` does that, over `ssh` if you like, and
   `scripts/start-wda-from-linux.sh` installs and starts it from Linux.
   With a free Apple ID the signature lasts 7 days; `sparsh wda` reads
-  the date from the app, and Sparsh says when two days are left. Not
-  yet run on a real iPhone
-  ([notes/03](notes/03-an-iphone-through-a-mac.md)).
+  the date from the app, and Sparsh says when two days are left. Run
+  end to end on an iPhone 17 (iOS 26): built on a Mac over `ssh`, then
+  read and tapped from Linux
+  ([notes/03](notes/03-an-iphone-through-a-mac.md),
+  [notes/12](notes/12-a-real-iphone.md)).
 
 Either way, check it's there:
 

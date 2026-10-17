@@ -342,7 +342,9 @@ picture is 720 pixels across.
 
 * **An iPhone's partly blank screens.** The count reads Android's
   words. An iPhone's screen is rewritten into them (note 03), so it
-  should carry over, but no real iPhone has been read.
+  should carry over. A real iPhone has been read
+  ([note 12](12-a-real-iphone.md)), but not yet a partly blank screen
+  on one.
 * **Pictures for a cloud model.** As in note 05, on only when its
   person says so (`YANTRA_PHONE_SHOTS=on`), and untried.
 * ~~**Everyday names for some apps.**~~ See *Names a package doesn't

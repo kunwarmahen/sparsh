@@ -446,6 +446,12 @@ It's simpler the first day, but the Mac has to stay awake.
 * **No Back key.** `back` is the swipe in from the left edge, which
   most apps take as back. Some screens (sheets, full-screen videos)
   don't.
+* **Widgets are one line each.** `item "Sleep (Widget)" [tap]` opens
+  its app. What's inside a widget isn't listed: an iPhone places it in
+  the widget's own coordinates, so a tap on it would land somewhere else
+  ([notes/12](notes/12-a-real-iphone.md)). Open the app to read it.
+* **The phone must stay unlocked.** A locked iPhone is said as locked;
+  unlock it and look again.
 * **No Recent, Search or arrow keys.** They're refused with a sentence
   that lists the keys an iPhone does have.
 * **The apps list.** An iPhone won't tell a computer what's installed.
@@ -481,6 +487,23 @@ uv run sparsh tap 6                          # Network & internet
 uv run sparsh key back
 uv run sparsh look --shot /tmp/phone.png     # also a picture, to compare
 ```
+
+On an iPhone `open settings` works by name too, but Settings reopens on
+the page it was last left on; `sparsh key back` until its first page,
+which reads like this:
+
+```
+App: com.apple.Preferences
+1 text "Settings"
+2 button "Asha Rao, Apple Account, iCloud, and more" [tap]
+3 button "Family" [tap]
+4 switch "Airplane Mode" [tap, off]
+5 button "Wi-Fi, HomeNet" [tap]
+6 button "Bluetooth, On" [tap]
+...
+```
+
+`sparsh tap 5` opens Wi-Fi and `sparsh key back` swipes back.
 
 If the list says *"nothing on this screen can be read"*, see the
 README's "When the phone can't describe its screen".
