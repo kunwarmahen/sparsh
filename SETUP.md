@@ -296,11 +296,15 @@ On the Mac's screen (directly, or through Remmina):
 2. Select that team, press **Manage Certificates… → + → Apple
    Development**. This makes the key that signs WDA.
 3. Plug the iPhone **into the Mac**, unlock it, and tap **Trust** when
-   it asks about this computer. Then open **Xcode → Window → Devices and
-   Simulators** with the phone still plugged in, and wait until it
-   stops saying *Preparing*. That is what adds the phone to your team;
-   tapping Trust alone doesn't, and the build then fails with *"Your
-   team has no devices"*.
+   it asks about this computer. Tapping Trust alone doesn't add the
+   phone to your team, and the build then fails with *"Your team has no
+   devices"*. Xcode adds it once it has the phone picked to build for:
+   **File → New → Project → App** (any name, your team), then in the
+   bar at the top of the window click the device name after the `›`
+   and pick your iPhone. If Xcode says the phone's iOS is lower than
+   the deployment target, lower **Minimum Deployments** on the
+   project's General tab to the phone's version. The app never has to
+   run.
 4. On the iPhone: **Settings → Privacy & Security → Developer Mode**,
    on. The phone restarts and asks you to confirm. (The switch only
    appears after the phone has met a Mac with Xcode.)
@@ -330,7 +334,7 @@ What it does, so nothing is a surprise:
 |---|---|
 | `no Apple team found` | C3 steps 1–2 aren't done: add the Apple ID and the Apple Development certificate. |
 | `Xcode isn't ready` | Open Xcode once on the Mac's screen, or run `sudo xcode-select -s /Applications/Xcode.app` there. |
-| `Your team has no devices` / `No profiles for '…xctrunner' were found` | Xcode hasn't added the iPhone to your team yet: do C3 step 3 (plugged in, unlocked, Devices and Simulators open) and run the script again with the phone still plugged in. |
+| `Your team has no devices` / `No profiles for '…xctrunner' were found` | Xcode hasn't added the iPhone to your team yet: do C3 step 3 (plugged in, unlocked, picked as the device in an Xcode project) and run the script again. |
 | `iOS … is not installed` | This Xcode has no iOS platform yet: **Xcode → Settings → Components**, download iOS, or run `xcodebuild -downloadPlatform iOS` on the Mac. |
 | `errSecInternalComponent` / `CodeSign failed` | The keychain is unlocked but macOS still wants someone at the Mac to click **Allow** for the signing key. Once, over `ssh`: `security unlock-keychain ~/Library/Keychains/login.keychain-db && security set-key-partition-list -S apple-tool:,apple:,codesign: -s ~/Library/Keychains/login.keychain-db` (your Mac password, twice), then run the script again. The script prints this line when it sees the error. |
 | `the build failed ...` / `the build didn't make ...` | Xcode's error lines are shown above it; the whole output is in `~/sparsh-wda/build.log` on the Mac. |
@@ -370,7 +374,7 @@ Install two things on Linux, once:
 
 ```
 sudo apt install usbmuxd           # lets Linux see an iPhone over USB at all
-npm install -g go-ios              # gives you the `ios` program
+npm install -g --prefix ~/.local go-ios              # gives you the `ios` program
 ```
 
 ([go-ios](https://github.com/danielpaulus/go-ios) also has ready-made

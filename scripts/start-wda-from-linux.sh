@@ -8,7 +8,7 @@
 # Sparsh reads when its signature runs out (`sparsh wda`), and says so in
 # `sparsh devices` and `sparsh status` when two days or fewer are left.
 # This uses go-ios (https://github.com/danielpaulus/go-ios), one program
-# that speaks to an iPhone over USB from Linux: `npm install -g go-ios`,
+# that speaks to an iPhone over USB from Linux: `npm install -g --prefix ~/.local go-ios`,
 # or a release binary called `ios` on PATH. Linux also needs usbmuxd
 # (`sudo apt install usbmuxd`), which lets it see the phone at all.
 #
@@ -28,7 +28,7 @@ BUNDLE="$PREFIX.WebDriverAgentRunner.xctrunner"
 say() { printf '\n== %s\n' "$*"; }
 die() { printf 'start-wda: %s\n' "$*" >&2; exit 1; }
 
-command -v ios >/dev/null || die "go-ios isn't installed: npm install -g go-ios"
+command -v ios >/dev/null || die "go-ios isn't installed: npm install -g --prefix ~/.local go-ios (then ~/.local/bin on PATH)"
 
 # Sparsh remembers when WDA's signature runs out, and refuses a run-out one
 # here rather than letting the phone refuse it in Apple's words.
