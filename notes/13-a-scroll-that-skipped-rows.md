@@ -1,7 +1,9 @@
 # 13 — A scroll that skipped rows
 
 *[Note 12](12-a-real-iphone.md) got an agent's task done on a real
-iPhone. The next task looked done too, and the answer was wrong.*
+iPhone. The next task looked done too, and the answer was wrong: the
+page was read before it loaded, a scroll skipped rows, and the menu
+the agent chose from said everything five times.*
 
 ## Five refunds the agent never saw
 
@@ -90,20 +92,90 @@ On a screen that can't be read (one that never goes still), only the
 app in front is checked. Keys are left alone: Back and Home are how an
 agent leaves an app it shouldn't be in, and refusing them would trap it.
 
+## A page read before it had loaded
+
+Android waits for the screen to go still before describing it. On the
+iPhone that wait is off, because WhatsApp never goes still
+([note 12](12-a-real-iphone.md)), and a page inside an app fills in
+after it opens. Read over and over after the tap on *Completed
+refunds*:
+
+```
+ 1.6s   20 lines  rows=0
+ 2.6s   21 lines  rows=5  first=['Refunded May 20 +$72.49 ...']
+ 3.6s   21 lines  rows=5
+```
+
+Sparsh waited 0.8 s and read once, so the agent got the heading and no
+rows. With the shorter scroll it would still have started below the
+newest refunds.
+
+**READ AGAIN UNTIL IT HOLDS STILL.** On an iPhone, after a step, the
+screen is read again until two reads agree, for up to 4 seconds after
+the step. The iPhone doesn't mark which part of a screen is a web page,
+so it can't be only those. A screen that was already still costs one
+more read (about a second on Amazon). A slow one, like WhatsApp at 8
+seconds a read, is past the 4 seconds after its first read and gets no
+second. Android's reads already wait, so nothing changes there.
+
+From Amazon's menu, *Customer Service*, then one tap on *Completed
+refunds*, three times: the screen came back with all five rows each
+time, the newest first.
+
+## Five lines of the same words
+
+Amazon's menu on the iPhone came back like this:
+
+```
+9 text "Your shortcuts Orders Subscribe & Save Account Customer Service Lists ..."
+10 list [scroll]
+11 text "Your shortcuts Orders Subscribe & Save Account Customer Service Lists ..."
+12 text "Your shortcuts Orders Subscribe & Save Account Customer Service Lists ..."
+13 text "Your shortcuts"
+14 text "Orders Subscribe & Save Account Customer Service Lists Buy Again ..."
+15 list [scroll]
+16 text "Orders Subscribe & Save Account Customer Service Lists Buy Again ..."
+17 text "Orders"
+18 item "Orders" [tap]
+```
+
+A web page inside an app names every box around its content with all
+the words inside it, and the box around a link with the link's own
+words. Each box got a line.
+
+**A BOX THAT REPEATS ITS INSIDES SAYS NOTHING.** A box that isn't
+tappable or a field, whose every word is said by something inside it,
+gets no line. Words inside that are off screen count too: a row
+scrolled away is the list's to show after a scroll, not the box's to
+say now. A box with a word of its own keeps its line, and so does one
+with nothing on screen inside it that has words. The same menu now:
+
+```
+9 list [scroll]
+10 text "Your shortcuts"
+11 list [scroll]
+12 item "Orders" [tap]
+13 item "Subscribe & Save" [tap]
+14 item "Account" [tap]
+15 item "Customer Service" [tap]
+16 text "Explore more for you"
+...
+24 text "Browse by category"
+25 button "Customer Service. List item 1 of 22 (collapsed)" [tap]
+```
+
+58 lines became 31. Settings, Messages and WhatsApp on the same phone
+read exactly as before. A notification banner lost a line saying the
+same as the button inside it.
+
 ## What is not here yet
 
-* **A page read before it has loaded.** Android waits for the screen
-  to go still before describing it. On the iPhone that wait is off,
-  because WhatsApp never goes still ([note 12](12-a-real-iphone.md)),
-  so a web page inside an app can be read once before its rows arrive.
-  With the shorter scroll the agent still starts below rows it never
-  saw. One way: when a screen after a tap is mostly a heading, read it
-  again once.
 * **The route through the app.** The agent reached the refunds through
   Customer Service, not Orders. *Orders* was on its screen as a line to
   tap; the model chose the other way. That is what the agent knows about
   Amazon, not what Sparsh shows it: a learned skill in Yantra can teach
   it once.
-* **Repeated words on an iPhone menu.** Amazon's menu came back with
-  the same words in five long lines, a box's words and then each box
-  inside it, before the line that could be tapped.
+* **The same wait on Android, for a web page inside an app.** Android
+  waits for a still screen, which a page still fetching its rows may
+  already be. Not seen yet; Chrome's empty page is read twice
+  ([note 10](10-where-the-list-falls-short.md)).

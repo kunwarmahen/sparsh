@@ -510,3 +510,25 @@ def test_an_app_is_named_as_a_person_calls_it():
     assert app_name("com.Nishant.Singh.DroidTimelapse") == "DroidTimelapse"  # its package
     assert app_name("com.example.android.app") == "Example"  # makers' words passed over
     assert app_name("") == ""
+
+
+def test_an_iphone_screen_still_filling_in_is_read_until_two_reads_agree(fake, tmp_path):
+    # Amazon's refunds on a real iPhone 17: the heading at 1.6 s after the
+    # tap, the rows by 2.6 s. Read once, the agent saw no rows.
+    fake.unsettled = True
+    # the look, the check before the tap, a first read too early, then filled in
+    reads = iter(["settings", "settings", "settings", "home", "home"])
+    dump = fake.dump
+    fake.dump = lambda retry=True: (setattr(fake, "current", next(reads, "home")), dump(retry))[1]
+    phone = Phone(fake, state=tmp_path, settle=0.01)
+    phone.look()
+    screen = phone.tap(4)
+    assert screen.app == "com.google.android.apps.nexuslauncher"
+
+
+def test_a_phone_that_waits_for_a_still_screen_is_read_once_after_an_act(fake, tmp_path):
+    phone = Phone(fake, state=tmp_path, settle=0.01)
+    phone.look()
+    fake.tries.clear()
+    phone.tap(4)
+    assert len(fake.tries) == 2  # the check before the tap, and one after

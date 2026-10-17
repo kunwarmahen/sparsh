@@ -72,6 +72,9 @@ from sparsh.screen import Element, Screen, ScreenUnreadable, read
 
 #: Seconds to let the phone react before looking again.
 SETTLE = 0.8
+#: On a phone whose reads don't wait for a still screen (an iPhone), how
+#: long after an act it is read again until two reads agree (``_after``).
+STILL_WITHIN = 4.0
 #: Seconds a held step waits for its yes.
 HOLD_FOR = 600
 #: The share of a screenshot that may differ from the one a person said
@@ -344,11 +347,29 @@ class Phone:
         such, never as "Not done" -- told that, an agent does it again,
         and a second Send is a second message. The last look stays as it
         was, so the next number is checked against a screen it can't
-        find, and refused."""
+        find, and refused.
+
+        READ AGAIN UNTIL IT HOLDS STILL, on a phone that doesn't wait for
+        that itself. An iPhone's reads don't (WhatsApp never goes still,
+        iphone.py), and a page inside an app fills in after it opens: on a
+        real iPhone 17, Amazon's Completed refunds had its heading 1.6 s
+        after the tap and its five newest refunds only by 2.6 s, so the
+        agent was shown none of them and scrolled past them. So the screen
+        is read again until two reads agree, while it is under
+        ``STILL_WITHIN`` seconds since the act. A slow screen (WhatsApp
+        reads in 8 s) is past that after one read, and gets no second."""
+        acted = time.monotonic()
         if self.settle:
             time.sleep(self.settle)
         try:
-            return self.look()
+            screen = self.look()
+            if self.settle and getattr(self.device, "unsettled", False):
+                while time.monotonic() - acted < STILL_WITHIN:
+                    again = self.look()
+                    if again.text() == screen.text():
+                        return again
+                    screen = again
+            return screen
         except ScreenUnreadable as e:
             return self._unreadable(f"{_UNREAD}{e}.")
 

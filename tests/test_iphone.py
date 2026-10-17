@@ -476,3 +476,43 @@ def test_a_scroll_rests_the_finger_before_lifting_it_so_the_page_does_not_coast(
     steps = body["actions"][0]["actions"]
     assert [s["type"] for s in steps[-3:]] == ["pointerMove", "pause", "pointerUp"]
     assert steps[-2]["duration"] >= 150
+
+
+def _box(
+    label: str, inside: str = "", kind: str = "Other", y: int = 100, shown: bool = True
+) -> str:
+    seen = "true" if shown else "false"
+    tag = f"XCUIElementType{kind}"
+    return (f'<{tag} type="{tag}" label="{label}" x="0" y="{y}" width="390" '
+            f'height="40" visible="{seen}">{inside}</{tag}>')  # fmt: skip
+
+
+#: Amazon's menu as a real iPhone 17 described it, cut down: every box
+#: around the links is named with all the words inside it, "Lists" is a
+#: shortcut scrolled off to the right, and the header box holds its text.
+AMAZON_MENU = (
+    '<XCUIElementTypeApplication type="XCUIElementTypeApplication" label="Amazon" '
+    'x="0" y="0" width="390" height="844" visible="true">'
+    + _box("Your shortcuts Orders Account Lists",
+           _box("Your shortcuts", _box("Your shortcuts", kind="StaticText"))
+           + _box("Orders Account Lists",
+                  _box("Orders", _box("Orders", _box("Orders", kind="Link", y=150), y=150), y=150)
+                  + _box("Account", _box("Account", kind="Link", y=200), y=200)
+                  + _box("Lists", _box("Lists", kind="Link", y=250, shown=False), y=250,
+                         shown=False)))
+    + _box("Seen today", _box("", _box("Today", kind="StaticText", y=400), y=400), y=400)
+    + "</XCUIElementTypeApplication>"
+)  # fmt: skip
+
+
+def test_a_box_named_with_its_insides_words_says_nothing_of_its_own():
+    # On a real iPhone 17 Amazon's menu came back as five long lines of the
+    # same words, and a text "Orders" beside the item "Orders" to tap.
+    lines = [e.line().split(" ", 1)[1] for e in read(as_android(AMAZON_MENU, "x")).elements]
+    assert lines == [
+        'text "Your shortcuts"',
+        'item "Orders" [tap]',
+        'item "Account" [tap]',
+        'text "Seen today"',
+        'text "Today"',
+    ]

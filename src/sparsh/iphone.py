@@ -166,6 +166,10 @@ def is_wda(serial: str | None) -> bool:
 
 
 class WdaDevice:
+    #: A read is not held until the screen goes still (``_tuning``), so
+    #: Phone reads again after an act until two reads agree.
+    unsettled = True
+
     def __init__(self, url: str, timeout: float = 30) -> None:
         self.url = url.rstrip("/")
         self.serial = self.url
@@ -431,6 +435,7 @@ def as_android(source: str, bundle: str = "") -> str:
     )
     guessed = _focus_guess(root)
     _mark_stand_ins(root)
+    _mark_echoes(root)
     for child in root:
         _node(child, bundle, out, guessed, quiet=False, above=("", ""))
     out.append("</node></hierarchy>")
@@ -470,6 +475,8 @@ def _node(
     tappable = kind in _TAPPABLE and el.get(_ASIDE) is None
     if switch and el.get(_ASIDE) is not None:
         switch, label, value = False, "", ""
+    if el.get(_ECHO) is not None and not (tappable or field or switch):
+        label = value = ""
     # A ROW WITH A SWITCH IS THE SWITCH. On Android tapping the row flips
     # it; on an iPhone only the switch itself does, so the row steps
     # aside and the switch takes the line, under the row's words.
@@ -522,6 +529,8 @@ def _node(
 #: and on the second of two identical siblings, which is left out whole.
 _ASIDE = "sparsh-aside"
 _TWIN = "sparsh-twin"
+#: Set (by :func:`_mark_echoes`) on a box whose words are all its insides'.
+_ECHO = "sparsh-echo"
 
 
 def _mark_stand_ins(root: ET.Element) -> None:
@@ -578,6 +587,38 @@ def _mark_stand_ins(root: ET.Element) -> None:
                     knobs[0].set("label", el.get("label") or "")
                 for extra in knobs[1:]:
                     extra.set(_ASIDE, "")
+
+
+def _mark_echoes(root: ET.Element) -> tuple[set[str], bool]:
+    """Mark the boxes whose words are only their insides' words.
+
+    A BOX THAT REPEATS ITS INSIDES SAYS NOTHING. A web page in an app
+    gives every box around its content a name made of all the words in
+    it. Amazon's menu, on a real iPhone 17, came back as five long lines
+    of the same words ("Your shortcuts Orders Subscribe & Save Account
+    ...") and a ``text "Orders"`` from the boxes around the link, before
+    the ``item "Orders" [tap]`` that could be tapped. Each word is still
+    said by the thing inside that has it, or is off screen with it (a
+    row scrolled away is the list's to show, not the box's), so the box
+    steps aside. A box with a word of its own, or with nothing on screen
+    inside that has words, keeps its line.
+
+    Returns the words inside ``root``, and whether any of it is shown."""
+    inside: set[str] = set()
+    shown = False
+    for child in root:
+        below, seen = _mark_echoes(child)
+        inside |= below | _words(child)
+        shown = shown or seen or (child.get("visible", "true") != "false" and bool(_words(child)))
+    mine = _words(root)
+    if mine and shown and mine <= inside:
+        root.set(_ECHO, "")
+    return inside, shown
+
+
+def _words(el: ET.Element) -> set[str]:
+    said = f"{el.get('label') or ''} {el.get('value') or ''}".lower()
+    return set(re.findall(r"\w+", said))
 
 
 def _area(el: ET.Element) -> float:

@@ -540,7 +540,8 @@ src/sparsh/
 │               rewritten in Android's words so one reader serves both
 │               (notes/03); widgets, row frames, knobs and twins as one
 │               line each, from a real iPhone (notes/12); a swipe that
-│               rests before it lifts, so the page doesn't coast (notes/13)
+│               rests before it lifts, so the page doesn't coast, and a
+│               box that only repeats its insides' words left out (notes/13)
 ├── phone.py    numbers in, taps out: the last look is kept, and a number
 │               is checked against the screen now before anything is done
 │               (notes/01); a tap by position, held every time (notes/06);
@@ -548,7 +549,8 @@ src/sparsh/
 │               screen that says it is one (notes/08); a held step kept
 │               with its screenshot, a blank web page read twice (notes/10);
 │               a scroll that shares rows with the last screen, refused
-│               when another app came to the front (notes/13)
+│               when another app came to the front; an iPhone read again
+│               after an act until it holds still (notes/13)
 ├── awake.py    the screen kept on while an agent works the phone, the
 │               person's own timeout put back after; SPARSH_AWAKE (notes/09)
 ├── picture.py  what a held step would tap ringed on a screenshot, PNG
@@ -592,7 +594,8 @@ agent works), [notes/10](notes/10-where-the-list-falls-short.md)
 that restarted, and the one command that brings it back),
 [notes/12](notes/12-a-real-iphone.md) (what a real iPhone found) and
 [notes/13](notes/13-a-scroll-that-skipped-rows.md) (a scroll that
-skipped rows, and one that landed on a call).
+skipped rows, a page read before it loaded, and one that landed on a
+call).
 
 ## Licence
 
