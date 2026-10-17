@@ -332,7 +332,8 @@ What it does, so nothing is a surprise:
 | `Xcode isn't ready` | Open Xcode once on the Mac's screen, or run `sudo xcode-select -s /Applications/Xcode.app` there. |
 | `Your team has no devices` / `No profiles for '…xctrunner' were found` | Xcode hasn't added the iPhone to your team yet: do C3 step 3 (plugged in, unlocked, Devices and Simulators open) and run the script again with the phone still plugged in. |
 | `iOS … is not installed` | This Xcode has no iOS platform yet: **Xcode → Settings → Components**, download iOS, or run `xcodebuild -downloadPlatform iOS` on the Mac. |
-| `the build didn't make ...` | Xcode's error lines are shown above it; the whole output is in `~/sparsh-wda/build.log` on the Mac. |
+| `errSecInternalComponent` / `CodeSign failed` | The keychain is unlocked but macOS still wants someone at the Mac to click **Allow** for the signing key. Once, over `ssh`: `security unlock-keychain ~/Library/Keychains/login.keychain-db && security set-key-partition-list -S apple-tool:,apple:,codesign: -s ~/Library/Keychains/login.keychain-db` (your Mac password, twice), then run the script again. The script prints this line when it sees the error. |
+| `the build failed ...` / `the build didn't make ...` | Xcode's error lines are shown above it; the whole output is in `~/sparsh-wda/build.log` on the Mac. |
 
 Copy the result to Linux:
 

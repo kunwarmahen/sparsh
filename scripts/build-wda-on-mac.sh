@@ -72,7 +72,13 @@ fi
 sed -i '' "s/com\.facebook\.WebDriverAgent/$PREFIX.WebDriverAgent/g" \
   "$WDA/WebDriverAgent.xcodeproj/project.pbxproj"
 
+PRODUCTS="$HERE/build/Build/Products"
+APP="$PRODUCTS/Debug-iphoneos/WebDriverAgentRunner-Runner.app"
+# An app left by an earlier build would be packed as if this one worked.
+rm -rf "$APP"
+
 say "building for team $TEAM as $PREFIX.WebDriverAgentRunner (a few minutes the first time)"
+BUILT=1
 xcodebuild build-for-testing \
   -project "$WDA/WebDriverAgent.xcodeproj" \
   -scheme WebDriverAgentRunner \
@@ -80,12 +86,20 @@ xcodebuild build-for-testing \
   -derivedDataPath "$HERE/build" \
   -allowProvisioningUpdates \
   DEVELOPMENT_TEAM="$TEAM" CODE_SIGN_STYLE=Automatic \
-  > "$HERE/build.log" 2>&1 || true
-# Xcode's errors start with a file path, so look for "error:" anywhere.
-grep -E '^\*\*|error:|requires a development team|warning: .*sign' "$HERE/build.log" | sort -u || true
-
-PRODUCTS="$HERE/build/Build/Products"
-APP="$PRODUCTS/Debug-iphoneos/WebDriverAgentRunner-Runner.app"
+  > "$HERE/build.log" 2>&1 || BUILT=0
+# Xcode's errors start with a file path, so look for "error:" anywhere;
+# signing over ssh fails with errSec... and no "error:" at all.
+grep -E '^\*\*|error:|errSec|requires a development team|failed with a nonzero|warning: .*sign' \
+  "$HERE/build.log" | sort -u || true
+if [ "$BUILT" = 0 ]; then
+  echo; sed -n '/The following build commands failed/,$p' "$HERE/build.log"
+  if grep -q errSecInternalComponent "$HERE/build.log"; then
+    die "signing couldn't use the key over ssh (macOS wants an Allow click at the Mac). Once, run:
+  security unlock-keychain ~/Library/Keychains/login.keychain-db && security set-key-partition-list -S apple-tool:,apple:,codesign: -s ~/Library/Keychains/login.keychain-db
+then this again. The whole of Xcode's output is in $HERE/build.log"
+  fi
+  die "the build failed -- the whole of Xcode's output is in $HERE/build.log"
+fi
 [ -d "$APP" ] || die "the build didn't make $APP -- the whole of Xcode's output is in $HERE/build.log"
 
 if [ "$RUN" = 1 ]; then
@@ -114,6 +128,6 @@ Built: $HERE/WDA.ipa  (bundle id $PREFIX.WebDriverAgentRunner.xctrunner)
 Signed until: $UNTIL  -- run this again before then.
 
 On Linux, with the iPhone plugged in there:
-  scp $(id -un)@$(hostname):sparsh-wda/WDA.ipa .
+  scp $(id -un)@$(scutil --get LocalHostName 2>/dev/null || hostname -s).local:sparsh-wda/WDA.ipa .
   PREFIX=$PREFIX scripts/start-wda-from-linux.sh WDA.ipa
 EOF
