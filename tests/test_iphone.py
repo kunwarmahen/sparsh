@@ -106,7 +106,15 @@ class FakeWda:
         threading.Thread(target=self.server.serve_forever, daemon=True).start()
 
     def posts(self) -> list[tuple[str, object]]:
-        return [(path, body) for method, path, body in self.calls if method == "POST"]
+        """What was done, leaving out the reading settings sent once a session."""
+        return [
+            (path, body)
+            for method, path, body in self.calls
+            if method == "POST" and path != "/appium/settings"
+        ]
+
+    def tunings(self) -> list[object]:
+        return [body for method, path, body in self.calls if path == "/appium/settings"]
 
 
 @pytest.fixture
@@ -407,3 +415,53 @@ def test_an_ipa_with_no_profile_says_what_it_is_not(tmp_path):
         packed.writestr("Payload/Other.app/Info.plist", b"")
     with pytest.raises(SparshError, match="carries no signing profile"):
         signed_until(ipa)
+
+
+# -- an app that never goes still (WhatsApp, on a real iPhone) -----------
+
+
+def test_the_reading_settings_go_once_a_session_and_again_after_one_lapses(iphone, wda):
+    iphone.look()
+    iphone.look()
+    assert wda.tunings() == [
+        {
+            "settings": {
+                "waitForIdleTimeout": 0,
+                "animationCoolOffTimeout": 0,
+                "snapshotMaxChildren": 30,
+            }
+        }
+    ]
+    iphone.device._session, iphone.device._tuned = "old", True
+    iphone.tap(4)  # the lapsed session is opened again
+    iphone.look()
+    assert len(wda.tunings()) == 2
+
+
+def test_the_childrens_cap_can_be_changed(monkeypatch):
+    from sparsh.iphone import _tuning
+
+    monkeypatch.setenv("SPARSH_IOS_MAX_CHILDREN", "60")
+    assert _tuning()["snapshotMaxChildren"] == 60
+    monkeypatch.setenv("SPARSH_IOS_MAX_CHILDREN", "lots")
+    assert _tuning()["snapshotMaxChildren"] == 30
+
+
+def test_the_apps_go_ios_listed_are_kept_and_opened_by_name(tmp_path, monkeypatch):
+    from sparsh.iphone import installed_apps, remember_apps
+
+    listing = (
+        "net.whatsapp.WhatsApp \u200eWhatsApp 26.40.77\n"
+        "com.google.Gmail Gmail 6.0.261005\n"
+        "com.delta.iphone.ver1 Fly Delta 7.16.1\n"
+    )
+    assert remember_apps(tmp_path, listing)["net.whatsapp.WhatsApp"] == "WhatsApp"
+    assert installed_apps(tmp_path)["com.delta.iphone.ver1"] == "Fly Delta"
+    monkeypatch.setenv("SPARSH_STATE", str(tmp_path))
+    device = WdaDevice("http://127.0.0.1:1")
+    assert "net.whatsapp.WhatsApp" in device.apps()
+    phone = Phone(device, tmp_path)
+    assert phone.which_app("whatsapp") == "net.whatsapp.WhatsApp"
+    assert phone.which_app("Fly Delta") == "com.delta.iphone.ver1"
+    with pytest.raises(ValueError):
+        remember_apps(tmp_path, "nothing useful here")

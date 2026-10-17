@@ -44,13 +44,14 @@ import argparse
 import json
 import sys
 from datetime import datetime
+from pathlib import Path
 
 from sparsh import SparshError, __version__
 from sparsh import log, mcp
 from sparsh.awake import Awake
 from sparsh.awake import mode as awake_mode
 from sparsh.device import KEYS, TCPIP_PORT, attached, connect, iphones, pair, pick, tcpip
-from sparsh.iphone import remember_signature, signature, signature_note
+from sparsh.iphone import remember_apps, remember_signature, signature, signature_note
 from sparsh.phone import DIRECTIONS, Phone, ScreenChanged, state_root
 from sparsh.rules import load
 from sparsh.screen import Screen
@@ -179,6 +180,9 @@ def _parser() -> argparse.ArgumentParser:
                        help="when the iPhone's WebDriverAgent signature runs out; "
                             "given WDA.ipa, remember it")  # fmt: skip
     s.add_argument("ipa", nargs="?", help="the WDA.ipa just built (build-wda-on-mac.sh)")
+    s.add_argument("--apps", metavar="FILE",
+                   help="remember the apps on the iPhone, from what `ios apps --list` "
+                        "printed (- for stdin; start-wda-from-linux.sh does it)")  # fmt: skip
     s.set_defaults(run=_wda)
     return p
 
@@ -361,6 +365,15 @@ def _status(args) -> int:
 
 def _wda(args) -> int:
     state = state_root(args.state)
+    if args.apps:
+        text = sys.stdin.read() if args.apps == "-" else Path(args.apps).read_text()
+        try:
+            found = remember_apps(state, text)
+        except ValueError as e:
+            raise SparshError(str(e)) from None
+        print(f"remembered {len(found)} apps on the iPhone")
+        if not args.ipa:
+            return 0
     if args.ipa:
         remember_signature(state, args.ipa)
     sig = signature(state)

@@ -457,10 +457,16 @@ It's simpler the first day, but the Mac has to stay awake.
   unlock it and look again.
 * **No Recent, Search or arrow keys.** They're refused with a sentence
   that lists the keys an iPhone does have.
-* **The apps list.** An iPhone won't tell a computer what's installed.
-  `sparsh apps` lists Apple's own apps; add yours as bundle ids with
-  `export SPARSH_IOS_APPS=com.burbn.instagram,net.whatsapp.WhatsApp`.
-  `open settings`, `open messages` and other Apple apps work by name.
+* **The apps list.** An iPhone won't tell WebDriverAgent what's
+  installed, but go-ios reads it over the cable: the start script (C6)
+  saves it for Sparsh when it starts, and again every 5 minutes, so an
+  app you install later is found by name within 5 minutes, with nothing
+  to do. `sparsh apps` lists them; `open whatsapp`, `open settings`, `open
+  fly delta` work by the name under the icon. (To read it now: `ios apps
+  --list | sparsh wda --apps -`.)
+* **Busy apps read slower.** WhatsApp's chat list is hundreds of rows
+  deep; a screen of it reads in about 8 seconds, where Settings takes
+  one or two.
 
 ---
 

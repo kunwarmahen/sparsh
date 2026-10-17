@@ -126,8 +126,11 @@ emulator-5554  sdk_gphone64_x86_64  device
 An iPhone is named by WebDriverAgent's address
 (`SPARSH_WDA=http://127.0.0.1:8100`, or `--serial`). On an iPhone,
 `back` is the swipe in from the left edge, and `sparsh apps` lists
-Apple's own apps plus any in `$SPARSH_IOS_APPS`, because an iPhone
-won't say what's installed.
+every app installed on it. An iPhone won't tell WebDriverAgent that, but
+go-ios reads it over the cable: `start-wda-from-linux.sh` hands the list
+to Sparsh when it starts and every 5 minutes after, so a new app is found
+by name (`open whatsapp`) with no rescan
+([notes/12](notes/12-a-real-iphone.md)).
 
 > **What an agent can see.** Anything on the phone's screen can be read:
 > messages, emails, names, codes. While you're trying this out, use the
@@ -485,7 +488,9 @@ Looking isn't a step, so it isn't logged.
 | `SPARSH_AWAKE` | the screen while an agent works the phone: `working` (default: kept on, your own timeout back 2 minutes after the last step), `always` (never sleeps: a phone set aside for the agent), `off` ([notes/09](notes/09-the-screen-kept-on.md)) |
 | `SPARSH_CONNECT` | phones over Wi-Fi (`192.168.1.23:41234`, comma-separated), connected to whenever phones are looked for |
 | `SPARSH_WDA` | an iPhone's WebDriverAgent address (`http://127.0.0.1:8100`), used when no `--serial` is given |
-| `SPARSH_IOS_APPS` | more iPhone apps for `sparsh apps` and `open`, as bundle ids separated by commas |
+| `SPARSH_IOS_APPS` | more iPhone apps for `sparsh apps` and `open`, as bundle ids separated by commas (rarely needed: the start script lists every installed app) |
+| `SPARSH_IOS_MAX_CHILDREN` | how many children of each element an iPhone's screen is read with (30); more is slower, fewer can cut a list short |
+| `SPARSH_APPS_EVERY` | `start-wda-from-linux.sh`: seconds between reads of the iPhone's installed apps (300) |
 
 ## Not here yet
 

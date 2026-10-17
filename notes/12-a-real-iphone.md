@@ -194,6 +194,60 @@ tests read them, and all seven fail on the reader as note 03 left it.
 
 233 tests pass (227 before).
 
+## WhatsApp: "not installed", and a screen that never answered
+
+Asked from Telegram to send a WhatsApp message, the agent answered that
+WhatsApp wasn't installed, and listed what was: Messages, Safari, Mail
+and the rest of Apple's own. WhatsApp was there, in a folder on the
+second page.
+
+**The apps came from a list of Apple's apps.** WDA can't say what an
+iPhone has installed: asked about an app's state, it answers the same
+`1` for WhatsApp not running and for a bundle id that doesn't exist. So
+`sparsh apps` was Apple's apps plus `$SPARSH_IOS_APPS`, and the agent
+took it as the whole phone. go-ios can say, over the cable: `ios apps
+--list` printed 118 apps, bundle id and name, WhatsApp and Gmail among
+them. The start script now hands that list to `sparsh wda --apps -`,
+which keeps it as `iphone-apps.json` in the state folder (Sarathi's
+containers mount that folder), and every name becomes a nickname:
+`open whatsapp` is `net.whatsapp.WhatsApp`, `open fly delta` is
+`com.delta.iphone.ver1`. WhatsApp's own name starts with an invisible
+left-to-right mark (U+200E); it is taken off, here and in every label on
+a screen.
+
+**An app installed later is found without a rescan.** The start script
+stays running with the phone on the cable anyway, so it reads the list
+again every 5 minutes (`SPARSH_APPS_EVERY`).
+
+**A screen that never goes still.** With WhatsApp open, nothing came
+back from WDA for two minutes, not even which app was in front. WDA
+waits for an app to be idle before it reads it, and WhatsApp never is.
+With that wait off, the screen came back in 56 seconds and 1.2 MB:
+4,944 elements, 138 of them on screen, every one of 196 chats read,
+scrolled away or not. Sparsh already waits for a still screen itself, so
+WDA's wait is now off for good, and each element's children are read up
+to 30 (`SPARSH_IOS_MAX_CHILDREN`):
+
+```
+cap 60  ->  17.2 s   1525 elements
+cap 30  ->   8.3 s    775 elements   37 lines, the same 37
+cap 15  ->   4.0 s    400 elements   37 lines, the same 37
+```
+
+30, not 15: a home-screen page holds 24 icons in one box. The settings
+go to WDA once a session, and again when a lapsed session is reopened.
+
+```
+$ sparsh look        # WhatsApp in front
+App: net.whatsapp.WhatsApp
+1 button "More" [tap]
+2 button "Camera" [tap]
+3 button "New Chat" [tap]
+4 text "Chats"
+5 field "Search" [type]
+...
+```
+
 ## What is not here yet
 
 * ~~An agent's task done on the iPhone through Yantra, local model
@@ -204,6 +258,9 @@ tests read them, and all seven fail on the reader as note 03 left it.
 * Typing, scrolling a long list, a held step's yes, and a schedule, on
   the real phone. Each has a prompt to try, with what should happen, in
   Sarathi's TUTORIAL (step 6, *"Try these on your iPhone"*).
+* An app opened by name that isn't on the list yet (installed in the
+  last 5 minutes, or with no cable): Spotlight on the phone could open
+  anything by name, without a list.
 * Scroll bars named in other languages: only the English name is
   matched.
 * The iPhone over Wi-Fi instead of the cable's forwarded port.

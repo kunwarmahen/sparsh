@@ -58,10 +58,23 @@ if [ -n "$IPA" ]; then
   echo "trust the developer; and Settings > Privacy & Security > Developer Mode > on."
 fi
 
+# An iPhone won't tell WDA what's installed; go-ios can, over the cable.
+# Sparsh keeps the list, so "open WhatsApp" finds it (iphone.py), and it
+# is read again every few minutes while this runs, so an app installed
+# later is found without anyone asking for it (SPARSH_APPS_EVERY seconds).
+APPS=""
+if [ -n "$SPARSH" ]; then
+  ios apps --list 2>/dev/null | "$SPARSH" wda --apps - || echo "(the apps on the iPhone weren't read)"
+  ( while sleep "${SPARSH_APPS_EVERY:-300}"; do
+      ios apps --list 2>/dev/null | "$SPARSH" wda --apps - >/dev/null 2>&1 || true
+    done ) &
+  APPS=$!
+fi
+
 say "forwarding port 8100"
 ios forward 8100 8100 >/tmp/sparsh-ios-forward.log 2>&1 &
 FORWARD=$!
-trap 'kill $FORWARD 2>/dev/null || true' EXIT
+trap 'kill $FORWARD $APPS 2>/dev/null || true' EXIT
 
 say "starting WebDriverAgent ($BUNDLE) -- leave this running; Ctrl-C stops it"
 echo "In another terminal: sparsh look --serial http://127.0.0.1:8100"

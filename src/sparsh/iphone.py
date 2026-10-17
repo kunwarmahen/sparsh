@@ -43,8 +43,18 @@ from the left edge that most apps take to mean back. ``end`` does
 nothing (tapping a field puts the cursor at the end of it already);
 ``recent``, ``search`` and the arrow keys are refused with a sentence.
 WDA can't list the apps on the phone, so :meth:`WdaDevice.apps` is
-Apple's own apps plus any named in ``$SPARSH_IOS_APPS``, and everyday
-names ("settings", "messages") are looked up in :data:`NICKNAMES`.
+Apple's own apps, any named in ``$SPARSH_IOS_APPS``, and the ones go-ios
+listed (below); everyday names ("settings", "messages") are looked up in
+:data:`NICKNAMES`.
+
+THE APPS ON THE PHONE, FROM THE CABLE. WDA can't tell an app that isn't
+installed from one that isn't running. go-ios can: ``ios apps --list``
+over USB names every app the person installed, bundle id and name. With
+Apple's alone on the list, an agent asked to send a WhatsApp message
+told its person WhatsApp wasn't installed -- it was. So the start script
+hands that list to ``sparsh wda --apps -``, it is kept in the state
+folder (``iphone-apps.json``, which Sarathi's containers mount), and
+each name becomes a nickname: "whatsapp" opens net.whatsapp.WhatsApp.
 
 A SIGNATURE THAT RUNS OUT IS SAID BEFORE IT DOES. What a free Apple ID
 signs opens for seven days; after that WDA simply won't start, and
@@ -98,6 +108,27 @@ NICKNAMES = {
     "facetime": "com.apple.facetime",
 }
 
+#: AN APP THAT NEVER GOES STILL, A LIST THAT NEVER ENDS. WDA waits for the
+#: app to be idle before reading it, and reads every row of a list,
+#: scrolled away or not. WhatsApp did both: its screen never went quiet,
+#: so nothing came back in two minutes, and with the wait off it took 56
+#: seconds and 1.2 MB -- 4,944 elements, 138 on screen, all 196 chats.
+#: Sparsh waits for a still screen itself (phone.py), so WDA's own wait
+#: is off; and each element's children are read up to a cap, 30 (a home
+#: screen page holds 24 icons in one box), which read the same 37 lines
+#: of WhatsApp in 8 seconds. ``SPARSH_IOS_MAX_CHILDREN`` changes the cap.
+_MAX_CHILDREN = 30
+
+
+def _tuning() -> dict:
+    try:
+        cap = int(os.environ.get("SPARSH_IOS_MAX_CHILDREN") or _MAX_CHILDREN)
+    except ValueError:
+        cap = _MAX_CHILDREN
+    return {"waitForIdleTimeout": 0, "animationCoolOffTimeout": 0,
+            "snapshotMaxChildren": max(cap, 1)}  # fmt: skip
+
+
 #: Keys an iPhone's keyboard can be sent as letters.
 _TYPED_KEYS = {"enter": "\n", "delete": "\b", "tab": "\t"}
 _BUTTONS = {"volume_up": "volumeUp", "volume_down": "volumeDown"}
@@ -136,7 +167,11 @@ class WdaDevice:
         self.serial = self.url
         self.timeout = timeout
         self.nicknames = dict(NICKNAMES)
+        self.installed = installed_apps(_state())
+        for bundle, label in self.installed.items():
+            self.nicknames.setdefault(label.lower(), bundle)
         self._session: str | None = None
+        self._tuned = False  # WDA's settings below, sent once a session
 
     # -- talking to WDA --------------------------------------------------
 
@@ -198,11 +233,23 @@ class WdaDevice:
                 if not e.invalid_session or attempt:
                     raise
                 self._session = None
+                self._tuned = False
         raise AssertionError("unreachable")
 
     # -- the Device shape --------------------------------------------------
 
+    def _tune(self) -> None:
+        """WDA's settings for reading a screen, once a session (_TUNING)."""
+        if self._tuned:
+            return
+        self._tuned = True
+        try:
+            self._act("/appium/settings", {"settings": _tuning()})
+        except WdaError:
+            pass  # an older WDA without settings reads as it always did
+
     def dump(self, retry: bool = True) -> str:
+        self._tune()
         source = self._call("GET", "/source?format=xml")
         if not isinstance(source, str) or not source.strip():
             raise ScreenUnreadable("the iPhone did not describe its screen")
@@ -291,6 +338,9 @@ class WdaDevice:
         try:
             self._act("/wda/apps/launch", {"bundleId": package})
         except WdaError as e:
+            if "unlocked" in str(e) or "Locked" in str(e):
+                said = "the iPhone is locked. Ask its person to unlock it, then try again"
+                raise SparshError(f"{package} wasn't opened: {said}") from None
             raise SparshError(f"{package} could not be opened on this iPhone ({e})") from None
 
     def awake(self) -> tuple[bool | None, bool | None]:
@@ -336,7 +386,7 @@ class WdaDevice:
     def apps(self) -> list[str]:
         extra = os.environ.get("SPARSH_IOS_APPS", "")
         named = {a.strip() for a in extra.split(",") if a.strip()}
-        return sorted(set(NICKNAMES.values()) | named)
+        return sorted(set(NICKNAMES.values()) | named | set(self.installed))
 
 
 class WdaError(SparshError):
@@ -390,8 +440,8 @@ def _node(
     kind = _type(el)
     if kind in _SKIP or el.get(_TWIN) is not None:
         return
-    label = (el.get("label") or "").strip()
-    value = (el.get("value") or "").strip()
+    label = (el.get("label") or "").translate(_INVISIBLE).strip()
+    value = (el.get("value") or "").translate(_INVISIBLE).strip()
     # A SCROLL BAR IS NOT A THING TO TAP. iOS lists each scroll indicator
     # as an adjustable box named "Vertical scroll bar, 4 pages", sometimes
     # twice; it is a picture of where the list is, nothing to act on. The
@@ -580,6 +630,43 @@ def signed_until(ipa: str | os.PathLike) -> datetime:
             f"{ipa} carries no signing profile -- was it built by build-wda-on-mac.sh?"
         )
     return datetime.fromisoformat(found.group(1).decode().replace("Z", "+00:00"))
+
+
+# -- the apps on it, as go-ios listed them over the cable --------------------
+
+#: Marks iOS puts around some names (WhatsApp's starts with U+200E).
+_INVISIBLE = dict.fromkeys(map(ord, "\u200e\u200f\u202a\u202b\u202c\u202d\u202e\ufeff"))
+
+
+def _state() -> Path:
+    return Path(os.environ.get("SPARSH_STATE") or Path.home() / ".sparsh")
+
+
+def remember_apps(state: Path, listing: str) -> dict[str, str]:
+    """``ios apps --list`` (``bundle name... version`` a line) kept as
+    bundle -> name in ``iphone-apps.json``. The whole list is replaced:
+    an app removed from the phone leaves it."""
+    found: dict[str, str] = {}
+    for line in listing.splitlines():
+        parts = line.translate(_INVISIBLE).split()
+        if len(parts) >= 2 and "." in parts[0] and not parts[0].startswith("{"):
+            words = parts[1:-1] if len(parts) > 2 else parts[1:]
+            found[parts[0]] = " ".join(words) or parts[0]
+    if not found:
+        raise ValueError("no apps in that list (it is what `ios apps --list` prints)")
+    state.mkdir(parents=True, exist_ok=True)
+    (state / "iphone-apps.json").write_text(json.dumps(found, indent=1, sort_keys=True) + "\n")
+    return found
+
+
+def installed_apps(state: Path) -> dict[str, str]:
+    try:
+        data = json.loads((state / "iphone-apps.json").read_text())
+    except (OSError, ValueError):
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    return {k: v for k, v in data.items() if isinstance(k, str) and isinstance(v, str)}
 
 
 def remember_signature(state: Path, ipa: str | os.PathLike) -> dict:
