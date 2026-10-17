@@ -201,8 +201,9 @@ tests read them, and all seven fail on the reader as note 03 left it.
   phone iphone`: a task asked of Yantra in its container, and the same
   from Telegram through Dvara, both worked, with qwen3.8-64k:latest on Ollama (Sarathi's
   notes/19).
-* Typing, scrolling a long list, and a held step's yes, on the real
-  phone.
+* Typing, scrolling a long list, a held step's yes, and a schedule, on
+  the real phone. Each has a prompt to try, with what should happen, in
+  Sarathi's TUTORIAL (step 6, *"Try these on your iPhone"*).
 * Scroll bars named in other languages: only the English name is
   matched.
 * The iPhone over Wi-Fi instead of the cable's forwarded port.

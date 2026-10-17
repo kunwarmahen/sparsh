@@ -711,6 +711,16 @@ The first line also says `iPhone`. A task like the first one has run
 on a real iPhone 17, from Yantra and from Telegram, with
 `qwen3.8-64k:latest` on Ollama ([notes/12](notes/12-a-real-iphone.md)).
 
+Four more to try, not yet run on an iPhone (Sarathi's TUTORIAL, step 6,
+*"Try these on your iPhone"*, has each with what you should see):
+
+```
+"On my iPhone, open Notes, start a new note and type: Milk, eggs, bread."      # typing
+"On my iPhone, open Settings and tell me the last item at the very bottom."   # a long list
+"Text <your own number> from my iPhone: hello from the agent"                 # approve the card
+"Every morning at 8, open Settings on my iPhone and tell me the Battery row." # a schedule
+```
+
 ### Without a link or a flag: by hand
 
 Any of the above works without the `PATH` link, by naming Sparsh:
