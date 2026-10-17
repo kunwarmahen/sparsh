@@ -296,8 +296,11 @@ On the Mac's screen (directly, or through Remmina):
 2. Select that team, press **Manage Certificates… → + → Apple
    Development**. This makes the key that signs WDA.
 3. Plug the iPhone **into the Mac**, unlock it, and tap **Trust** when
-   it asks about this computer. Xcode needs to have seen the phone once
-   to sign an app for it.
+   it asks about this computer. Then open **Xcode → Window → Devices and
+   Simulators** with the phone still plugged in, and wait until it
+   stops saying *Preparing*. That is what adds the phone to your team;
+   tapping Trust alone doesn't, and the build then fails with *"Your
+   team has no devices"*.
 4. On the iPhone: **Settings → Privacy & Security → Developer Mode**,
    on. The phone restarts and asks you to confirm. (The switch only
    appears after the phone has met a Mac with Xcode.)
@@ -327,7 +330,9 @@ What it does, so nothing is a surprise:
 |---|---|
 | `no Apple team found` | C3 steps 1–2 aren't done: add the Apple ID and the Apple Development certificate. |
 | `Xcode isn't ready` | Open Xcode once on the Mac's screen, or run `sudo xcode-select -s /Applications/Xcode.app` there. |
-| `the build didn't make ...` | Run the `xcodebuild` line it prints to see Xcode's full complaint. Often the iPhone was never plugged into the Mac (C3 step 3). |
+| `Your team has no devices` / `No profiles for '…xctrunner' were found` | Xcode hasn't added the iPhone to your team yet: do C3 step 3 (plugged in, unlocked, Devices and Simulators open) and run the script again with the phone still plugged in. |
+| `iOS … is not installed` | This Xcode has no iOS platform yet: **Xcode → Settings → Components**, download iOS, or run `xcodebuild -downloadPlatform iOS` on the Mac. |
+| `the build didn't make ...` | Xcode's error lines are shown above it; the whole output is in `~/sparsh-wda/build.log` on the Mac. |
 
 Copy the result to Linux:
 

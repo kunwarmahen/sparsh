@@ -80,13 +80,13 @@ xcodebuild build-for-testing \
   -derivedDataPath "$HERE/build" \
   -allowProvisioningUpdates \
   DEVELOPMENT_TEAM="$TEAM" CODE_SIGN_STYLE=Automatic \
-  | grep -E '^(\*\*|error|warning: .*sign)' || true
+  > "$HERE/build.log" 2>&1 || true
+# Xcode's errors start with a file path, so look for "error:" anywhere.
+grep -E '^\*\*|error:|requires a development team|warning: .*sign' "$HERE/build.log" | sort -u || true
 
 PRODUCTS="$HERE/build/Build/Products"
 APP="$PRODUCTS/Debug-iphoneos/WebDriverAgentRunner-Runner.app"
-[ -d "$APP" ] || die "the build didn't make $APP -- run it again without the grep to see why:
-  xcodebuild build-for-testing -project $WDA/WebDriverAgent.xcodeproj -scheme WebDriverAgentRunner \\
-    -destination generic/platform=iOS -allowProvisioningUpdates DEVELOPMENT_TEAM=$TEAM"
+[ -d "$APP" ] || die "the build didn't make $APP -- the whole of Xcode's output is in $HERE/build.log"
 
 if [ "$RUN" = 1 ]; then
   if [ -z "${UDID:-}" ]; then
