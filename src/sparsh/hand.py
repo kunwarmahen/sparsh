@@ -165,7 +165,12 @@ class TouchFeed:
         self.stop()
         with self._lock:
             self._lines = []
-        self._proc = subprocess.Popen(self.command, stdout=subprocess.PIPE,
+        # stdin never inherited: under `sparsh mcp` it is the agent's own
+        # requests, and adb with a terminal (-t -t) forwards whatever it
+        # reads to the phone -- on a real run every watched after it
+        # timed out, its request swallowed.
+        self._proc = subprocess.Popen(self.command, stdin=subprocess.DEVNULL,
+                                      stdout=subprocess.PIPE,
                                       stderr=subprocess.DEVNULL, text=True)
         threading.Thread(target=self._read, args=(self._proc,), daemon=True,
                          name="sparsh-hand").start()

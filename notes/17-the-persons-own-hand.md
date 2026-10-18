@@ -155,10 +155,37 @@ sparsh log
 
 The field was named from the screen as it was before the tap. The three
 keys were counted, not read, and "uni" came off the screen afterwards.
-281 tests pass.
 
-Not yet run: the iPhone's before-and-after, and a whole lesson through
-an agent (`/learn watch`).
+### A whole lesson, through an agent
+
+Yantra's `/learn watch search my Gmail for an email`, `qwen3.8-64k`, the
+person doing each step. The first try found a second bug: every
+`watched` timed out after 30 s. The touch reader, started with a
+terminal, had inherited `sparsh mcp`'s stdin, which is the agent's own
+requests, and adb forwarded them to the phone. It now gets no stdin, and
+the server stops it when its own input closes (it had outlived the
+server too). Run again:
+
+```
+watch_phone  -> the home screen
+next         -> 1. tapped 6 item "Folder: Google" [tap]
+                2. tapped the screen at 464,1068 (the screen had moved on by
+                   then, so what was there wasn't read)
+                The phone now: App: com.google.android.gm
+             agent: "You opened Gmail and started typing 'uni'" -- wrong, the
+                    'uni' was left from before; the person corrected it
+next         -> 1. tapped 4 button "Clear text" [tap]
+                2. tapped the screen at 350,233 (...)
+                3. typed on the keyboard (4 key(s); ...)  field "unit"
+/learn done  -> gmail-search: tap Folder: <folder_name>, tap Gmail, IF the
+                field holds old text tap Clear text, tap the field, type
+                <search_term>; a check of the screen after each step
+```
+
+Sparsh's account was right both times. The agent's guess wasn't once,
+and that's why it says what it thinks and asks. 283 tests pass.
+
+Not yet run: the iPhone's before-and-after.
 
 ## What is not here yet
 

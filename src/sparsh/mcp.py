@@ -495,18 +495,22 @@ def _ok(ident: Any, result: dict) -> dict:
 
 
 def serve(tools: Tools, stdin: TextIO = sys.stdin, stdout: TextIO = sys.stdout) -> None:
-    """Read one message per line until stdin closes."""
-    for line in stdin:
-        line = line.strip()
-        if not line:
-            continue
-        try:
-            message = json.loads(line)
-        except json.JSONDecodeError:
-            reply = {"jsonrpc": "2.0", "id": None,
-                     "error": {"code": -32700, "message": "not JSON"}}  # fmt: skip
-        else:
-            reply = answer(tools, message) if isinstance(message, dict) else None
-        if reply is not None:
-            stdout.write(json.dumps(reply) + "\n")
-            stdout.flush()
+    """Read one message per line until stdin closes -- and then stop
+    reading the person's touches, or getevent outlives the server."""
+    try:
+        for line in stdin:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                message = json.loads(line)
+            except json.JSONDecodeError:
+                reply = {"jsonrpc": "2.0", "id": None,
+                         "error": {"code": -32700, "message": "not JSON"}}  # fmt: skip
+            else:
+                reply = answer(tools, message) if isinstance(message, dict) else None
+            if reply is not None:
+                stdout.write(json.dumps(reply) + "\n")
+                stdout.flush()
+    finally:
+        tools._watch.stop()

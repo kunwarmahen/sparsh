@@ -142,3 +142,38 @@ def test_getevent_runs_with_a_terminal_so_each_line_comes_as_it_happens(monkeypa
     feed = phone.touch_feed()
     assert feed.command[3:6] == ["shell", "-t", "-t"]
     assert feed.command[-1] == "/dev/input/event1" and feed.scale == (1.0, 1.0)
+
+
+def test_the_touch_reader_never_reads_the_servers_own_input(monkeypatch):
+    """Under ``sparsh mcp`` stdin is the agent's requests; adb with a
+    terminal forwards what it reads to the phone, and watched timed out."""
+    import subprocess
+
+    from sparsh.hand import TouchFeed
+
+    seen = {}
+
+    class Proc:
+        stdout = iter(())
+
+        def poll(self):
+            return 0
+
+    def popen(command, **kwargs):
+        seen.update(kwargs)
+        return Proc()
+
+    monkeypatch.setattr(subprocess, "Popen", popen)
+    TouchFeed(["adb", "shell", "-t", "-t", "getevent"], (1.0, 1.0)).start()
+    assert seen["stdin"] is subprocess.DEVNULL
+
+
+def test_the_touch_reader_stops_with_the_server(fake, tmp_path):
+    import io
+
+    t = tools(fake, tmp_path)
+    stopped = []
+    t.call("watch_phone", {})
+    t._watch.feed.stop = lambda: stopped.append(True)
+    mcp.serve(t, io.StringIO(""), io.StringIO())
+    assert stopped and t._watch.before is None
