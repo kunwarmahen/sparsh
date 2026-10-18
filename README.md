@@ -262,7 +262,7 @@ folder's Python first on your `PATH`.) With that and a phone attached, a
 Yantra session starts the tools and says so in one line:
 
 ```
-sparsh: 10 tool(s); phone emulator-5554 (sdk_gphone64_x86_64) -- via /home/you/sparsh/.venv/bin/sparsh
+sparsh: 12 tool(s); phone emulator-5554 (sdk_gphone64_x86_64) -- via /home/you/sparsh/.venv/bin/sparsh
 ```
 
 Then ask for something on the phone in plain words: "turn on airplane
@@ -288,6 +288,31 @@ your yes.
 
 They'll ask you before each tap unless you allow the tools. Allow them
 all except `confirm` (below), and you get what Yantra does.
+
+### Showing the agent a job
+
+Two more tools are for when you show the agent a job with your own hand
+(Yantra's `/learn watch`): `watch_phone` reads the screen you start
+from, and `watched`, called each time you say you did a step, tells it
+what you did and what the screen shows now:
+
+```
+What the person did since the last look (on com.whatsapp):
+1. tapped 4 item "Mom" [tap]
+2. typed on the keyboard (12 key(s); what it says is on the screen now)
+The phone now:
+...
+```
+
+On Android this comes from the touchscreen itself (`adb shell getevent`),
+matched against the screen as it was before your touch. Only the first
+step since the last look can be named: once you've tapped, the screen
+has moved, and the new one wasn't read yet. Keys are counted, never
+read, so a password you type shows only as dots on the screen. An
+iPhone can't show where it was touched, so there `watched` gives the
+screen before and after, and the agent works out the step and asks you.
+Your steps go in the log too, by `you`
+([notes/17](notes/17-the-persons-own-hand.md)).
 
 ### A picture, only where the list falls short
 
@@ -485,7 +510,8 @@ the ones that were held, refused, or stopped because the screen had moved.
 `--json` adds what each step was aimed at and the screen it led to.
 Text typed into a password field is `(hidden)` there too. The newest 500
 steps per phone are kept, in `~/.sparsh/phones/<serial>/actions.jsonl`.
-Looking isn't a step, so it isn't logged.
+Looking isn't a step, so it isn't logged. Your own taps, seen while you
+show the agent a job, are logged by `you`.
 
 ### Settings
 
@@ -535,8 +561,12 @@ Looking isn't a step, so it isn't logged.
   `sparsh adb-share` lends this computer's adb through a file
   ([notes/15](notes/15-the-phone-that-answers.md)).
 * ~~An iPhone app installed since its list was read.~~ Built: looked for
-  in Spotlight ([notes/16](notes/16-an-app-not-on-the-list.md)); not yet
-  run on the real iPhone.
+  in Spotlight ([notes/16](notes/16-an-app-not-on-the-list.md)); run on
+  the real iPhone.
+* ~~Seeing what you do with your own finger.~~ Built for showing the
+  agent a job: Android's touches named against the screen, an iPhone's
+  two screens compared ([notes/17](notes/17-the-persons-own-hand.md)).
+  Not yet run on a real phone.
 * ~~iPhones.~~ Built: [notes/03](notes/03-an-iphone-through-a-mac.md),
   with a Mac needed once to sign WebDriverAgent; read and tapped on a
   real iPhone 17, iOS 26 ([notes/12](notes/12-a-real-iphone.md)).
@@ -587,6 +617,9 @@ src/sparsh/
 │               notes/10)
 ├── log.py      every step on the phone, by the agent or by you, however it
 │               ended; `sparsh log` (notes/02)
+├── hand.py     the person's own hand, while they show the agent a job:
+│               getevent's touches named against the screen as it was,
+│               keys counted not read, an iPhone's two screens (notes/17)
 ├── rules.py    what waits for a yes (words on a tap, password fields) and
 │               which apps are off limits; ~/.sparsh/rules.toml (notes/02);
 │               rules a harness adds for one app, SPARSH_APP_RULES; a
@@ -594,7 +627,8 @@ src/sparsh/
 ├── mcp.py      `sparsh mcp`: the agent's tools, a hand-written MCP server;
 │               reads, acts and `confirm` (notes/02); `--shots`, a picture
 │               where the list falls short or when asked (notes/05,
-│               notes/10); `tap_at` (notes/06)
+│               notes/10); `tap_at` (notes/06); `watch_phone` and
+│               `watched` (notes/17)
 ├── status.py   `sparsh status --json` (sparsh.status.v1): what a harness
 │               reads to find the phone, the rules and each tool's kind
 ├── fake.py     a phone made of saved screens, for tests

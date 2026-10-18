@@ -621,6 +621,20 @@ class AdbDevice:
     def set_screen_timeout(self, ms: int) -> None:
         self._shell("settings", "put", "system", "screen_off_timeout", str(int(ms)))
 
+    def touch_feed(self):
+        """The person's own touches, read behind (hand.py): ``getevent``
+        on the touchscreen, scaled to the screen. None when the phone
+        names no touchscreen."""
+        from sparsh.hand import TouchFeed, scale_of, touchscreen
+
+        capabilities = self._shell("getevent", "-lp")
+        where = touchscreen(capabilities)
+        if where is None:
+            return None
+        scale = scale_of(capabilities, self._shell("wm", "size"))
+        return TouchFeed([self.adb, "-s", self.serial, "shell", "getevent", "-lt", where],
+                         scale)
+
     def keyboard_area(self) -> tuple[int, int, int, int] | None:
         """Where the on-screen keyboard is (left, top, right, bottom), or
         None when it isn't up or Android didn't say. The screen's list

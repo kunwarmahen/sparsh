@@ -3,12 +3,14 @@
     sparsh mcp [--serial S]
 
 An MCP server on stdin/stdout -- newline-delimited JSON-RPC, written by
-hand like Samay's -- with ten tools in three kinds:
+hand like Samay's -- with twelve tools in three kinds:
 
     look           read     the screen, as the numbered list (and, asked,
                             its picture)
     list_apps      read     apps that can be opened
     describe_hold  read     a held step, in words, with the screen it was on
+    watch_phone    read     start watching the person's own hand (hand.py)
+    watched        read     what they did since, and the screen now
     tap            act      tap a number from the last look
     tap_at         act      tap a spot on a screenshot -- always held
     type_text      act      type, optionally into a numbered field
@@ -17,7 +19,8 @@ hand like Samay's -- with ten tools in three kinds:
     open_app       act      by everyday name or package
     confirm        confirm  do a held step -- after the person said yes
 
-EVERY ACT IS WRITTEN DOWN (log.py), by "agent", however it ended.
+EVERY ACT IS WRITTEN DOWN (log.py), by "agent", however it ended; and
+the person's own steps, seen while they show the agent a job, by "you".
 
 EVERY ACT RETURNS THE SCREEN IT LED TO, so the next number to use is
 always in the model's last tool result, and a turn needs one ``look`` at
@@ -82,6 +85,7 @@ from typing import Any, TextIO
 from sparsh import SparshError, __version__, log, picture
 from sparsh.awake import Awake
 from sparsh.device import KEYS, Device, pick
+from sparsh.hand import Watch
 from sparsh.phone import DIRECTIONS, Held, Phone, ScreenChanged
 from sparsh.rules import Rules
 from sparsh.screen import Screen
@@ -183,6 +187,22 @@ TOOLS: list[dict] = [
      "inputSchema": {"type": "object", "properties": {
          "hold": {"type": "string"}}, "required": ["hold"]},
      "annotations": _READ},
+    {"name": "watch_phone",
+     "description": (
+         "Start watching the person do a job on the phone with their own hand, "
+         "while they show it to you. Returns the screen they start from. Don't "
+         "touch the phone yourself while watching; call watched each time they "
+         "say they did a step."),
+     "inputSchema": {"type": "object", "properties": {}},
+     "annotations": _READ},
+    {"name": "watched",
+     "description": (
+         "What the person did on the phone since watch_phone or the last watched "
+         "(\"tapped 4 item 'Mom'\", \"typed on the keyboard\"), and the screen "
+         "now. On a phone that can't show where it was touched, you get the screen "
+         "before and after to compare: say what you think they did, and ask."),
+     "inputSchema": {"type": "object", "properties": {}},
+     "annotations": _READ},
     {"name": "confirm",
      "description": (
          "Carry out a step that was HELD for the person's yes (a tap on Send, "
@@ -234,6 +254,7 @@ class Tools:
         self.device = device  # given in tests; otherwise found per call
         self.settle = settle
         self._phone: Phone | None = None
+        self._watch = Watch()  # the person's own hand, while they show a job
 
     def phone(self) -> Phone:
         device = self.device or pick(self.serial)
@@ -339,6 +360,12 @@ class Tools:
         if not name:
             raise ToolFailed("missing: name")
         return self.phone().open_app(name)
+
+    def _watch_phone(self, args: dict) -> Screen:
+        return self._watch.start(self.phone())
+
+    def _watched(self, args: dict) -> str:
+        return self._watch.since(self.phone())
 
     def _describe_hold(self, args: dict) -> tuple[str, bytes | None]:
         phone = self.phone()

@@ -7,7 +7,8 @@ what it was done to, and how it ended, in
 ``~/.sparsh/phones/<serial>/actions.jsonl``, one JSON object a line:
 
     at       when, ISO 8601 with the zone
-    by       "agent" (through `sparsh mcp`) or "you" (the command line)
+    by       "agent" (through `sparsh mcp`) or "you" (the command line,
+             or your own finger while showing the agent a job: hand.py)
     action   tap, type_text, scroll, press_key, open_app, confirm
     args     what was asked -- text typed into a password field is
              "(hidden)", here as everywhere
@@ -72,6 +73,14 @@ def recorded(phone: Phone, by: str, action: str, args: dict, run: Callable[[], A
     more = {"said": f'granted ahead: "{granted}"'} if granted else {}
     _add(phone, entry, "done", app=app, after=after[:AFTER_CHARS], **more)
     return result
+
+
+def noted(phone: Phone, by: str, action: str, *, on: str | None = None,
+          said: str = "", app: str = "") -> None:
+    """A step Sparsh didn't take but saw taken -- the person's own tap
+    while they show the agent a job (hand.py)."""
+    _add(phone, {"by": by, "action": action, "args": {}, "on": on}, "done",
+         said=said, app=app)
 
 
 def recent(phone: Phone, n: int = 20) -> list[dict]:

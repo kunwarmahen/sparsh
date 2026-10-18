@@ -45,6 +45,9 @@ class FakeDevice:
         self.pin = True  # the lock, when there is one, needs its person
         self.timeout: int | None = 30000  # Screen timeout, ms; None: not said
         self.timeouts: list[int] = []  # each one set
+        #: The person's own touches, as a test makes them (hand.py); None:
+        #: a phone that shows no fingers, like an iPhone.
+        self.hand: list | None = []
 
     def _did(self, *action) -> None:
         self.actions.append(action)
@@ -113,6 +116,11 @@ class FakeDevice:
         self.timeout = ms
         self.timeouts.append(ms)
 
+    def touch_feed(self):
+        if self.hand is None:
+            return None
+        return _FakeFeed(self)
+
     def front_app(self) -> str:
         if self.front:
             return self.front
@@ -120,3 +128,20 @@ class FakeDevice:
             return read(self.dump()).app
         except SparshError:
             return ""
+
+
+class _FakeFeed:
+    """The touches a test put in ``fake.hand``, taken as a real feed's are."""
+
+    def __init__(self, fake: FakeDevice) -> None:
+        self.fake = fake
+
+    def start(self) -> None:
+        self.fake.hand = []
+
+    def take(self) -> list:
+        found, self.fake.hand = list(self.fake.hand or []), []
+        return found
+
+    def stop(self) -> None:
+        pass

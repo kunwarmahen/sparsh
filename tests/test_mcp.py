@@ -47,6 +47,7 @@ def call(tools, tool, **args):
 def test_the_kinds():
     assert mcp.KINDS == {
         "look": "read", "list_apps": "read", "describe_hold": "read",
+        "watch_phone": "read", "watched": "read",
         "tap": "act", "tap_at": "act", "type_text": "act", "scroll": "act", "press_key": "act",
         "open_app": "act", "confirm": "confirm",
     }  # fmt: skip
@@ -119,7 +120,7 @@ def test_the_wire(tools):
     mcp.serve(tools, io.StringIO("\n".join(json.dumps(m) for m in lines) + "\nnot json\n"), out)
     replies = [json.loads(line) for line in out.getvalue().splitlines()]
     assert replies[0]["result"]["protocolVersion"] == "2024-11-05"
-    assert len(replies[1]["result"]["tools"]) == 10
+    assert len(replies[1]["result"]["tools"]) == 12
     assert replies[2]["error"]["code"] == -32601
     assert replies[3]["error"]["code"] == -32700
 
