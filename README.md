@@ -566,7 +566,8 @@ show the agent a job, are logged by `you`.
 * ~~Seeing what you do with your own finger.~~ Built for showing the
   agent a job: Android's touches named against the screen, an iPhone's
   two screens compared ([notes/17](notes/17-the-persons-own-hand.md)).
-  Not yet run on a real phone.
+  Run on a real Nexus 6P: a tap on Gmail's search box and three keys
+  named right; the iPhone's side not run yet.
 * ~~iPhones.~~ Built: [notes/03](notes/03-an-iphone-through-a-mac.md),
   with a Mac needed once to sign WebDriverAgent; read and tapped on a
   real iPhone 17, iOS 26 ([notes/12](notes/12-a-real-iphone.md)).

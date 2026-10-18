@@ -28,7 +28,9 @@ they did a step.
 ## Android: the finger, against the screen as it was
 
 `adb shell getevent -lt` streams the touchscreen's raw events.
-`getevent -lp` names which input device is the touchscreen and its
+It runs with a terminal on the phone's side (`adb shell -t -t`): piped,
+getevent's lines wait in a 4 KB buffer (the receipt below shows what
+that did). `getevent -lp` names which input device is the touchscreen and its
 range, and `wm size` gives the screen's size. Together they turn a touch
 into a spot in screen pixels. One touch, from the finger going down to
 it lifting, is one gesture: a tap, a long press (0.6 s or more without
@@ -118,12 +120,51 @@ A tap at 400,1500 on the saved Pixel home screen is named `tapped`
 Gmail's line; the same tap after the screen moved is unnamed; two keys
 on the keyboard are `typed on the keyboard (2 key(s)…)`; and with no
 touch feed (an iPhone), both screens come back and nothing is logged.
-280 tests pass.
+### On the real Nexus 6P
 
-Not yet run on a real phone: the Nexus wasn't plugged in when this was
-built. The first real run is the owner's (Yantra's To do 51).
+The touchscreen is `synaptics_dsx` at `/dev/input/event0`, with a range
+of 1439 × 2559, the same as `wm size`'s 1440x2560, so the scale is 1. The
+person did each step and said next:
+
+```
+unlocked (fingerprint)   -> No touch was seen, but the screen changed ...
+                            the lock is a sensor on the back; nothing touched
+                            the screen, and nothing was claimed
+opened Gmail             -> 1. tapped 10 item "Folder: Play" [tap]
+                            2. swiped up
+```
+
+That second answer was wrong, and the reason was the pipe. Two raw
+readers ran alongside for that step, one piped and one with a terminal:
+the piped one had **0 lines**, the one with a terminal had all 40, three
+clean taps. Sparsh's own piped reader had been handed one 4 KB chunk late,
+so half a gesture from one step was joined to the next. With `-t -t`:
+
+```
+tapped the search box, typed "uni"
+  -> What the person did since the last look (on com.google.android.gm):
+     1. tapped 3 field "Ask Gmail" [tap, type]
+     2. typed on the keyboard (3 key(s); what it says is on the screen now)
+     The phone now:
+     3 field "uni" [tap, type, focused]
+
+sparsh log
+  14:19:38 you   tap  [on 3 field "Ask Gmail" [tap, type]] -> done
+  14:19:38 you   typing -> done (typed on the keyboard (3 key(s); ...))
+```
+
+The field was named from the screen as it was before the tap. The three
+keys were counted, not read, and "uni" came off the screen afterwards.
+281 tests pass.
+
+Not yet run: the iPhone's before-and-after, and a whole lesson through
+an agent (`/learn watch`).
 
 ## What is not here yet
+
+* **A fingerprint unlock is a step nobody saw.** It is said as "the
+  screen changed with no touch", which is true. A lesson that starts
+  locked starts from the lock.
 
 * **Naming every step, not just the first.** A screen read after each
   touch settles would let the second and third taps between two

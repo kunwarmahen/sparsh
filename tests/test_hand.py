@@ -128,3 +128,17 @@ def test_an_iphone_hands_over_both_screens(fake, tmp_path):
 def test_watched_before_watch_phone_starts_and_says_so(fake, tmp_path):
     said = tools(fake, tmp_path).call("watched", {})
     assert said.startswith("I wasn't watching yet")
+
+
+def test_getevent_runs_with_a_terminal_so_each_line_comes_as_it_happens(monkeypatch):
+    """Piped, a real Nexus 6P held its lines in a 4 KB buffer: a tap came
+    only after several more, and was named wrong."""
+    from sparsh.device import AdbDevice
+
+    said = {"getevent -lp": CAPABILITIES, "wm size": "Physical size: 1440x2560"}
+    phone = AdbDevice.__new__(AdbDevice)
+    phone.adb, phone.serial = "adb", "84B7N16128001616"
+    monkeypatch.setattr(phone, "_shell", lambda *args, **kw: said[" ".join(args)])
+    feed = phone.touch_feed()
+    assert feed.command[3:6] == ["shell", "-t", "-t"]
+    assert feed.command[-1] == "/dev/input/event1" and feed.scale == (1.0, 1.0)

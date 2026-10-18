@@ -632,8 +632,11 @@ class AdbDevice:
         if where is None:
             return None
         scale = scale_of(capabilities, self._shell("wm", "size"))
-        return TouchFeed([self.adb, "-s", self.serial, "shell", "getevent", "-lt", where],
-                         scale)
+        # -t -t: a terminal on the phone's side. Piped, getevent's lines sit
+        # in a 4 KB buffer, so on a real Nexus 6P a tap arrived only after
+        # several more, half of one in each chunk, and was named wrong.
+        return TouchFeed([self.adb, "-s", self.serial, "shell", "-t", "-t",
+                          "getevent", "-lt", where], scale)
 
     def keyboard_area(self) -> tuple[int, int, int, int] | None:
         """Where the on-screen keyboard is (left, top, right, bottom), or
