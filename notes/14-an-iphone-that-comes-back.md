@@ -159,7 +159,10 @@ words. "Could not get pid" becomes the Settings path to tap.
 
 * ~~A whole start by `sparsh iphone` on the real phone, with no `sudo`
   tunnel.~~ Run above, after the fix for the tunnel it thought it saw.
-* The phone unplugged and plugged back in while `sparsh iphone` runs.
+* ~~The phone unplugged and plugged back in while `sparsh iphone`
+  runs.~~ Run on the iPhone 17: unplugged, it waited; plugged back in
+  and unlocked, it was ready again. Sarathi's **Use the iPhone** button
+  started it in its `sarathi-iphone` unit (Sarathi's notes/19).
 * More than one iPhone. The first one go-ios lists is the one started.
 * The image after an iOS that go-ios doesn't know yet. go-ios picks the
   image by version, and only a newer go-ios can mount it.

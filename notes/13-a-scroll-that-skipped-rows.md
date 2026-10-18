@@ -120,7 +120,9 @@ second. Android's reads already wait, so nothing changes there.
 
 From Amazon's menu, *Customer Service*, then one tap on *Completed
 refunds*, three times: the screen came back with all five rows each
-time, the newest first.
+time, the newest first. Asked again through Sarathi's containers once
+they were rebuilt with both fixes (*"open Amazon's Completed refunds and
+tell me the three newest"*), the answer started at May 20.
 
 ## Five lines of the same words
 
