@@ -170,6 +170,9 @@ sparsh tcpip [--port 5555]          the phone on the cable listens over Wi-Fi; p
 sparsh mcp [--shots]                the agent's tools (MCP), held by your rules
 sparsh status [--json]              phones, rules, and how to start the tools
 sparsh wda [WDA.ipa]                when the iPhone's WebDriverAgent signature runs out
+sparsh iphone [WDA.ipa]             the iPhone on the cable, ready; again after an unplug,
+                                    a restart or an iOS update (SETUP.md, C6)
+sparsh iphone --background | --stop the same, without a terminal; and stop it
 ```
 
 Every command that does something prints the screen it led to. Every

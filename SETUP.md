@@ -364,7 +364,7 @@ $ uv run sparsh wda
 ```
 
 When it's time, run C4 again (nothing else needs redoing), copy the new
-`WDA.ipa`, and install it (C6). If you forget, the start script refuses
+`WDA.ipa`, and install it (C6). If you forget, `sparsh iphone` refuses
 a run-out one with that same sentence, instead of the phone refusing it
 in Apple's words.
 
@@ -379,10 +379,18 @@ npm install -g --prefix ~/.local go-ios              # gives you the `ios` progr
 
 ([go-ios](https://github.com/danielpaulus/go-ios) also has ready-made
 downloads if you don't use npm.) Plug the iPhone **into Linux**, unlock
-it, and tap **Trust**. Then:
+it, and tap **Trust**. Then, in Sparsh's folder:
 
 ```
-sparsh iphone WDA.ipa
+uv run sparsh iphone WDA.ipa
+```
+
+It should end with:
+
+```
+starting the developer tunnel (iOS 17 and later)
+starting WebDriverAgent (com.you.sparsh.WebDriverAgentRunner.xctrunner)
+the iPhone is ready: SPARSH_WDA=http://127.0.0.1:8100
 ```
 
 That one command:
@@ -412,7 +420,7 @@ iPhone** button and `sarathi up` do the same.
 
 **The first time only**, the iPhone refuses to open an app from an
 unknown developer. On the iPhone: **Settings → General → VPN & Device
-Management →** your Apple ID → **Trust**. Then run the script again.
+Management →** your Apple ID → **Trust**. Then run `sparsh iphone` again.
 Until you do, it stops with *"the iPhone won't open WebDriverAgent from
 a developer it doesn't trust yet"*: the app is installed but the phone
 won't start it.
@@ -425,6 +433,21 @@ empty. Use a cable that carries data, not only charge, and answer
 Keep the phone unlocked while an agent works. On a work phone Auto-Lock
 may not offer *Never*; **5 Minutes** is enough, and a locked phone is
 said as locked, not misread.
+
+**When the iPhone won't come back.** What `sparsh iphone` says, and what
+to do. Everything it did is in `~/.sparsh/`: `iphone.log` when it ran
+in the background, `ios-wda.log` for WebDriverAgent's own words, and
+`ios-tunnel.log` for the tunnel's.
+
+| It says | What to do |
+|---|---|
+| `waiting for the iPhone: plug it into this computer...` | Plug it in with a data cable, unlock it, and tap **Trust** if it asks. Nothing else: it carries on by itself. |
+| `the iPhone won't open WebDriverAgent from a developer it doesn't trust yet` | On the iPhone: **Settings → General → VPN & Device Management →** your Apple ID → **Trust**. Updates sometimes undo this. Then run it again. |
+| `WebDriverAgent isn't on the iPhone` | Install it: `sparsh iphone WDA.ipa` (C4 builds it). |
+| `the iPhone's WebDriverAgent signature ran out` | Rebuild it on the Mac (C4), then `sparsh iphone WDA.ipa`. |
+| `the developer tunnel didn't come up` | Usually an old tunnel started with `sudo` (by an older version of these steps) still holds its port: `sudo pkill -f "[i]os tunnel start"`, then run it again. |
+| `the developer image wasn't mounted (...); trying anyway` | Needs the internet, once per iOS version. If go-ios is older than the phone's iOS, update it: `npm install -g --prefix ~/.local go-ios`. |
+| `WebDriverAgent didn't start: ...` after three tries | Unplug the phone, plug it back in, unlock it, and run it again. If it says the same, the whole of go-ios's answer is in `~/.sparsh/ios-wda.log`. |
 
 ### C7 · Check Sparsh sees it
 
