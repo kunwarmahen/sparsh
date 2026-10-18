@@ -799,7 +799,8 @@ What you should see:
 
 On a real Nexus 6P this became a Gmail search skill, and on a real
 iPhone 17 a battery one. To teach by **telling** instead (the agent does
-each step you say), use `/learn start` in place of `/learn watch`.
+each step you say), use `/learn start` in place of `/learn watch`. Don't
+mix them: a `start` lesson doesn't see what you do on the phone by hand.
 
 ### Without a link or a flag: by hand
 
