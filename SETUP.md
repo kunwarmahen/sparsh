@@ -591,7 +591,7 @@ uv run yantra
 Either way, one line at the start says the phone was found:
 
 ```
-sparsh: 9 tool(s); phone emulator-5554 (sdk_gphone64_x86_64) -- via /home/you/sparsh/.venv/bin/sparsh
+sparsh: 12 tool(s); phone emulator-5554 (sdk_gphone64_x86_64) -- via /home/you/sparsh/.venv/bin/sparsh
 ```
 
 Then ask in plain words: *"turn on airplane mode"*, *"what's the newest
@@ -624,12 +624,13 @@ agent use it").
 
 Each recipe ends with the same two checks: **an agent does a harmless
 task on the phone by itself**, and **a text is stopped for your yes**.
+T5 is different: you teach it a job by doing it yourself.
 They use a local model through Ollama; with a cloud key, leave off
 `--provider` and `--model`. Run the Yantra lines from your Yantra
 folder, after the link in Step 0 (or with `YANTRA_SPARSH` set).
 
 **What you should see every time:** the first lines include
-`sparsh: 10 tool(s); phone <name> (...)`. No such line means Yantra
+`sparsh: 12 tool(s); phone <name> (...)`. No such line means Yantra
 didn't find Sparsh or a phone: run `sparsh devices` to see which.
 
 ### T1 · The emulator
@@ -758,7 +759,7 @@ The first line also says `iPhone`. A task like the first one has run
 on a real iPhone 17, from Yantra and from Telegram, with
 `qwen3.8-64k:latest` on Ollama ([notes/12](notes/12-a-real-iphone.md)).
 
-Four more to try, not yet run on an iPhone (Sarathi's TUTORIAL, step 6,
+Four more, each run on a real iPhone 17 too (Sarathi's TUTORIAL, step 6,
 *"Try these on your iPhone"*, has each with what you should see):
 
 ```
@@ -767,6 +768,38 @@ Four more to try, not yet run on an iPhone (Sarathi's TUTORIAL, step 6,
 "Text <your own number> from my iPhone: hello from the agent"                 # approve the card
 "Every morning at 8, open Settings on my iPhone and tell me the Battery row." # a schedule
 ```
+
+### T5 · Teach it a job by showing it (any phone)
+
+You do the steps with your own finger; the agent watches and writes the
+job down as a skill ([notes/17](notes/17-the-persons-own-hand.md)). Start
+from the home screen:
+
+```
+uv run yantra --provider ollama --model qwen3.8-64k --context-window 65536
+/learn watch check the battery percentage in Settings
+```
+
+The agent calls `watch_phone` and says it's ready. Open Settings and
+type `next`. Tap Battery and type `next` again. After each one it says
+what it thinks you did and asks; correct it in your own words when it's
+wrong. Then `/learn done` and `s` to save.
+
+What you should see:
+
+* **Android:** your touches named from the screen, as in
+  `1. tapped 6 item "Folder: Google" [tap]`. Only the first tap after
+  each `next` is named, and the rest are said as a spot. Typing comes out
+  as `typed on the keyboard (4 key(s); …)`; the letters are read off the
+  screen, never the keys. A fingerprint unlock is "the screen changed
+  with no touch".
+* **iPhone:** `This phone doesn't show where it is touched, so compare
+  the two screens`, then the agent's guess ("I think you tapped Battery").
+* `sparsh log` shows your steps by `you` (Android).
+
+On a real Nexus 6P this became a Gmail search skill, and on a real
+iPhone 17 a battery one. To teach by **telling** instead (the agent does
+each step you say), use `/learn start` in place of `/learn watch`.
 
 ### Without a link or a flag: by hand
 
@@ -847,4 +880,5 @@ To remove it: `adb uninstall com.android.adbkeyboard`.
 | Every day | plug in / start the emulator | `sparsh iphone` (after an unplug, a restart or an iOS update too) |
 | Screen while an agent works | kept on; `SPARSH_AWAKE=always` or `off` | left to Auto-Lock |
 | Other languages (é, नमस्ते, emoji) | install ADBKeyBoard once (Part G) | nothing to do |
+| Teach it a job by showing | `/learn watch …`: your touches named | `/learn watch …`: two screens compared, the agent asks |
 | Every 7 days | — | `ssh -t <mac> ./build-wda-on-mac.sh`, copy `WDA.ipa`, `sparsh iphone WDA.ipa`; `sparsh wda` says when |
