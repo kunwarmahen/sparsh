@@ -1,82 +1,24 @@
 #!/usr/bin/env bash
 # Install and start WebDriverAgent on an iPhone plugged into Linux.
 #
-#   PREFIX=com.someone.sparsh scripts/start-wda-from-linux.sh WDA.ipa
-#   PREFIX=com.someone.sparsh scripts/start-wda-from-linux.sh      # already installed
+#   scripts/start-wda-from-linux.sh WDA.ipa      # just built: install it first
+#   scripts/start-wda-from-linux.sh              # already installed
 #
-# WDA.ipa comes from scripts/build-wda-on-mac.sh, with the same PREFIX.
-# Sparsh reads when its signature runs out (`sparsh wda`), and says so in
-# `sparsh devices` and `sparsh status` when two days or fewer are left.
-# This uses go-ios (https://github.com/danielpaulus/go-ios), one program
-# that speaks to an iPhone over USB from Linux: `npm install -g --prefix ~/.local go-ios`,
-# or a release binary called `ios` on PATH. Linux also needs usbmuxd
-# (`sudo apt install usbmuxd`), which lets it see the phone at all.
+# This is `sparsh iphone` now (src/sparsh/wdastart.py), kept so the steps
+# written down elsewhere still work. That one command starts the iOS 17
+# tunnel (no sudo), mounts the developer image the phone's iOS needs,
+# finds WDA on the phone, forwards port 8100 and starts WDA, and starts
+# it all again when the phone is plugged back in. PREFIX is no longer
+# needed (WDA is found on the phone); when given, it is used.
 #
-# It leaves WDA running in the foreground (Ctrl-C stops it) and
-# forwards port 8100, so on this machine:
-#
-#   sparsh look --serial http://127.0.0.1:8100
-#
-# Over Wi-Fi from any machine, the phone's own address works as well.
+# WDA.ipa comes from scripts/build-wda-on-mac.sh. go-ios is the `ios`
+# program: `npm install -g --prefix ~/.local go-ios`. Linux also needs
+# usbmuxd (`sudo apt install usbmuxd`) to see the phone at all.
 
 set -euo pipefail
 
-IPA="${1:-}"
-PREFIX="${PREFIX:?set PREFIX to what build-wda-on-mac.sh printed (com.<user>.sparsh)}"
-BUNDLE="$PREFIX.WebDriverAgentRunner.xctrunner"
-
-say() { printf '\n== %s\n' "$*"; }
-die() { printf 'start-wda: %s\n' "$*" >&2; exit 1; }
-
-command -v ios >/dev/null || die "go-ios isn't installed: npm install -g --prefix ~/.local go-ios (then ~/.local/bin on PATH)"
-
-# Sparsh remembers when WDA's signature runs out, and refuses a run-out one
-# here rather than letting the phone refuse it in Apple's words.
 SPARSH="$(dirname "$0")/../.venv/bin/sparsh"
 [ -x "$SPARSH" ] || SPARSH="$(command -v sparsh || true)"
-if [ -n "$SPARSH" ]; then
-  if [ -n "$IPA" ]; then "$SPARSH" wda "$IPA" || exit 1
-  else "$SPARSH" wda || exit 1
-  fi
-fi
-ios list | grep -q '[0-9a-fA-F]' || die "no iPhone found. Plug it in, unlock it, answer 'Trust',
-  and check usbmuxd is running (sudo systemctl start usbmuxd)"
+[ -n "$SPARSH" ] || { echo "start-wda: sparsh isn't installed (uv sync, in this folder)" >&2; exit 1; }
 
-MAJOR="$(ios info 2>/dev/null | sed -n 's/.*"ProductVersion":"\([0-9]*\).*/\1/p')"
-if [ "${MAJOR:-0}" -ge 17 ] && ! pgrep -f '[i]os tunnel start' >/dev/null; then
-  # iOS 17 and later talk to developer tools through a tunnel, which
-  # needs root to set up. It stays running in the background.
-  say "iOS $MAJOR: starting the developer tunnel (asks for sudo)"
-  sudo -b "$(command -v ios)" tunnel start >/tmp/sparsh-ios-tunnel.log 2>&1
-  sleep 3
-fi
-
-if [ -n "$IPA" ]; then
-  say "installing $IPA"
-  ios install --path="$IPA"
-  echo "First time only: on the iPhone, Settings > General > VPN & Device Management >"
-  echo "trust the developer; and Settings > Privacy & Security > Developer Mode > on."
-fi
-
-# An iPhone won't tell WDA what's installed; go-ios can, over the cable.
-# Sparsh keeps the list, so "open WhatsApp" finds it (iphone.py), and it
-# is read again every few minutes while this runs, so an app installed
-# later is found without anyone asking for it (SPARSH_APPS_EVERY seconds).
-APPS=""
-if [ -n "$SPARSH" ]; then
-  ios apps --list 2>/dev/null | "$SPARSH" wda --apps - || echo "(the apps on the iPhone weren't read)"
-  ( while sleep "${SPARSH_APPS_EVERY:-300}"; do
-      ios apps --list 2>/dev/null | "$SPARSH" wda --apps - >/dev/null 2>&1 || true
-    done ) &
-  APPS=$!
-fi
-
-say "forwarding port 8100"
-ios forward 8100 8100 >/tmp/sparsh-ios-forward.log 2>&1 &
-FORWARD=$!
-trap 'kill $FORWARD $APPS 2>/dev/null || true' EXIT
-
-say "starting WebDriverAgent ($BUNDLE) -- leave this running; Ctrl-C stops it"
-echo "In another terminal: sparsh look --serial http://127.0.0.1:8100"
-ios runwda --bundleid="$BUNDLE" --testrunnerbundleid="$BUNDLE" \
-  --xctestconfig=WebDriverAgentRunner.xctest
+exec "$SPARSH" iphone ${PREFIX:+--prefix "$PREFIX"} ${1:+"$(realpath "$1")"}

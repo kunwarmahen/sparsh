@@ -382,13 +382,18 @@ downloads if you don't use npm.) Plug the iPhone **into Linux**, unlock
 it, and tap **Trust**. Then:
 
 ```
-PREFIX=com.you.sparsh scripts/start-wda-from-linux.sh WDA.ipa
+sparsh iphone WDA.ipa
 ```
 
-with the PREFIX that C4 printed. The script:
+That one command:
 
 * on iOS 17 and later, starts the developer "tunnel" Apple now
-  requires. It asks for `sudo` and stays running in the background;
+  requires, without `sudo`;
+* mounts the *developer disk image* that the phone's iOS version needs.
+  After an iOS update there is none, and WDA won't start without it.
+  Apple signs it from its own server, which Linux doesn't trust out of
+  the box, so Sparsh carries Apple's root certificate and uses it for
+  this one step;
 * installs `WDA.ipa` (leave off the file name next time if nothing was
   rebuilt);
 * forwards port 8100, so `http://127.0.0.1:8100` on Linux reaches WDA
@@ -396,13 +401,23 @@ with the PREFIX that C4 printed. The script:
 * starts WDA and stays running. Leave this terminal open; Ctrl-C stops
   it.
 
+You don't need the PREFIX from C4: Sparsh finds WDA on the phone.
+
+**Unplugged, restarted, or updated iOS?** While `sparsh iphone` runs, it
+waits for the phone and starts everything again when you plug it back
+in and unlock it. If it wasn't running, run it again. To run it without
+a terminal, `sparsh iphone --background` returns once the iPhone
+answers, and `sparsh iphone --stop` stops it. Sarathi's **Use the
+iPhone** button and `sarathi up` do the same.
+
 **The first time only**, the iPhone refuses to open an app from an
 unknown developer. On the iPhone: **Settings → General → VPN & Device
 Management →** your Apple ID → **Trust**. Then run the script again.
-Until you do, the script ends with *"could not get pid from response"*:
-the app is installed but the phone won't start it.
+Until you do, it stops with *"the iPhone won't open WebDriverAgent from
+a developer it doesn't trust yet"*: the app is installed but the phone
+won't start it.
 
-If `ios list` (or the script) says *"dial unix /var/run/usbmuxd: no such
+If `ios list` says *"dial unix /var/run/usbmuxd: no such
 file"*, Linux doesn't see the phone at all: `lsusb | grep -i apple` is
 empty. Use a cable that carries data, not only charge, and answer
 **Trust** on the phone; usbmuxd starts by itself when it sees an iPhone.
@@ -421,7 +436,7 @@ uv run sparsh devices
 ```
 
 You should see a line ending `iPhone  device`. If it says `offline`,
-WDA isn't running (C6).
+WDA isn't running: `sparsh iphone` (C6).
 
 `SPARSH_WDA` tells Sparsh which iPhone to use. Instead, you can name it
 on each command with `--serial http://127.0.0.1:8100`. With Sarathi,
@@ -458,7 +473,7 @@ It's simpler the first day, but the Mac has to stay awake.
 * **No Recent, Search or arrow keys.** They're refused with a sentence
   that lists the keys an iPhone does have.
 * **The apps list.** An iPhone won't tell WebDriverAgent what's
-  installed, but go-ios reads it over the cable: the start script (C6)
+  installed, but go-ios reads it over the cable: `sparsh iphone` (C6)
   saves it for Sparsh when it starts, and again every 5 minutes, so an
   app you install later is found by name within 5 minutes, with nothing
   to do. `sparsh apps` lists them; `open whatsapp`, `open settings`, `open
@@ -698,7 +713,7 @@ itself.
 Part C first. In one terminal, leave WDA running:
 
 ```
-PREFIX=com.you.sparsh scripts/start-wda-from-linux.sh
+sparsh iphone
 ```
 
 In another:
@@ -803,7 +818,7 @@ To remove it: `adb uninstall com.android.adbkeyboard`.
 | Drives it | `adb` | WebDriverAgent on the phone, started by go-ios |
 | Name it with | `--serial R58M...` / `ANDROID_SERIAL` | `--serial http://127.0.0.1:8100` / `SPARSH_WDA` |
 | Check | `uv run sparsh devices` | the same, with `SPARSH_WDA` set |
-| Every day | plug in / start the emulator | `scripts/start-wda-from-linux.sh` |
+| Every day | plug in / start the emulator | `sparsh iphone` (after an unplug, a restart or an iOS update too) |
 | Screen while an agent works | kept on; `SPARSH_AWAKE=always` or `off` | left to Auto-Lock |
 | Other languages (é, नमस्ते, emoji) | install ADBKeyBoard once (Part G) | nothing to do |
-| Every 7 days | — | `ssh -t <mac> ./build-wda-on-mac.sh`, copy `WDA.ipa`, install; `sparsh wda` says when |
+| Every 7 days | — | `ssh -t <mac> ./build-wda-on-mac.sh`, copy `WDA.ipa`, `sparsh iphone WDA.ipa`; `sparsh wda` says when |

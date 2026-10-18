@@ -18,6 +18,9 @@
     sparsh mcp                          the agent's tools (MCP, stdio), held by the rules
     sparsh status [--json]              phones, rules, and how a harness starts the tools
     sparsh wda [WDA.ipa]                when the iPhone's WebDriverAgent signature runs out
+    sparsh iphone [WDA.ipa] [--background | --stop]
+                                        the iPhone on the cable, ready (after an unplug,
+                                        a restart or an iOS update too): wdastart.py
 
 Every command that does something prints the screen it led to, so the
 next number to use is always on the screen. If the screen changed
@@ -182,8 +185,18 @@ def _parser() -> argparse.ArgumentParser:
     s.add_argument("ipa", nargs="?", help="the WDA.ipa just built (build-wda-on-mac.sh)")
     s.add_argument("--apps", metavar="FILE",
                    help="remember the apps on the iPhone, from what `ios apps --list` "
-                        "printed (- for stdin; start-wda-from-linux.sh does it)")  # fmt: skip
+                        "printed (- for stdin; `sparsh iphone` does it)")  # fmt: skip
     s.set_defaults(run=_wda)
+
+    s = sub.add_parser("iphone", parents=[common],
+                       help="start WebDriverAgent on the iPhone on the cable, and keep it "
+                            "running (tunnel, developer image, port 8100)")  # fmt: skip
+    s.add_argument("ipa", nargs="?", help="install this WDA.ipa first (just built)")
+    s.add_argument("--background", action="store_true",
+                   help="run behind; return once the iPhone answers")
+    s.add_argument("--stop", action="store_true", help="stop the one running behind")
+    s.add_argument("--prefix", help="the PREFIX WDA was built with (default: found on the phone)")
+    s.set_defaults(run=_iphone)
     return p
 
 
@@ -387,6 +400,18 @@ def _wda(args) -> int:
     if sig["days_left"] <= 0:
         raise SparshError(signature_note(sig))
     return 0
+
+
+def _iphone(args) -> int:
+    from sparsh import wdastart
+
+    state = state_root(args.state)
+    ipa = str(Path(args.ipa).resolve()) if args.ipa else None
+    if args.stop:
+        return wdastart.stop(state)
+    if args.background:
+        return wdastart.background(state, ipa, args.prefix)
+    return wdastart.foreground(state, ipa, args.prefix)
 
 
 def _signed(sig: dict) -> str:

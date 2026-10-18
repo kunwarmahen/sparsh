@@ -108,7 +108,9 @@ In short:
   app on the iPhone that takes taps over the network. It has to be
   signed with Xcode, which only runs on a Mac.
   `scripts/build-wda-on-mac.sh` does that, over `ssh` if you like, and
-  `scripts/start-wda-from-linux.sh` installs and starts it from Linux.
+  `sparsh iphone` installs and starts it from Linux, and starts it
+  again by itself after an unplug, a restart or an iOS update
+  ([notes/14](notes/14-an-iphone-that-comes-back.md)).
   With a free Apple ID the signature lasts 7 days; `sparsh wda` reads
   the date from the app, and Sparsh says when two days are left. Run
   end to end on an iPhone 17 (iOS 26): built on a Mac over `ssh`, then
@@ -127,7 +129,7 @@ An iPhone is named by WebDriverAgent's address
 (`SPARSH_WDA=http://127.0.0.1:8100`, or `--serial`). On an iPhone,
 `back` is the swipe in from the left edge, and `sparsh apps` lists
 every app installed on it. An iPhone won't tell WebDriverAgent that, but
-go-ios reads it over the cable: `start-wda-from-linux.sh` hands the list
+go-ios reads it over the cable: `sparsh iphone` hands the list
 to Sparsh when it starts and every 5 minutes after, so a new app is found
 by name (`open whatsapp`) with no rescan
 ([notes/12](notes/12-a-real-iphone.md)).
@@ -490,7 +492,7 @@ Looking isn't a step, so it isn't logged.
 | `SPARSH_WDA` | an iPhone's WebDriverAgent address (`http://127.0.0.1:8100`), used when no `--serial` is given |
 | `SPARSH_IOS_APPS` | more iPhone apps for `sparsh apps` and `open`, as bundle ids separated by commas (rarely needed: the start script lists every installed app) |
 | `SPARSH_IOS_MAX_CHILDREN` | how many children of each element an iPhone's screen is read with (30); more is slower, fewer can cut a list short |
-| `SPARSH_APPS_EVERY` | `start-wda-from-linux.sh`: seconds between reads of the iPhone's installed apps (300) |
+| `SPARSH_APPS_EVERY` | `sparsh iphone`: seconds between reads of the iPhone's installed apps (300) |
 
 ## Not here yet
 
@@ -542,6 +544,11 @@ src/sparsh/
 │               line each, from a real iPhone (notes/12); a swipe that
 │               rests before it lifts, so the page doesn't coast, and a
 │               box that only repeats its insides' words left out (notes/13)
+├── wdastart.py `sparsh iphone`: the iPhone on the cable made ready, in one
+│               command -- tunnel without sudo, the developer image its iOS
+│               needs (with Apple's root, apple-root-ca.pem), WDA found on
+│               the phone and started, and started again when the phone
+│               comes back (notes/14)
 ├── phone.py    numbers in, taps out: the last look is kept, and a number
 │               is checked against the screen now before anything is done
 │               (notes/01); a tap by position, held every time (notes/06);
@@ -595,7 +602,8 @@ that restarted, and the one command that brings it back),
 [notes/12](notes/12-a-real-iphone.md) (what a real iPhone found) and
 [notes/13](notes/13-a-scroll-that-skipped-rows.md) (a scroll that
 skipped rows, a page read before it loaded, and one that landed on a
-call).
+call) and [notes/14](notes/14-an-iphone-that-comes-back.md) (an iPhone
+unplugged and updated, and the one command that brings it back).
 
 ## Licence
 

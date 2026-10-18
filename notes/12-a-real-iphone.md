@@ -266,3 +266,6 @@ App: net.whatsapp.WhatsApp
 * Scroll bars named in other languages: only the English name is
   matched.
 * The iPhone over Wi-Fi instead of the cable's forwarded port.
+* ~~WebDriverAgent back after an unplug or an iOS update without
+  several steps.~~ One command now, `sparsh iphone`
+  ([note 14](14-an-iphone-that-comes-back.md)).
