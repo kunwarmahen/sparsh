@@ -46,11 +46,12 @@ has the app anyway.
 
 ## LIVE RECEIPT
 
-Not yet run on the real iPhone: the iPhone was in a drawer and the
-Android on the cable when this was built
-([note 15](15-the-phone-that-answers.md)). The Spotlight screen in
+Built while the iPhone was in a drawer and the Android on the cable
+([note 15](15-the-phone-that-answers.md)), so the Spotlight screen in
 `tests/screens/ios/spotlight.xml` is written by hand in WDA's shape.
-The first live run should replace it with a real one.
+Then run on the real iPhone 17, from the containers: an app not on the
+list was asked for by name, found in Spotlight and opened. A real
+Spotlight screen can still take the hand-written one's place.
 
 ## What the tests hold
 
@@ -63,6 +64,7 @@ app the rules keep out is left for home.
 
 ## What is not here yet
 
-* A real Spotlight screen, from the iPhone 17.
+* A real Spotlight screen in the tests, from the iPhone 17 (the open
+  itself has run there).
 * Android. It asks the phone for its apps on every open, so it has no
   list to fall behind.
