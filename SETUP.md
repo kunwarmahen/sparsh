@@ -166,8 +166,11 @@ uv run sparsh devices                          # 192.168.1.23:41234  ...  device
 
 (`adb pair` and `adb connect` do the same.) To have Sparsh connect by
 itself every time it looks for phones, after a restart too, set
-`SPARSH_CONNECT=192.168.1.23:41234`. Sarathi's containers reach the
-phone this way (Sarathi's `sarathi phone`).
+`SPARSH_CONNECT=192.168.1.23:41234`. Sarathi's containers can reach
+the phone this way (Sarathi's `sarathi phone`). A phone left on this
+computer's cable reaches them too, with no Wi-Fi at all: `sparsh
+adb-share` lends this computer's adb through a file, and Sarathi's `up`
+starts it ([notes/15](notes/15-the-phone-that-answers.md)).
 
 The address can change when wireless debugging is turned off and on,
 or the phone restarts; check the Wireless debugging page if it stops

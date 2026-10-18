@@ -126,13 +126,18 @@ emulator-5554  sdk_gphone64_x86_64  device
 ```
 
 An iPhone is named by WebDriverAgent's address
-(`SPARSH_WDA=http://127.0.0.1:8100`, or `--serial`). On an iPhone,
+(`SPARSH_WDA=http://127.0.0.1:8100`, or `--serial`). With an iPhone
+named and an Android plugged in in its place, the Android is the phone:
+the one that answers is used
+([notes/15](notes/15-the-phone-that-answers.md)). On an iPhone,
 `back` is the swipe in from the left edge, and `sparsh apps` lists
 every app installed on it. An iPhone won't tell WebDriverAgent that, but
 go-ios reads it over the cable: `sparsh iphone` hands the list
 to Sparsh when it starts and every 5 minutes after, so a new app is found
 by name (`open whatsapp`) with no rescan
-([notes/12](notes/12-a-real-iphone.md)).
+([notes/12](notes/12-a-real-iphone.md)). An app the list doesn't have
+yet is looked for in Spotlight, and opened only when a result is that
+name exactly ([notes/16](notes/16-an-app-not-on-the-list.md)).
 
 > **What an agent can see.** Anything on the phone's screen can be read:
 > messages, emails, names, codes. While you're trying this out, use the
@@ -173,6 +178,8 @@ sparsh wda [WDA.ipa]                when the iPhone's WebDriverAgent signature r
 sparsh iphone [WDA.ipa]             the iPhone on the cable, ready; again after an unplug,
                                     a restart or an iOS update (SETUP.md, C6)
 sparsh iphone --background | --stop the same, without a terminal; and stop it
+sparsh adb-share [--socket FILE]    this computer's adb, for containers, through a socket
+                                    file (~/.sparsh/adb.sock), not a port
 ```
 
 Every command that does something prints the screen it led to. Every
@@ -492,7 +499,8 @@ Looking isn't a step, so it isn't logged.
 | `SPARSH_GRANTS` | held taps a schedule may do without a yes, as its person accepted them (JSON list of sentences) |
 | `SPARSH_AWAKE` | the screen while an agent works the phone: `working` (default: kept on, your own timeout back 2 minutes after the last step), `always` (never sleeps: a phone set aside for the agent), `off` ([notes/09](notes/09-the-screen-kept-on.md)) |
 | `SPARSH_CONNECT` | phones over Wi-Fi (`192.168.1.23:41234`, comma-separated), connected to whenever phones are looked for |
-| `SPARSH_WDA` | an iPhone's WebDriverAgent address (`http://127.0.0.1:8100`), used when no `--serial` is given |
+| `SPARSH_WDA` | an iPhone's WebDriverAgent address (`http://127.0.0.1:8100`), asked alongside adb's phones when no `--serial` is given; the one that answers is used ([notes/15](notes/15-the-phone-that-answers.md)) |
+| `ADB_SERVER_SOCKET` | adb's own: in a container, `localfilesystem:/home/you/.sparsh/adb.sock` reaches this computer's adb through `sparsh adb-share` |
 | `SPARSH_IOS_APPS` | more iPhone apps for `sparsh apps` and `open`, as bundle ids separated by commas (rarely needed: the start script lists every installed app) |
 | `SPARSH_IOS_MAX_CHILDREN` | how many children of each element an iPhone's screen is read with (30); more is slower, fewer can cut a list short |
 | `SPARSH_APPS_EVERY` | `sparsh iphone`: seconds between reads of the iPhone's installed apps (300) |
@@ -522,6 +530,13 @@ Looking isn't a step, so it isn't logged.
   unnamed places and a still-blank web page, one when the model asks,
   and every yes asked with a picture
   ([notes/10](notes/10-where-the-list-falls-short.md)).
+* ~~An Android swapped in for the iPhone on the same cable, and a cable
+  the containers can't see.~~ Built: the phone that answers is used, and
+  `sparsh adb-share` lends this computer's adb through a file
+  ([notes/15](notes/15-the-phone-that-answers.md)).
+* ~~An iPhone app installed since its list was read.~~ Built: looked for
+  in Spotlight ([notes/16](notes/16-an-app-not-on-the-list.md)); not yet
+  run on the real iPhone.
 * ~~iPhones.~~ Built: [notes/03](notes/03-an-iphone-through-a-mac.md),
   with a Mac needed once to sign WebDriverAgent; read and tapped on a
   real iPhone 17, iOS 26 ([notes/12](notes/12-a-real-iphone.md)).
@@ -537,7 +552,8 @@ src/sparsh/
 │               swipe, type, keys, open an app; over Wi-Fi too
 │               (SPARSH_CONNECT), reconnected once when it went stale,
 │               listed offline with why when it doesn't answer; `tcpip`,
-│               the phone on the cable told to listen (notes/11);
+│               the phone on the cable told to listen (notes/11); the phone
+│               that answers picked, not the one written down (notes/15);
 │               where the keyboard covers; the panels at the top. Nothing
 │               installed on it, unless you add ADBKeyBoard for letters
 │               beyond ASCII (notes/04, notes/08)
@@ -546,12 +562,15 @@ src/sparsh/
 │               (notes/03); widgets, row frames, knobs and twins as one
 │               line each, from a real iPhone (notes/12); a swipe that
 │               rests before it lifts, so the page doesn't coast, and a
-│               box that only repeats its insides' words left out (notes/13)
+│               box that only repeats its insides' words left out (notes/13);
+│               an app not on the list found in Spotlight (notes/16)
 ├── wdastart.py `sparsh iphone`: the iPhone on the cable made ready, in one
 │               command -- tunnel without sudo, the developer image its iOS
 │               needs (with Apple's root, apple-root-ca.pem), WDA found on
 │               the phone and started, and started again when the phone
 │               comes back (notes/14)
+├── adbshare.py `sparsh adb-share`: this computer's adb, lent to containers
+│               through a socket file, never a port (notes/15)
 ├── phone.py    numbers in, taps out: the last look is kept, and a number
 │               is checked against the screen now before anything is done
 │               (notes/01); a tap by position, held every time (notes/06);
@@ -606,7 +625,11 @@ that restarted, and the one command that brings it back),
 [notes/13](notes/13-a-scroll-that-skipped-rows.md) (a scroll that
 skipped rows, a page read before it loaded, and one that landed on a
 call) and [notes/14](notes/14-an-iphone-that-comes-back.md) (an iPhone
-unplugged and updated, and the one command that brings it back).
+unplugged and updated, and the one command that brings it back),
+[notes/15](notes/15-the-phone-that-answers.md) (the phone that answers,
+and a cable the containers can borrow) and
+[notes/16](notes/16-an-app-not-on-the-list.md) (an app not on the list,
+found in Spotlight).
 
 ## Licence
 

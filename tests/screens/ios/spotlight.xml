@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<XCUIElementTypeApplication type="XCUIElementTypeApplication" name="SpringBoard" label="SpringBoard" enabled="true" visible="true" x="0" y="0" width="390" height="844">
+  <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" x="0" y="0" width="390" height="844">
+    <XCUIElementTypeSearchField type="XCUIElementTypeSearchField" name="WhatsApp" label="WhatsApp" value="WhatsApp" enabled="true" visible="true" x="16" y="60" width="358" height="36"/>
+    <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" name="Top Hit" label="Top Hit" enabled="true" visible="true" x="16" y="112" width="80" height="20"/>
+    <XCUIElementTypeIcon type="XCUIElementTypeIcon" name="WhatsApp" label="WhatsApp" enabled="true" visible="true" x="20" y="140" width="64" height="64"/>
+    <XCUIElementTypeCell type="XCUIElementTypeCell" name="WhatsApp Business" label="WhatsApp Business" enabled="true" visible="true" x="0" y="230" width="390" height="56"/>
+    <XCUIElementTypeCell type="XCUIElementTypeCell" name="whatsapp" label="whatsapp" enabled="true" visible="false" x="0" y="900" width="390" height="56"/>
+    <XCUIElementTypeButton type="XCUIElementTypeButton" name="Search in App Store" label="Search in App Store" enabled="true" visible="true" x="0" y="300" width="390" height="44"/>
+    <XCUIElementTypeKeyboard type="XCUIElementTypeKeyboard" enabled="true" visible="true" x="0" y="550" width="390" height="294">
+      <XCUIElementTypeKey type="XCUIElementTypeKey" name="WhatsApp" label="WhatsApp" enabled="true" visible="true" x="0" y="560" width="130" height="40"/>
+    </XCUIElementTypeKeyboard>
+  </XCUIElementTypeOther>
+</XCUIElementTypeApplication>

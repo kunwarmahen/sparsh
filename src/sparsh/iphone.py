@@ -56,6 +56,19 @@ hands that list to ``sparsh wda --apps -``, it is kept in the state
 folder (``iphone-apps.json``, which Sarathi's containers mount), and
 each name becomes a nickname: "whatsapp" opens net.whatsapp.WhatsApp.
 
+AN APP NOT ON THE LIST IS LOOKED FOR IN SPOTLIGHT. The list is read
+over the cable every few minutes, so an app installed since, or one on
+an iPhone whose list was never read (no cable, WDA reached over Wi-Fi),
+is missing from it, and "open it" was answered "no app matches". A
+person would swipe down on the home screen and type its name.
+:meth:`WdaDevice.search_open` does the same: home, the swipe, the name,
+and a tap on the result whose label is that name, word for word (case
+aside). A near match is not tapped: "Bank" is not "Bank of America",
+and the wrong app is worse than none. Return is never pressed, since on
+a name that matches no app it is a web search. What opened is checked
+(not the home screen), and kept in ``iphone-apps.json``, so the next
+open finds it directly.
+
 A SIGNATURE THAT RUNS OUT IS SAID BEFORE IT DOES. What a free Apple ID
 signs opens for seven days; after that WDA simply won't start, and
 go-ios says so in Apple's words. The date is written inside the signed
@@ -72,6 +85,7 @@ import base64
 import json
 import os
 import re
+import time
 import urllib.error
 import urllib.request
 import xml.etree.ElementTree as ET
@@ -357,6 +371,38 @@ class WdaDevice:
                 said = "the iPhone is locked. Ask its person to unlock it, then try again"
                 raise SparshError(f"{package} wasn't opened: {said}") from None
             raise SparshError(f"{package} could not be opened on this iPhone ({e})") from None
+
+    def search_open(self, name: str) -> str:
+        """Open the app called ``name`` through Spotlight (module
+        docstring); its bundle id. Raises when no result is that name."""
+        wanted = _plain(name)
+        if not wanted:
+            raise SparshError("which app? (an empty name)")
+        self.keys("home")
+        width, height = self.touch_size()
+        self.swipe(width // 2, height * 30 // 100, width // 2, height * 60 // 100, 250)
+        time.sleep(_SPOTLIGHT_OPENS)
+        self.type_text(name.strip())
+        hit = None
+        for _ in range(_SPOTLIGHT_READS):
+            time.sleep(_SPOTLIGHT_SETTLES)
+            source = self._call("GET", "/source?format=xml")
+            hit = spotlight_hit(source if isinstance(source, str) else "", wanted)
+            if hit is not None:
+                break
+        if hit is None:
+            self.keys("home")
+            raise SparshError(f"no app called {name!r} on this iPhone (looked in Spotlight too)")
+        self.tap(*hit)
+        time.sleep(_SPOTLIGHT_SETTLES)
+        bundle = self.front_app()
+        if not bundle or bundle == "com.apple.springboard":
+            self.keys("home")
+            raise SparshError(f"{name!r} was found in Spotlight, but tapping it opened nothing")
+        self.installed[bundle] = name.strip()
+        self.nicknames.setdefault(name.strip().lower(), bundle)
+        _remember_one(_state(), bundle, name.strip())
+        return bundle
 
     def awake(self) -> tuple[bool | None, bool | None]:
         """(screen on?, locked?): WDA says only whether it is locked."""
@@ -692,6 +738,64 @@ _INVISIBLE = dict.fromkeys(map(ord, "\u200e\u200f\u202a\u202b\u202c\u202d\u202e\
 
 def _state() -> Path:
     return Path(os.environ.get("SPARSH_STATE") or Path.home() / ".sparsh")
+
+
+#: Spotlight's pauses: for it to open, and for results after typing (read
+#: up to this many times).
+_SPOTLIGHT_OPENS = 0.8
+_SPOTLIGHT_SETTLES = 0.7
+_SPOTLIGHT_READS = 4
+#: Where a name is typed, never the thing to tap.
+_NOT_HITS = {"XCUIElementTypeSearchField", "XCUIElementTypeTextField", "XCUIElementTypeKeyboard",
+           "XCUIElementTypeKey"}
+#: Which result to tap when the name is on several (an icon is the app).
+_HIT_ORDER = ("XCUIElementTypeIcon", "XCUIElementTypeButton", "XCUIElementTypeCell")
+
+
+def _plain(name: str) -> str:
+    return " ".join(name.translate(_INVISIBLE).lower().split())
+
+
+def spotlight_hit(source: str, wanted: str) -> tuple[int, int] | None:
+    """Where to tap for the result labelled ``wanted`` (already plain),
+    in points; None when no visible result is that name exactly."""
+    try:
+        root = ET.fromstring(source.strip().encode())
+    except ET.ParseError:
+        return None
+    found = []
+    for node in root.iter():
+        kind = node.get("type", node.tag)
+        if kind in _NOT_HITS or node.get("visible", "true") != "true":
+            continue
+        label = node.get("label") or node.get("name") or ""
+        if _plain(label) != wanted:
+            continue
+        try:
+            x, y = float(node.get("x", "")), float(node.get("y", ""))
+            w, h = float(node.get("width", "")), float(node.get("height", ""))
+        except ValueError:
+            continue
+        if w <= 0 or h <= 0:
+            continue
+        rank = _HIT_ORDER.index(kind) if kind in _HIT_ORDER else len(_HIT_ORDER)
+        found.append((rank, int(x + w / 2), int(y + h / 2)))
+    if not found:
+        return None
+    _, x, y = min(found)
+    return x, y
+
+
+def _remember_one(state: Path, bundle: str, name: str) -> None:
+    """One app found in Spotlight, added to ``iphone-apps.json`` (the next
+    list from the cable replaces the whole file, and has it anyway)."""
+    apps = installed_apps(state)
+    apps.setdefault(bundle, name)
+    try:
+        state.mkdir(parents=True, exist_ok=True)
+        (state / "iphone-apps.json").write_text(json.dumps(apps, indent=1, sort_keys=True) + "\n")
+    except OSError:
+        pass  # a read-only state folder: found again by Spotlight next time
 
 
 def remember_apps(state: Path, listing: str) -> dict[str, str]:

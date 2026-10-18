@@ -392,37 +392,71 @@ def iphones() -> list[Attached]:
 
 
 def pick(serial: str | None = None, adb: str | None = None) -> Device:
-    """The phone to use: the one named, or the only one there is.
+    """The phone to use: the one named, or the one that answers.
 
     A name that is a web address is an iPhone's WebDriverAgent
-    (iphone.py); so is ``$SPARSH_WDA`` when nothing else is named."""
-    serial = serial or os.environ.get("ANDROID_SERIAL") or os.environ.get("SPARSH_WDA") or None
+    (iphone.py). Named means ``--serial`` or ``$ANDROID_SERIAL``.
+
+    THE PHONE THAT ANSWERS, NOT THE ONE WRITTEN DOWN. ``$SPARSH_WDA`` says
+    where an iPhone would answer, not that it is the phone. It used to
+    win whenever it was set, so a person who swapped the iPhone for an
+    Android on the same cable had every tap go to an iPhone that was in
+    a drawer. Now an iPhone at ``$SPARSH_WDA`` and the Androids adb sees
+    are asked alike, and the one that answers is used. Two that answer
+    is said, not guessed. When none does, a named iPhone is still handed
+    back, so the first call says why it isn't answering."""
+    serial = serial or os.environ.get("ANDROID_SERIAL") or None
     if is_wda(serial):
         return WdaDevice(serial)
-    adb = adb or adb_path()
-    phones = attached(adb)
+    wda = os.environ.get("SPARSH_WDA", "").strip()
+    wda = wda if is_wda(wda) and not serial else ""
+    try:
+        adb = adb or adb_path()
+        phones = attached(adb)
+    except SparshError:
+        if not wda:
+            raise
+        phones = []
     if serial:
         match = [p for p in phones if p.serial == serial]
         if not match:
             raise SparshError(f"no phone called {serial} is attached (`sparsh devices` lists them)")
         chosen = match[0]
     else:
-        if not phones:
+        ready = [p for p in phones if p.state == "device"]
+        if wda and _answers(wda):
+            ready.append(Attached(wda, "device", "iPhone"))
+        if len(ready) > 1:
+            names = ", ".join(f"{p.serial} ({p.model or '?'})" for p in ready)
+            raise SparshError(f"more than one phone answers ({names}); unplug one, "
+                              "or choose with --serial")
+        if ready:
+            chosen = ready[0]
+        elif wda:
+            return WdaDevice(wda)  # its first call says why it isn't answering
+        elif not phones:
             raise SparshError(
                 "no phone is attached. Plug one in with USB debugging on, "
                 "or start the emulator, then `sparsh devices`."
             )
-        ready = [p for p in phones if p.state == "device"]
-        if len(phones) > 1 and len(ready) == 1:
-            # the same phone on its cable, its Wi-Fi address not answering
-            phones = ready
-        if len(phones) > 1:
+        elif len(phones) > 1:
             names = ", ".join(p.serial for p in phones)
             raise SparshError(f"more than one phone is attached ({names}); choose with --serial")
-        chosen = phones[0]
+        else:
+            chosen = phones[0]
+    if is_wda(chosen.serial):
+        return WdaDevice(chosen.serial)
     if chosen.state != "device":
         raise SparshError(f"the phone is attached but not ready: {chosen.line()}")
     return AdbDevice(chosen.serial, adb)
+
+
+def _answers(url: str) -> bool:
+    try:
+        WdaDevice(url, timeout=3).status()
+        return True
+    except SparshError:
+        return False
 
 
 class AdbDevice:

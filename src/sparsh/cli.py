@@ -21,17 +21,21 @@
     sparsh iphone [WDA.ipa] [--background | --stop]
                                         the iPhone on the cable, ready (after an unplug,
                                         a restart or an iOS update too): wdastart.py
+    sparsh adb-share [--socket FILE]    this computer's adb, for containers, through a
+                                        socket file (adbshare.py)
 
 Every command that does something prints the screen it led to, so the
 next number to use is always on the screen. If the screen changed
 since the last look, nothing is tapped: the new screen is printed and
 the exit code is 3.
 
-Which phone: the only one attached, or ``--serial`` / ``$ANDROID_SERIAL``
+Which phone: the one that answers, or ``--serial`` / ``$ANDROID_SERIAL``
 (``sparsh devices`` shows the names). An iPhone is named by its
-WebDriverAgent's address: ``--serial http://192.168.1.40:8100``, or
-``$SPARSH_WDA``. A phone over Wi-Fi is named by its address, and
-``$SPARSH_CONNECT`` reconnects to it whenever phones are looked for.
+WebDriverAgent's address: ``--serial http://192.168.1.40:8100``.
+``$SPARSH_WDA`` says where one would answer; it is used only when it
+does, so an Android plugged in in its place is the phone (device.pick).
+A phone over Wi-Fi is named by its address, and ``$SPARSH_CONNECT``
+reconnects to it whenever phones are looked for.
 A phone with no Wireless debugging page (Android 10 and older), or one
 that just restarted, is told to listen over the cable: ``sparsh tcpip``
 prints the address to use.
@@ -197,6 +201,12 @@ def _parser() -> argparse.ArgumentParser:
     s.add_argument("--stop", action="store_true", help="stop the one running behind")
     s.add_argument("--prefix", help="the PREFIX WDA was built with (default: found on the phone)")
     s.set_defaults(run=_iphone)
+
+    s = sub.add_parser("adb-share", parents=[common],
+                       help="hand this computer's adb (the phone on the cable) to containers, "
+                            "through a socket file in ~/.sparsh")  # fmt: skip
+    s.add_argument("--socket", help="the socket file (default: adb.sock in the state folder)")
+    s.set_defaults(run=_adb_share)
     return p
 
 
@@ -412,6 +422,25 @@ def _iphone(args) -> int:
     if args.background:
         return wdastart.background(state, ipa, args.prefix)
     return wdastart.foreground(state, ipa, args.prefix)
+
+
+def _adb_share(args) -> int:
+    from sparsh import adbshare
+    from sparsh.device import adb_path
+
+    path = Path(args.socket).expanduser() if args.socket else adbshare.socket_path(args.state)
+    print(f"sharing adb at {path}; in a container: "
+          f"ADB_SERVER_SOCKET=localfilesystem:{path}", flush=True)
+    import signal
+
+    # systemd stops a unit with SIGTERM: leave by the same door as Ctrl-C,
+    # so the socket file goes with it
+    signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
+    try:
+        adbshare.serve(path, adb_path())
+    except KeyboardInterrupt:
+        pass
+    return 0
 
 
 def _signed(sig: dict) -> str:

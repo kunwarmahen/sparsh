@@ -669,7 +669,13 @@ class Phone:
         home and reopen Settings for nineteen minutes. So Sparsh presses
         back, up to twice, until there is a page to read, and says so.
         Back is never held, and loses nothing."""
-        package = self.which_app(name)
+        try:
+            package = self.which_app(name)
+        except SparshError as e:
+            search = getattr(self.device, "search_open", None)
+            if search is None or not str(e).startswith("no app matches"):
+                raise
+            return self._opened_by_search(search, name)
         self._guard(package)
         if self.device.awake()[1] and self.device.secure() is False:
             self.device.dismiss_lock()  # a swipe with no PIN: nobody's to open
@@ -685,6 +691,20 @@ class Phone:
                 f"(It opened on a page that can't be read, so back was pressed "
                 f"{'once' if pressed == 1 else 'twice'}. This is where that led.)"
             )
+        return screen
+
+    def _opened_by_search(self, search, name: str) -> Screen:
+        """AN IPHONE'S APP NOT ON THE LIST, FOUND THE WAY A PERSON WOULD
+        (iphone.py, Spotlight). Its bundle is known only once it opened,
+        so an app the rules keep the agent out of is left at once, for
+        home, before anything on it is read."""
+        package = search(name)
+        if self._off_limits(package):
+            self.device.keys("home")
+            self._guard(package)
+        screen = self._after()
+        screen.remark = (f"(Not on the list of this iPhone's apps yet, so it was found by "
+                         f"name in Spotlight: {package}.)")
         return screen
 
     # -- holds ---------------------------------------------------------

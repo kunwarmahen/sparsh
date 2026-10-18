@@ -260,9 +260,9 @@ App: net.whatsapp.WhatsApp
   lands on another app refused ([note 13](13-a-scroll-that-skipped-rows.md)).
 * Typing, a held step's yes, and a schedule, on the real phone. Each has a prompt to try, with what should happen, in
   Sarathi's TUTORIAL (step 6, *"Try these on your iPhone"*).
-* An app opened by name that isn't on the list yet (installed in the
-  last 5 minutes, or with no cable): Spotlight on the phone could open
-  anything by name, without a list.
+* ~~An app opened by name that isn't on the list yet (installed in the
+  last 5 minutes, or with no cable).~~ Looked for in Spotlight
+  ([note 16](16-an-app-not-on-the-list.md)).
 * Scroll bars named in other languages: only the English name is
   matched.
 * The iPhone over Wi-Fi instead of the cable's forwarded port.

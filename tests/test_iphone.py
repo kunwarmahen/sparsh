@@ -43,6 +43,8 @@ from sparsh.screen import read
 from sparsh.status import report
 
 IOS = Path(__file__).parent / "screens" / "ios"
+#: ``spotlight`` is written by hand in the shape of the others: the home
+#: screen's search, after "WhatsApp" was typed.
 PNG = b"\x89PNG\r\n\x1a\n" + b"\0" * 8
 
 
@@ -58,6 +60,7 @@ class FakeWda:
         self.bundle = bundle
         self.calls: list[tuple[str, str, object]] = []
         self.session = "S1"
+        self.after_tap = None  # called once a finger has been put down
         fake = self
 
         class Handler(BaseHTTPRequestHandler):
@@ -99,6 +102,8 @@ class FakeWda:
                 if path == "/session":
                     self._reply({"sessionId": fake.session}, sessionId=fake.session)
                 else:
+                    if path.endswith("/actions") and fake.after_tap is not None:
+                        fake.after_tap(body)
                     self._reply(None)
 
         self.server = HTTPServer(("127.0.0.1", 0), Handler)
@@ -340,7 +345,10 @@ def test_a_screenshot_is_the_png_wda_sent(iphone, tmp_path):
 
 
 def test_a_web_address_for_a_serial_is_an_iphone(monkeypatch):
+    from sparsh import device
+
     monkeypatch.delenv("ANDROID_SERIAL", raising=False)
+    monkeypatch.setattr(device, "attached", lambda adb=None: [])
     assert isinstance(pick("http://192.168.1.40:8100"), WdaDevice)
     monkeypatch.setenv("SPARSH_WDA", "http://iphone.local:8100")
     assert pick().serial == "http://iphone.local:8100"
@@ -516,3 +524,76 @@ def test_a_box_named_with_its_insides_words_says_nothing_of_its_own():
         'text "Seen today"',
         'text "Today"',
     ]
+
+
+# -- an app not on the list: Spotlight ----------------------------------
+# An app installed since the list was read over the cable (or with no
+# cable to read it) was "no app matches". A person would swipe down on the
+# home screen and type its name; so does Sparsh, and taps only a result
+# that is that name, word for word.
+
+
+@pytest.fixture
+def spotlight(wda, tmp_path, monkeypatch):
+    from sparsh import iphone as iphone_mod
+
+    for pause in ("_SPOTLIGHT_OPENS", "_SPOTLIGHT_SETTLES"):
+        monkeypatch.setattr(iphone_mod, pause, 0)
+    monkeypatch.setenv("SPARSH_STATE", str(tmp_path))
+    wda.source, wda.bundle = ios("spotlight"), "com.apple.springboard"
+    return wda
+
+
+def _finger_at(body) -> tuple[int, int]:
+    first = body["actions"][0]["actions"][0]
+    return first["x"], first["y"]
+
+
+def test_an_app_not_on_the_list_is_found_in_spotlight_and_opened(spotlight, tmp_path):
+    taps = []
+
+    def opened(body):
+        taps.append(_finger_at(body))
+        if len(taps) == 2:          # the swipe, then the tap on the result
+            spotlight.bundle, spotlight.source = "net.whatsapp.WhatsApp", ios("settings")
+
+    spotlight.after_tap = opened
+    phone = Phone(WdaDevice(spotlight.url), state=tmp_path, settle=0)
+    screen = phone.open_app("WhatsApp")
+    assert taps[1] == (52, 172)     # the icon, not the field, the key or "WhatsApp Business"
+    assert ("/wda/keys", {"value": ["WhatsApp"]}) in spotlight.posts()
+    assert "found by name in Spotlight: net.whatsapp.WhatsApp" in screen.text()
+    kept = json.loads((tmp_path / "iphone-apps.json").read_text())
+    assert kept == {"net.whatsapp.WhatsApp": "WhatsApp"}
+    # the next open finds it on the list, with no search
+    assert phone.which_app("whatsapp") == "net.whatsapp.WhatsApp"
+
+
+def test_a_near_match_is_not_tapped(spotlight, tmp_path):
+    phone = Phone(WdaDevice(spotlight.url), state=tmp_path, settle=0)
+    with pytest.raises(SparshError, match="no app called 'WhatsApp Busi' on this iPhone"):
+        phone.open_app("WhatsApp Busi")
+    assert [p for p, _ in spotlight.posts()][-1] == "/wda/homescreen"   # left as found
+    assert not (tmp_path / "iphone-apps.json").exists()
+
+
+def test_return_is_never_pressed_so_no_name_becomes_a_web_search(spotlight, tmp_path):
+    phone = Phone(WdaDevice(spotlight.url), state=tmp_path, settle=0)
+    with pytest.raises(SparshError):
+        phone.open_app("Nothing Like It")
+    typed = [b["value"] for p, b in spotlight.posts() if p.endswith("/wda/keys")]
+    assert typed == [["Nothing Like It"]]
+
+
+def test_an_app_the_rules_keep_out_is_left_for_home_at_once(spotlight, tmp_path):
+    from sparsh.rules import Rules
+
+    def opened(body):
+        spotlight.bundle = "net.whatsapp.WhatsApp"
+
+    spotlight.after_tap = opened
+    phone = Phone(WdaDevice(spotlight.url), state=tmp_path, settle=0,
+                  rules=Rules(never=("net.whatsapp.*",)))
+    with pytest.raises(SparshError, match="off limits"):
+        phone.open_app("WhatsApp")
+    assert [p for p, _ in spotlight.posts()][-1] == "/wda/homescreen"
