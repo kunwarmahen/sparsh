@@ -39,7 +39,9 @@ case "$1" in
   list) echo '{{"deviceList":["{UDID}"]}}';;
   info) echo '{{"ProductVersion":"27.0.1"}}';;
   tunnel) case "$2" in
-            ls) [ -e {self.tunnel} ] && echo '[{{"udid":"{UDID}"}}]' || echo '[]';;
+            ls) echo '{{"msg":"no udid specified using first device in list","udid":"{UDID}"}}'
+                [ -e {self.tunnel} ] && echo '[{{"udid":"{UDID}","address":"fd00::1"}}]' \
+                  || {{ echo '{{"level":"ERROR","msg":"failed to get tunnel infos"}}'; exit 1; }};;
             start) touch {self.tunnel}; sleep 30;;
           esac;;
   image) echo '{{"msg":"success mounting image"}}';;
@@ -108,6 +110,15 @@ def test_no_tunnel_starts_one_without_sudo(tmp_path):
     finally:
         starter.close()
     assert any(c.startswith("tunnel start --userspace") for c in ios.said())
+
+
+def test_a_log_line_naming_the_phone_is_not_a_tunnel(tmp_path):
+    """go-ios names the phone in a log line with no tunnel running; read
+    as one, WDA was started into nothing three times (iOS 27.0.1)."""
+    ios = Ios(tmp_path, tunnelled=False)
+    assert not Starter(tmp_path, ios=str(ios.path)).tunnelled(UDID)
+    ios.tunnel.write_text("")
+    assert Starter(tmp_path, ios=str(ios.path)).tunnelled(UDID)
 
 
 def test_a_tunnel_from_before_the_update_is_started_again(tmp_path):

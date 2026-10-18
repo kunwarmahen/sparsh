@@ -109,23 +109,57 @@ bundle com.mahensingh.sparsh.WebDriverAgentRunner.xctrunner
 The image, mounted with Apple's root from inside Sparsh, is kept in
 `~/.sparsh/devimages/ddi-17E5179g`.
 
+The first whole run, with the `sudo` tunnel stopped, failed three times:
+
+```
+starting WebDriverAgent (com.mahensingh.sparsh.WebDriverAgentRunner.xctrunner)
+WebDriverAgent didn't start (... Cannot connect to com.apple.dt.testmanagerd.remote,
+ missing tunnel address and RSD port. To start the tunnel, run `ios tunnel start`); trying again
+```
+
+No tunnel was started, because Sparsh thought one was running. With no
+tunnel, `ios tunnel ls` still prints a log line that names the phone,
+`{"msg":"no udid specified using first device in list","udid":"00008150-…"}`,
+and Sparsh had looked for the phone's ID anywhere in the output. Now
+only the list counts: an entry with this phone's ID and an address.
+"Missing tunnel address" also gets a new tunnel. Run again, with no
+`sudo` anywhere:
+
+```
+$ sparsh iphone --background
+starting the iPhone behind (what it says: /home/mahen/.sparsh/iphone.log)
+the iPhone is ready: SPARSH_WDA=http://127.0.0.1:8100
+
+$ cat ~/.sparsh/iphone.log
+starting the developer tunnel (iOS 17 and later)
+starting WebDriverAgent (com.mahensingh.sparsh.WebDriverAgentRunner.xctrunner)
+the iPhone is ready: SPARSH_WDA=http://127.0.0.1:8100
+
+$ SPARSH_WDA=http://127.0.0.1:8100 sparsh look --peek
+App: com.apple.springboard
+1 item "Contacts (Widget, Stack)" [tap]
+2 item "news folder (3 apps)" [tap]
+```
+
+The tunnel it started is `ios tunnel start --userspace`, run as the person.
+
 ## What the tests hold
 
 `tests/test_wdastart.py` runs the steps against `ios` as a small
 script. Apple's root is added to this computer's roots, and a changed
 root is refused. The image is mounted with that bundle on every start,
 even when a tunnel was already running. WDA's name is read from the
-phone, and a phone without it is told how to install it. With no
-tunnel, one is started without `sudo`. The RSD error, again and again,
+phone, and a phone without it is told how to install it. A log line
+naming the phone is not a tunnel. With no tunnel, one is started
+without `sudo`. The RSD error, again and again,
 gets a new tunnel and gives up after three tries with go-ios's own
 words. "Could not get pid" becomes the Settings path to tap.
 
 ## What is not here yet
 
-* A whole start by `sparsh iphone` on the real phone: the userspace
-  tunnel started with no `sudo` tunnel already running, and the phone
-  unplugged and plugged back in while it runs. The steps were run one by
-  one above, not yet as the command.
+* ~~A whole start by `sparsh iphone` on the real phone, with no `sudo`
+  tunnel.~~ Run above, after the fix for the tunnel it thought it saw.
+* The phone unplugged and plugged back in while `sparsh iphone` runs.
 * More than one iPhone. The first one go-ios lists is the one started.
 * The image after an iOS that go-ios doesn't know yet. go-ios picks the
   image by version, and only a newer go-ios can mount it.

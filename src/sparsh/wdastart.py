@@ -68,7 +68,8 @@ APPS_EVERY = float(os.environ.get("SPARSH_APPS_EVERY") or 300)
 TRIES = 3
 
 _UNTRUSTED = "could not get pid"
-_NO_SERVICE = "is not available in RSD"
+#: WDA's words for a tunnel that is stale (from before an update) or gone.
+_NO_TUNNEL = ("is not available in RSD", "missing tunnel address")
 
 
 def ios_program() -> str:
@@ -153,7 +154,19 @@ class Starter:
         return 0
 
     def tunnelled(self, udid: str) -> bool:
-        return f'"{udid}"' in self.run("tunnel", "ls", timeout=10)
+        """Whether ``tunnel ls`` lists one for this phone, with an address.
+        Only its list counts: go-ios's own log lines name the phone too,
+        with no tunnel running at all."""
+        for line in self.run("tunnel", "ls", timeout=10).splitlines():
+            try:
+                found = json.loads(line)
+            except ValueError:
+                continue
+            if isinstance(found, list) and any(
+                    isinstance(t, dict) and t.get("udid") == udid and t.get("address")
+                    for t in found):
+                return True
+        return False
 
     # -- the steps -------------------------------------------------------------
 
@@ -268,7 +281,7 @@ class Starter:
             if failed >= TRIES:
                 raise SparshError(f"WebDriverAgent didn't start: {_short(said)} "
                                   f"(all of it: {self.state / 'ios-wda.log'})")
-            fresh = _NO_SERVICE in said   # the tunnel predates an update: a new one
+            fresh = any(w in said for w in _NO_TUNNEL)  # stale or gone: a new one
             _say(f"WebDriverAgent didn't start ({_short(said)}); trying again")
 
     def _came_up(self, wda: subprocess.Popen) -> bool:
