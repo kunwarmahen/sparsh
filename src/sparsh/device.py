@@ -379,8 +379,11 @@ def pair(address: str, code: str, adb: str | None = None) -> str:
 
 
 def iphones() -> list[Attached]:
-    """The iPhone named by ``$SPARSH_WDA``, if any, and whether it answers."""
-    url = os.environ.get("SPARSH_WDA", "")
+    """The iPhone named by ``$SPARSH_WDA`` -- or by ``$ANDROID_SERIAL``, the
+    name ``pick`` obeys first, so a session pinned to an iPhone isn't told
+    "no phone attached" while its tools work it -- and whether it answers."""
+    named = os.environ.get("ANDROID_SERIAL", "").strip()
+    url = named if is_wda(named) else os.environ.get("SPARSH_WDA", "")
     if not is_wda(url):
         return []
     try:

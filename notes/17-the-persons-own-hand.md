@@ -183,9 +183,31 @@ next         -> 1. tapped 4 button "Clear text" [tap]
 ```
 
 Sparsh's account was right both times. The agent's guess wasn't once,
-and that's why it says what it thinks and asks. 283 tests pass.
+and that's why it says what it thinks and asks.
 
-Not yet run: the iPhone's before-and-after.
+### The iPhone's two screens
+
+The same lesson on a real iPhone 17 (`/learn watch check the battery
+percentage in Settings`, `qwen3.8-64k`), from the home screen:
+
+```
+next  -> This phone doesn't show where it is touched, so compare the two
+         screens ... The phone before: App: com.apple.springboard ...
+         agent: "I think you opened the Settings app -- we're now on the main
+                 Settings screen showing Airplane Mode, Wi-Fi, Bluetooth,
+                 Battery, and so on. Am I right?"            (right)
+next  -> before: Settings' list; now: the Battery page
+         agent: "I think you tapped Battery in the Settings list -- we're now on
+                 the Battery page showing '100% -- Fully Charged' ..."  (right)
+/learn done -> check-battery-settings: tap "Settings", tap "Battery", each with
+               the screen it should lead to, then read the percentage
+```
+
+With no touches at all, both steps were worked out from the screens and
+confirmed. The session was pinned to the iPhone with `ANDROID_SERIAL`
+while the Nexus was also plugged in. Its start line said "no phone
+attached", because `sparsh status` listed only `$SPARSH_WDA`'s iPhone;
+an iPhone named by `ANDROID_SERIAL` is listed now too. 284 tests pass.
 
 ## What is not here yet
 

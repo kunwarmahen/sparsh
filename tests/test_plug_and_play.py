@@ -180,3 +180,13 @@ def test_adb_is_started_when_nothing_listens_yet(short_tmp):
         assert c.recv(16) == b""  # still nothing there: closed, not hung
     with open(calls) as f:
         assert f.read().strip() == "start-server"
+
+
+def test_an_iphone_pinned_by_android_serial_is_listed_as_attached(monkeypatch):
+    """A session pinned to the iPhone worked it, and its start line said
+    "no phone attached": status listed only $SPARSH_WDA's."""
+    monkeypatch.delenv("SPARSH_WDA", raising=False)
+    monkeypatch.setenv("ANDROID_SERIAL", "http://localhost:8100")
+    monkeypatch.setattr(WdaDevice, "status", lambda self: {})
+    listed, = device.iphones()
+    assert listed.serial == "http://localhost:8100" and listed.state == "device"
