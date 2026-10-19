@@ -801,6 +801,10 @@ On a real Nexus 6P this became a Gmail search skill, and on a real
 iPhone 17 a battery one. To teach by **telling** instead (the agent does
 each step you say), use `/learn start` in place of `/learn watch`. Don't
 mix them: a `start` lesson doesn't see what you do on the phone by hand.
+The skill opens the app with `open_app` and its everyday name, not
+through the folder you tapped, so one taught on the iPhone is written
+for the Android phone too; it says which phone it was taught on
+(Yantra's notes/133).
 
 ### Without a link or a flag: by hand
 
