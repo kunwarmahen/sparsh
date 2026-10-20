@@ -1,6 +1,6 @@
 """The tools an agent uses to work the phone.
 
-    sparsh mcp [--serial S]
+    sparsh mcp [--serial S | --phone NAME=WHERE ...]
 
 An MCP server on stdin/stdout -- newline-delimited JSON-RPC, written by
 hand like Samay's -- with twelve tools in three kinds:
@@ -69,9 +69,16 @@ names the same spot). Refused wherever the list has something; always
 held, and ``describe_hold`` returns the picture with the spot ringed,
 as an image beside its words, for the harness to show the person.
 
-ONE PHONE PER SERVER. ``--serial`` is fixed by whoever starts the
-server. With none, the only attached phone is used, found again on
+WHICH PHONE. Unnamed, ``--serial`` is fixed by whoever starts the
+server; with none, the only phone that answers is used, found again on
 each call, so a phone plugged in after the server started still works.
+NAMED (``$SPARSH_PHONES`` or ``--phone NAME=WHERE``, phones.py), one
+server works several phones: with more than one, every tool takes
+``phone`` and every answer starts ``Phone: NAME``, so the model never
+loses track of whose screen it read. Each phone keeps its own last
+look (a number from the Nexus's list never taps the iPhone), its own
+holds, its own watch and its own screen-awake keeper. A hold remembers
+its phone: ``confirm`` and ``describe_hold`` need only its id.
 """
 
 from __future__ import annotations
@@ -87,6 +94,7 @@ from sparsh.awake import Awake
 from sparsh.device import KEYS, Device, pick
 from sparsh.hand import Watch
 from sparsh.phone import DIRECTIONS, Held, Phone, ScreenChanged
+from sparsh.phones import kind
 from sparsh.rules import Rules
 from sparsh.screen import Screen
 
@@ -245,6 +253,9 @@ class Tools:
         settle: float | None = None,
         shots: bool = False,
         awake: Awake | None = None,
+        phones: dict[str, str] | None = None,
+        awakes: dict[str, Awake] | None = None,
+        devices: dict[str, Device] | None = None,
     ) -> None:
         self.shots = shots
         self.awake = awake  # the screen kept on while working (awake.py); None: left alone
@@ -253,10 +264,38 @@ class Tools:
         self.serial = serial
         self.device = device  # given in tests; otherwise found per call
         self.settle = settle
+        # Named phones (phones.py): {name: where}, and each one's own keeper,
+        # last Phone (its holds) and watch. Empty: the one phone that answers.
+        self.phones = dict(phones or {})
+        self.awakes = dict(awakes or {})
+        self.devices = dict(devices or {})  # given in tests
+        self._named: dict[str, Phone] = {}
+        self._watches: dict[str, Watch] = {}
+        self._now: str | None = None  # the phone this call is about
         self._phone: Phone | None = None
         self._watch = Watch()  # the person's own hand, while they show a job
 
+    def listed(self) -> list[dict]:
+        """``tools/list``: with more than one phone, each tool says which."""
+        if len(self.phones) < 2:
+            return TOOLS
+        which = {"type": "string", "enum": list(self.phones), "description": (
+            "Which phone: " + _kinds(self.phones) + ".")}
+        out = []
+        for tool in TOOLS:
+            schema = tool["inputSchema"]
+            props = {**schema.get("properties", {}), "phone": which}
+            if tool["name"] in ("confirm", "describe_hold"):
+                out.append({**tool, "inputSchema": {**schema, "properties": props}})
+                continue  # the hold knows its phone
+            required = [*schema.get("required", []), "phone"]
+            out.append({**tool, "inputSchema": {**schema, "properties": props,
+                                                 "required": required}})
+        return out
+
     def phone(self) -> Phone:
+        if self.phones:
+            return self._named_phone(self._now or self._which({}))
         device = self.device or pick(self.serial)
         if self._phone is None or self._phone.device.serial != device.serial:
             kwargs = {} if self.settle is None else {"settle": self.settle}
@@ -265,11 +304,63 @@ class Tools:
             self._phone.device = device
         return self._phone
 
+    def _named_phone(self, name: str) -> Phone:
+        device = self.devices.get(name) or pick(self.phones[name])
+        phone = self._named.get(name)
+        if phone is None or phone.device.serial != device.serial:
+            kwargs = {} if self.settle is None else {"settle": self.settle}
+            phone = self._named[name] = Phone(device, self.state, rules=self.rules, **kwargs)
+        else:
+            phone.device = device
+        return phone
+
+    def _which(self, args: dict) -> str:
+        """The named phone a call is about: ``phone``, the one a hold was
+        made on, or the only one there is."""
+        given = args.get("phone")
+        if given is not None:
+            if given not in self.phones:
+                raise ToolFailed(f"Not done: there is no phone {given!r}; the phones are "
+                                 f"{_kinds(self.phones)}")
+            return str(given)
+        hold = str(args.get("hold") or "").strip()
+        if hold:
+            for name, phone in self._named.items():
+                if hold in phone.holds:
+                    return name
+        if len(self.phones) == 1:
+            return next(iter(self.phones))
+        raise ToolFailed(f"Not done: which phone? Say `phone`: {_kinds(self.phones)}")
+
+    def keeper(self) -> Awake | None:
+        return self.awakes.get(self._now) if self.phones else self.awake
+
+    def watch(self) -> Watch:
+        if not self.phones:
+            return self._watch
+        return self._watches.setdefault(self._now or "", Watch())
+
+    def stop(self) -> None:
+        """The server stops: no watch outlives it, every screen gets its own back."""
+        for watch in [self._watch, *self._watches.values()]:
+            watch.stop()
+
     def call(self, name: str, args: dict) -> str:
         return self.reply(name, args)[0]
 
     def reply(self, name: str, args: dict) -> tuple[str, bytes | None]:
         """The tool's text, and a screenshot when one goes with it."""
+        self._now = None
+        if self.phones and name in KINDS:
+            args = dict(args)
+            self._now = self._which(args)
+            args.pop("phone", None)
+        text, png = self._reply(name, args)
+        if len(self.phones) > 1:
+            text = f"Phone: {self._now}\n{text}"
+        return text, png
+
+    def _reply(self, name: str, args: dict) -> tuple[str, bytes | None]:
         result = self._result(name, args)
         if isinstance(result, tuple):
             return result
@@ -304,10 +395,11 @@ class Tools:
         _known_only(name, args)
         handler = getattr(self, f"_{name}")
         try:
-            if self.awake is not None:
+            keeper = self.keeper()
+            if keeper is not None:
                 phone = self.phone()
                 try:
-                    self.awake.step(phone.device, phone.folder)
+                    keeper.step(phone.device, phone.folder)
                 except SparshError:
                     pass  # a help to the step, never a condition of it
             if KINDS[name] == "read":
@@ -362,10 +454,10 @@ class Tools:
         return self.phone().open_app(name)
 
     def _watch_phone(self, args: dict) -> Screen:
-        return self._watch.start(self.phone())
+        return self.watch().start(self.phone())
 
     def _watched(self, args: dict) -> str:
-        return self._watch.since(self.phone())
+        return self.watch().since(self.phone())
 
     def _describe_hold(self, args: dict) -> tuple[str, bytes | None]:
         phone = self.phone()
@@ -395,6 +487,10 @@ _SHOT = (
 _DONE = "Done: the step was carried out. The phone now (its answer to the step):\n"
 _NO_SHOTS = "(No picture: this phone's tools send none to this model. Work from the list.)"
 _NOT_THIS_APP = "(No picture: the person's rules keep pictures of this app from the agent.)"
+
+
+def _kinds(phones: dict[str, str]) -> str:
+    return ", ".join(f"{name} ({kind(where)})" for name, where in phones.items())
 
 
 def _part(screen: Screen, asked: bool) -> str:
@@ -464,14 +560,12 @@ def answer(tools: Tools, message: dict) -> dict | None:
             "protocolVersion": asked if asked in VERSIONS else VERSIONS[0],
             "capabilities": {"tools": {}},
             "serverInfo": {"name": "sparsh", "version": __version__},
-            "instructions": (
-                "A phone (Android or iPhone): look, then act by number. A held step needs "
-                "the person's yes through confirm."),
+            "instructions": _instructions(tools),
         })  # fmt: skip
     if method == "ping":
         return _ok(ident, {})
     if method == "tools/list":
-        return _ok(ident, {"tools": TOOLS})
+        return _ok(ident, {"tools": tools.listed()})
     if method == "tools/call":
         params = message.get("params") or {}
         try:
@@ -488,6 +582,15 @@ def answer(tools: Tools, message: dict) -> dict | None:
         "id": ident,
         "error": {"code": -32601, "message": f"no method {method!r}"},
     }
+
+
+def _instructions(tools: Tools) -> str:
+    said = ("A phone (Android or iPhone): look, then act by number. A held step needs "
+            "the person's yes through confirm.")
+    if len(tools.phones) > 1:
+        said += (f" There are {len(tools.phones)} phones: {_kinds(tools.phones)}; every "
+                 "tool but confirm and describe_hold says which with `phone`.")
+    return said
 
 
 def _ok(ident: Any, result: dict) -> dict:
@@ -513,4 +616,4 @@ def serve(tools: Tools, stdin: TextIO = sys.stdin, stdout: TextIO = sys.stdout) 
                 stdout.write(json.dumps(reply) + "\n")
                 stdout.flush()
     finally:
-        tools._watch.stop()
+        tools.stop()

@@ -187,6 +187,17 @@ command takes `--serial` when more than one phone is attached (or set
 `ANDROID_SERIAL`), and `--json` for a script. For an iPhone, the serial
 is WebDriverAgent's address, like `http://127.0.0.1:8100`.
 
+Several phones at once: name them, and choose one by its name.
+
+```
+export SPARSH_PHONES="nexus=192.168.1.160:5555,iphone=http://127.0.0.1:8100"
+sparsh look --phone nexus
+sparsh mcp                          # both phones, one server: each tool takes `phone`
+sparsh mcp --phone nexus            # only the Nexus
+```
+
+([notes/18](notes/18-several-phones.md))
+
 What the end of each line means:
 
 | | |
@@ -523,7 +534,8 @@ show the agent a job, are logged by `you`.
 | `SPARSH_ADB` | the `adb` to use, when it isn't on `PATH` or in `~/Android/Sdk` |
 | `SPARSH_APP_RULES` | rules a harness adds for one app: refuse, ask, pace (JSON, by package) |
 | `SPARSH_GRANTS` | held taps a schedule may do without a yes, as its person accepted them (JSON list of sentences) |
-| `SPARSH_AWAKE` | the screen while an agent works the phone: `working` (default: kept on, your own timeout back 2 minutes after the last step), `always` (never sleeps: a phone set aside for the agent), `off` ([notes/09](notes/09-the-screen-kept-on.md)) |
+| `SPARSH_PHONES` | several phones, each by a name: `nexus=192.168.1.160:5555,iphone=http://127.0.0.1:8100` (an adb serial or Wi-Fi address, or WebDriverAgent's address); choose one with `--phone NAME`; `sparsh mcp` serves them all ([notes/18](notes/18-several-phones.md)) |
+| `SPARSH_AWAKE` | the screen while an agent works the phone: `working` (default: kept on, your own timeout back 2 minutes after the last step), `always` (never sleeps: a phone set aside for the agent), `off` ([notes/09](notes/09-the-screen-kept-on.md)); one word per named phone: `nexus=always,iphone=working` |
 | `SPARSH_CONNECT` | phones over Wi-Fi (`192.168.1.23:41234`, comma-separated), connected to whenever phones are looked for |
 | `SPARSH_WDA` | an iPhone's WebDriverAgent address (`http://127.0.0.1:8100`), asked alongside adb's phones when no `--serial` is given; the one that answers is used ([notes/15](notes/15-the-phone-that-answers.md)) |
 | `ADB_SERVER_SOCKET` | adb's own: in a container, `localfilesystem:/home/you/.sparsh/adb.sock` reaches this computer's adb through `sparsh adb-share` |
@@ -612,8 +624,11 @@ src/sparsh/
 │               a scroll that shares rows with the last screen, refused
 │               when another app came to the front; an iPhone read again
 │               after an act until it holds still (notes/13)
+├── phones.py   several phones, each by a name: SPARSH_PHONES and --phone
+│               (notes/18)
 ├── awake.py    the screen kept on while an agent works the phone, the
-│               person's own timeout put back after; SPARSH_AWAKE (notes/09)
+│               person's own timeout put back after; SPARSH_AWAKE, one
+│               word per named phone (notes/09, notes/18)
 ├── picture.py  what a held step would tap ringed on a screenshot, PNG
 │               read and written by hand, for the person's yes (notes/06,
 │               notes/10)
@@ -630,7 +645,8 @@ src/sparsh/
 │               reads, acts and `confirm` (notes/02); `--shots`, a picture
 │               where the list falls short or when asked (notes/05,
 │               notes/10); `tap_at` (notes/06); `watch_phone` and
-│               `watched` (notes/17)
+│               `watched` (notes/17); several named phones, each with
+│               its own look, holds, watch and keeper (notes/18)
 ├── status.py   `sparsh status --json` (sparsh.status.v1): what a harness
 │               reads to find the phone, the rules and each tool's kind
 ├── fake.py     a phone made of saved screens, for tests
@@ -665,7 +681,9 @@ unplugged and updated, and the one command that brings it back),
 [notes/15](notes/15-the-phone-that-answers.md) (the phone that answers,
 and a cable the containers can borrow) and
 [notes/16](notes/16-an-app-not-on-the-list.md) (an app not on the list,
-found in Spotlight).
+found in Spotlight), [notes/17](notes/17-the-persons-own-hand.md) (the
+person's own hand, watched while they show a job) and
+[notes/18](notes/18-several-phones.md) (several phones, each by a name).
 
 ## Licence
 

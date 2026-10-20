@@ -605,6 +605,24 @@ a file whose path is printed under the question).
 it's an iPhone (so `back` is a swipe), and its first line says when the
 signature is two days from running out.
 
+### More than one phone
+
+Name each one, and the agent's tools reach them all. Every tool then
+says which phone it means:
+
+```
+export SPARSH_PHONES="nexus=192.168.1.160:5555,iphone=http://127.0.0.1:8100"
+export SPARSH_AWAKE="nexus=always,iphone=working"   # optional, one word per phone
+sparsh devices
+# nexus: 192.168.1.160:5555  Nexus_6P  device
+# iphone: http://127.0.0.1:8100  iPhone  device
+sparsh look --phone iphone
+```
+
+Without the names, two phones that both answer are refused. To give an
+agent only some of them, start its tools with `sparsh mcp --phone
+nexus` (README, notes/18).
+
 ### With another agent program
 
 Any harness that takes MCP servers (Claude Code, Cursor, …):

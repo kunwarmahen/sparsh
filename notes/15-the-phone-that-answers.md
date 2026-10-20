@@ -33,7 +33,8 @@ answers is used:
 * two answer: said, not guessed. *"more than one phone answers
   (84B7N16128001616 (Nexus_6P), http://127.0.0.1:8100 (iPhone)); unplug
   one, or choose with --serial"*. Several phones at once is a plan of its
-  own, not a tie to break here;
+  own, not a tie to break here (now built: phones named in
+  `SPARSH_PHONES`, [note 18](18-several-phones.md));
 * none answers: the iPhone, if one was named, is still handed back, so
   the first call says why it isn't answering. Otherwise the old
   sentences about no phone, or one not ready.
@@ -122,7 +123,9 @@ closed rather than left hanging.
 
 ## What is not here yet
 
-* Two phones answering at once, both used. Today that is refused with
-  both names (the several-phones plan).
+* ~~Two phones answering at once, both used.~~ Each named in
+  `SPARSH_PHONES`, one server for all, every tool taking `phone`
+  ([note 18](18-several-phones.md)). Unnamed, two answering is still
+  refused with both names.
 * A phone over Wi-Fi with a cable phone beside it: both answer, so it is
   refused like any two.

@@ -3,6 +3,7 @@
     SPARSH_AWAKE=working   the default: on while working, then the person's own
     SPARSH_AWAKE=always    the screen never sleeps: a phone set aside for the agent
     SPARSH_AWAKE=off       Sparsh leaves the screen's timeout alone
+    SPARSH_AWAKE=nexus=always,iphone=working   one word per named phone
 
 A SCREEN THAT SLEEPS MID-TASK LOCKS THE TASK OUT. A local model thinks
 for longer than a phone's usual thirty seconds between steps, and an
@@ -50,10 +51,30 @@ NEVER_MS = 2147483647
 FILE = "screen-timeout"
 
 
-def mode(raw: str | None = None) -> str:
+def mode(raw: str | None = None, phone: str | None = None) -> str:
     """``$SPARSH_AWAKE``, checked: a word Sparsh doesn't know is an error,
-    never a guess."""
+    never a guess.
+
+    PER PHONE, WHEN PHONES ARE NAMED (phones.py): ``nexus=always,iphone=
+    working`` -- an old Nexus kept for the agent never sleeps while the
+    person's daily iPhone does. ``phone`` is a name, or the serial or
+    address ``$SPARSH_PHONES`` gives one; a phone left out is ``working``.
+    One plain word is every phone's."""
     raw = os.environ.get("SPARSH_AWAKE", "") if raw is None else raw
+    if "=" in raw:
+        from sparsh.phones import named, parse
+
+        each = {n: w.strip().lower() for n, w in parse(raw).items()}
+        for name, word in each.items():
+            if word not in MODES:
+                raise SparshError(f"SPARSH_AWAKE says {name}={word!r}; it is one of "
+                                  f"{', '.join(MODES)}")
+        if phone and phone not in each:
+            try:
+                phone = next((n for n, w in named().items() if w == phone), phone)
+            except SparshError:
+                pass
+        return each.get(phone or "", "working")
     word = raw.strip().lower() or "working"
     if word not in MODES:
         raise SparshError(f"SPARSH_AWAKE is {raw!r}; it is one of {', '.join(MODES)}")

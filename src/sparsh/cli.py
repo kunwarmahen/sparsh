@@ -29,7 +29,11 @@ next number to use is always on the screen. If the screen changed
 since the last look, nothing is tapped: the new screen is printed and
 the exit code is 3.
 
-Which phone: the one that answers, or ``--serial`` / ``$ANDROID_SERIAL``
+Which phone: the one that answers, or ``--serial`` / ``$ANDROID_SERIAL``,
+or ``--phone NAME`` for one of the phones ``$SPARSH_PHONES`` names
+(``nexus=192.168.1.160:5555,iphone=http://127.0.0.1:8100``, phones.py);
+when it names several, a hand command needs ``--phone``, and ``sparsh
+mcp`` serves them all, or the ones ``--phone`` picks
 (``sparsh devices`` shows the names). An iPhone is named by its
 WebDriverAgent's address: ``--serial http://192.168.1.40:8100``.
 ``$SPARSH_WDA`` says where one would answer; it is used only when it
@@ -54,7 +58,7 @@ from datetime import datetime
 from pathlib import Path
 
 from sparsh import SparshError, __version__
-from sparsh import log, mcp
+from sparsh import log, mcp, phones
 from sparsh.awake import Awake
 from sparsh.awake import mode as awake_mode
 from sparsh.device import KEYS, TCPIP_PORT, attached, connect, iphones, pair, pick, tcpip
@@ -88,6 +92,9 @@ def _parser() -> argparse.ArgumentParser:
     p.add_argument("--version", action="version", version=f"sparsh {__version__}")
     common = argparse.ArgumentParser(add_help=False)
     common.add_argument("--serial", help="which phone (default: the only one attached)")
+    common.add_argument("--phone", action="append", metavar="NAME[=WHERE]",
+                        help="a named phone ($SPARSH_PHONES); NAME=WHERE names one "
+                             "(again for more, on mcp)")  # fmt: skip
     common.add_argument("--state", help="where the last screen is kept (default ~/.sparsh)")
     common.add_argument("--json", action="store_true", help="print the screen as JSON")
     sub = p.add_subparsers(dest="command")
@@ -211,7 +218,18 @@ def _parser() -> argparse.ArgumentParser:
 
 
 def _phone(args) -> Phone:
-    return Phone(pick(args.serial), args.state)
+    return Phone(pick(_serial(args)), args.state)
+
+
+def _serial(args) -> str | None:
+    """``--serial``, or where the one named phone is (phones.py); None:
+    the phone that answers."""
+    if args.serial and args.phone:
+        raise SparshError("choose a phone with --serial or with --phone, not both")
+    if args.serial:
+        return args.serial
+    found = phones.one(args.phone)
+    return found[1] if found else None
 
 
 def _show(args, screen: Screen) -> int:
@@ -233,8 +251,10 @@ def _devices(args) -> int:
     phones += found
     if not phones:
         print("No phone attached. Plug one in with USB debugging on, or start the emulator.")
+    names = {where: name for name, where in _named(args).items()}
     for phone in phones:
-        print(phone.line())
+        name = names.get(phone.serial)
+        print(f"{name}: {phone.line()}" if name else phone.line())
     note = signature_note(signature(state_root(args.state))) if found else ""
     if note:
         print(f"Note: {note}.")
@@ -327,6 +347,9 @@ def _log(args) -> int:
 def _state(args) -> int:
     phone = _phone(args)
     found = {"serial": phone.device.serial, **phone.state()}
+    named = phones.one(args.phone) if not args.serial else None
+    if named:
+        found["name"] = named[0]
     if args.json:
         print(json.dumps(found))
         return 0
@@ -334,7 +357,7 @@ def _state(args) -> int:
              "locked": "locked: only its person can open it",
              "asleep": "asleep: nobody has it, and no PIN stands in the way",
              "unknown": "unknown: the phone didn't say"}  # fmt: skip
-    print(f"{found['serial']}: {words[found['state']]}")
+    print(f"{found.get('name') or found['serial']}: {words[found['state']]}")
     return 0
 
 
@@ -353,18 +376,25 @@ def _apps(args) -> int:
 def _mcp(args) -> int:
     state = state_root(args.state)
     rules, _ = load(state)
+    named = phones.chosen(args.phone)
+    if named and args.serial:
+        raise SparshError("choose a phone with --serial or name phones with --phone, not both")
     keeper = Awake(awake_mode())  # $SPARSH_AWAKE, checked before the first call
+    # Named, each phone has its own keeper and its own word (awake.mode).
+    keepers = {name: Awake(awake_mode(phone=name)) for name in named}
     try:
-        mcp.serve(mcp.Tools(rules, state=state, serial=args.serial, shots=args.shots, awake=keeper))
+        mcp.serve(mcp.Tools(rules, state=state, serial=args.serial, shots=args.shots,
+                            awake=None if named else keeper, phones=named, awakes=keepers))
     finally:
-        keeper.rest()  # the person's own screen timeout back as the server stops
+        for each in [keeper, *keepers.values()]:
+            each.rest()  # the person's own screen timeout back as the server stops
     return 0
 
 
 def _status(args) -> int:
     from sparsh.status import report
 
-    data = report(state_root(args.state))
+    data = report(state_root(args.state), _named(args))
     if args.json:
         print(json.dumps(data, indent=1))
         return 0
@@ -372,7 +402,12 @@ def _status(args) -> int:
     if data["adb"] != "ok":
         print(f"adb: {data['adb']}")
     for phone in data["phones"]:
-        print(f"phone: {phone['serial']}  {phone['model'] or '?'}  {phone['state']}")
+        name = f"{phone['name']}: " if phone.get("name") else ""
+        print(f"phone: {name}{phone['serial']}  {phone['model'] or '?'}  {phone['state']}")
+    seen = {p["serial"] for p in data["phones"]}
+    for named in data["named"]:
+        if named["where"] not in seen:
+            print(f"phone: {named['name']}: {named['where']}  {named['kind']}  not found")
     if data["adb"] == "ok" and not data["phones"]:
         print("phone: none attached")
     rules = data["rules"]
@@ -441,6 +476,10 @@ def _adb_share(args) -> int:
     except KeyboardInterrupt:
         pass
     return 0
+
+
+def _named(args) -> dict[str, str]:
+    return phones.chosen(args.phone)
 
 
 def _signed(sig: dict) -> str:

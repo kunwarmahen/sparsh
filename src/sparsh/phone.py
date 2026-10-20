@@ -210,9 +210,9 @@ def state_root(given: str | os.PathLike | None = None) -> Path:
     return Path(given or os.environ.get("SPARSH_STATE") or Path.home() / ".sparsh")
 
 
-def _always_on() -> bool:
+def _always_on(serial: str | None = None) -> bool:
     try:
-        return awake_mode() == "always"
+        return awake_mode(phone=serial) == "always"
     except SparshError:
         return False  # a bad word is said where the server starts, not here
 
@@ -863,7 +863,7 @@ class Phone:
             state = "unknown"
         else:
             state = "in_use" if on else "asleep"
-            if state == "in_use" and _always_on():
+            if state == "in_use" and _always_on(self.device.serial):
                 state = "asleep"  # lit by SPARSH_AWAKE=always, not by a person (awake.py)
         return {
             "screen": None if on is None else ("on" if on else "off"),

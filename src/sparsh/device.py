@@ -285,9 +285,13 @@ def attached(adb: str | None = None) -> list[Attached]:
 
 def over_wifi() -> list[str]:
     """The phones named in ``$SPARSH_CONNECT`` (``192.168.1.23:41234``,
-    comma-separated): reached over the network, no cable."""
+    comma-separated): reached over the network, no cable. An Android
+    ``$SPARSH_PHONES`` names by its address is one too (phones.py)."""
+    from sparsh.phones import android_addresses
+
     raw = os.environ.get("SPARSH_CONNECT", "")
-    return [a.strip() for a in raw.split(",") if a.strip()]
+    found = [a.strip() for a in raw.split(",") if a.strip()]
+    return list(dict.fromkeys(found + android_addresses()))
 
 
 def connect(address: str, adb: str | None = None) -> str:
@@ -379,19 +383,27 @@ def pair(address: str, code: str, adb: str | None = None) -> str:
 
 
 def iphones() -> list[Attached]:
-    """The iPhone named by ``$SPARSH_WDA`` -- or by ``$ANDROID_SERIAL``, the
+    """The iPhones named by ``$SPARSH_WDA`` -- or by ``$ANDROID_SERIAL``, the
     name ``pick`` obeys first, so a session pinned to an iPhone isn't told
-    "no phone attached" while its tools work it -- and whether it answers."""
+    "no phone attached" while its tools work it -- and by ``$SPARSH_PHONES``
+    (phones.py), and whether each answers."""
+    from sparsh.phones import named as phones_named
+
     named = os.environ.get("ANDROID_SERIAL", "").strip()
     url = named if is_wda(named) else os.environ.get("SPARSH_WDA", "")
-    if not is_wda(url):
-        return []
     try:
-        WdaDevice(url, timeout=5).status()
-        state = "device"
+        urls = [w for w in phones_named().values() if is_wda(w)]
     except SparshError:
-        state = "offline"
-    return [Attached(url, state, "iPhone")]
+        urls = []
+    found = []
+    for each in dict.fromkeys(([url] if is_wda(url) else []) + urls):
+        try:
+            WdaDevice(each, timeout=5).status()
+            state = "device"
+        except SparshError:
+            state = "offline"
+        found.append(Attached(each, state, "iPhone"))
+    return found
 
 
 def pick(serial: str | None = None, adb: str | None = None) -> Device:

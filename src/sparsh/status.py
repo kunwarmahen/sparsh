@@ -13,7 +13,11 @@ refuses rather than guesses (Yantra's sparsh_link does). Fields:
              A ``$SPARSH_CONNECT`` address that doesn't answer is listed
              ``offline``. ``note`` is why one isn't ready, as a person
              would fix it ("" when it is); a harness that knows only the
-             first three fields loses nothing
+             first three fields loses nothing. ``name`` is the phone's
+             name in ``$SPARSH_PHONES`` ("" when it has none)
+    named    [{name, where, kind}] -- the phones ``$SPARSH_PHONES`` (or
+             ``--phone``) names, answering or not: where each is reached,
+             and "Android" or "iPhone" (phones.py); [] when none is
     mcp      {command, args}: how to start the agent's tools
     shots    the flag that adds a screenshot to a screen that can't be
              read as a list (mcp.py); a harness adds it to ``mcp.args``
@@ -36,6 +40,8 @@ from sparsh import SparshError, __version__
 from sparsh.device import attached, iphones
 from sparsh.iphone import signature, signature_note
 from sparsh.mcp import KINDS
+from sparsh.phones import kind
+from sparsh.phones import named as phones_named
 from sparsh.rules import load
 
 FORMAT = "sparsh.status.v1"
@@ -48,7 +54,7 @@ def sparsh_command() -> str:
     return shutil.which("sparsh") or "sparsh"
 
 
-def report(state: Path) -> dict:
+def report(state: Path, named: dict[str, str] | None = None) -> dict:
     try:
         phones = [{"serial": p.serial, "state": p.state, "model": p.model, "note": p.note()}
                   for p in attached()]
@@ -57,6 +63,15 @@ def report(state: Path) -> dict:
         phones, adb = [], str(e)
     phones += [{"serial": p.serial, "state": p.state, "model": p.model, "note": p.note()}
                for p in iphones()]
+    found = phones
+    if named is None:
+        try:
+            named = phones_named()
+        except SparshError:
+            named = {}
+    names = {where: name for name, where in named.items()}
+    for phone in found:
+        phone["name"] = names.get(phone["serial"], "")
     rules, path = load(state)
     return {
         "format": FORMAT,
@@ -69,7 +84,8 @@ def report(state: Path) -> dict:
             "ask": list(rules.ask),
         },
         "adb": adb,
-        "phones": phones,
+        "phones": found,
+        "named": [{"name": n, "where": w, "kind": kind(w)} for n, w in named.items()],
         "mcp": {"command": sparsh_command(), "args": ["mcp", "--state", str(state)]},
         "shots": "--shots",
         "tools": dict(KINDS),
