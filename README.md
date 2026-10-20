@@ -581,6 +581,10 @@ show the agent a job, are logged by `you`.
   Run on a real Nexus 6P (a whole lesson through Yantra became a Gmail
   search skill) and a real iPhone 17 (both steps worked out from the
   screens alone).
+* ~~Several phones at once.~~ Built: each named in `SPARSH_PHONES`, one
+  server for all, every tool taking `phone`
+  ([notes/18](notes/18-several-phones.md)); run on a Nexus 6P and the
+  emulator together.
 * ~~iPhones.~~ Built: [notes/03](notes/03-an-iphone-through-a-mac.md),
   with a Mac needed once to sign WebDriverAgent; read and tapped on a
   real iPhone 17, iOS 26 ([notes/12](notes/12-a-real-iphone.md)).

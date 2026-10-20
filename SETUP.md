@@ -899,6 +899,7 @@ To remove it: `adb uninstall com.android.adbkeyboard`.
 |---|---|---|
 | Drives it | `adb` | WebDriverAgent on the phone, started by go-ios |
 | Name it with | `--serial R58M...` / `ANDROID_SERIAL` | `--serial http://127.0.0.1:8100` / `SPARSH_WDA` |
+| Both at once | `SPARSH_PHONES="nexus=R58M..."`, then `--phone nexus` | `SPARSH_PHONES="iphone=http://127.0.0.1:8100"` (one list for both) |
 | Check | `uv run sparsh devices` | the same, with `SPARSH_WDA` set |
 | Every day | plug in / start the emulator | `sparsh iphone` (after an unplug, a restart or an iOS update too) |
 | Screen while an agent works | kept on; `SPARSH_AWAKE=always` or `off` | left to Auto-Lock |
