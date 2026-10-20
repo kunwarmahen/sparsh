@@ -134,11 +134,60 @@ first"*. A Send held on the "iphone" is described and confirmed by its
 id alone, and only that phone is tapped. Each phone gets its own screen
 timeout.
 
+## The iPhone `sparsh iphone` serves is listed unasked
+
+The Nexus 6P on Wi-Fi, the iPhone 17 on the cable, `sparsh iphone`
+keeping WebDriverAgent up for eighteen hours, and a fresh terminal:
+
+```
+$ sparsh devices
+192.168.1.160:5555  Nexus_6P  device
+```
+
+Nothing was wrong with the iPhone. Sparsh only asks for an iPhone at an
+address it is given, and that shell had neither `SPARSH_WDA` nor
+`SPARSH_PHONES`. So `sparsh devices` and `sparsh status` now also list
+the iPhone a running `sparsh iphone` serves. They find it by its pid
+file in the state folder. A pid that names no live process lists
+nothing, and an iPhone already named isn't listed twice.
+
+Not as `device`, though: as `unnamed`, with a note that says how to
+name it. Yantra and Sarathi take `device` to mean ready. If an iPhone
+the tools can't reach were listed as ready, the agent would be told it
+can work a phone it can't. `sparsh status` now prints every phone's
+note too, as `devices` always did.
+
+LISTING, NOT PICKING. `device.pick` still asks only the phones it is
+told of. If a running `sparsh iphone` made the iPhone a candidate too,
+a terminal that worked the Nexus alone would be told *"two phones
+answer"* the moment the iPhone was plugged in. To work the iPhone, name
+it, as before:
+
+```
+$ sparsh devices
+192.168.1.160:5555  Nexus_6P  device
+http://127.0.0.1:8100  iPhone  unnamed  (`sparsh iphone` serves it; to work it, export SPARSH_WDA=http://127.0.0.1:8100 or name it in SPARSH_PHONES)
+$ export SPARSH_PHONES="nexus=192.168.1.160:5555,iphone=http://127.0.0.1:8100"
+$ sparsh devices
+nexus: 192.168.1.160:5555  Nexus_6P  device
+iphone: http://127.0.0.1:8100  iPhone  device
+$ sparsh look --peek --phone iphone
+App: com.apple.springboard
+(The phone is locked: this is its lock screen, not the app asked for. ...)
+$ sparsh look --peek --phone nexus
+App: com.android.systemui
+(The phone is locked: this is its lock screen, not the app asked for. ...)
+1 image "Google notification: NXPI is up 3.4%"
+```
+
+Both real phones were read by name from one terminal. Three tests in
+`tests/test_plug_and_play.py` cover a live pid (`unnamed`), a dead one
+(nothing), and an iPhone that is named and served at once (`device`,
+once).
+
 ## Not here yet
 
-* A real iPhone and a real Android at once. The iPhone goes through the
-  same name-to-phone path as `--serial http://...`, which has run on a
-  real iPhone ([note 12](12-a-real-iphone.md)), but not alongside an
-  Android.
+* ~~A real iPhone and a real Android at once.~~ Both listed and read by
+  name side by side (above). A task across both hasn't run yet.
 * Who owns which phone. That belongs to the harness (Dvara's people)
   and to the house's settings (Sarathi's `[phone.NAME]`), not to Sparsh.

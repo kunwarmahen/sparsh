@@ -8,7 +8,9 @@ refuses rather than guesses (Yantra's sparsh_link does). Fields:
     state    the state folder (the last screen of each phone)
     rules    the person's rules file, whether it exists, and what it holds
     phones   [{serial, state, model, note}] -- what adb sees now, and the
-             iPhone at ``$SPARSH_WDA`` (its serial is that address);
+             iPhone at ``$SPARSH_WDA`` (its serial is that address)
+             and the one a running ``sparsh iphone`` serves (``unnamed``
+             until one of those names it: only ``device`` is ready);
              adb's are missing when adb itself is, with ``adb`` saying why.
              A ``$SPARSH_CONNECT`` address that doesn't answer is listed
              ``offline``. ``note`` is why one isn't ready, as a person
@@ -62,7 +64,7 @@ def report(state: Path, named: dict[str, str] | None = None) -> dict:
     except SparshError as e:
         phones, adb = [], str(e)
     phones += [{"serial": p.serial, "state": p.state, "model": p.model, "note": p.note()}
-               for p in iphones()]
+               for p in iphones(state)]
     found = phones
     if named is None:
         try:

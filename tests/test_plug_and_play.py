@@ -190,3 +190,32 @@ def test_an_iphone_pinned_by_android_serial_is_listed_as_attached(monkeypatch):
     monkeypatch.setattr(WdaDevice, "status", lambda self: {})
     listed, = device.iphones()
     assert listed.serial == "http://localhost:8100" and listed.state == "device"
+
+
+def test_the_iphone_sparsh_iphone_serves_is_listed_with_nothing_set(monkeypatch, tmp_path):
+    """The iPhone was plugged in and `sparsh iphone` had kept it up for
+    hours, and `sparsh devices` listed only the Nexus: the shell never
+    set $SPARSH_WDA."""
+    for name in ("SPARSH_WDA", "ANDROID_SERIAL", "SPARSH_PHONES"):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setattr(WdaDevice, "status", lambda self: {})
+    (tmp_path / "iphone.pid").write_text(f"{os.getpid()}\n")
+    listed, = device.iphones(tmp_path)
+    assert listed.serial == IPHONE and listed.state == "unnamed"
+    assert "SPARSH_WDA=http://127.0.0.1:8100" in listed.note()
+
+
+def test_a_sparsh_iphone_that_ended_lists_no_iphone(monkeypatch, tmp_path):
+    for name in ("SPARSH_WDA", "ANDROID_SERIAL", "SPARSH_PHONES"):
+        monkeypatch.delenv(name, raising=False)
+    (tmp_path / "iphone.pid").write_text("999999999\n")  # no such process
+    assert device.iphones(tmp_path) == []
+
+
+def test_the_iphone_sparsh_iphone_serves_is_not_listed_twice(monkeypatch, tmp_path):
+    monkeypatch.setenv("SPARSH_WDA", IPHONE)
+    monkeypatch.delenv("ANDROID_SERIAL", raising=False)
+    monkeypatch.delenv("SPARSH_PHONES", raising=False)
+    monkeypatch.setattr(WdaDevice, "status", lambda self: {})
+    (tmp_path / "iphone.pid").write_text(f"{os.getpid()}\n")
+    assert [(p.serial, p.state) for p in device.iphones(tmp_path)] == [(IPHONE, "device")]

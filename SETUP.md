@@ -764,6 +764,7 @@ sparsh iphone
 In another:
 
 ```
+sparsh devices                     # http://127.0.0.1:8100  iPhone  unnamed  (...)
 export SPARSH_WDA=http://127.0.0.1:8100
 sparsh devices                     # http://127.0.0.1:8100  iPhone  device
 cd ~/yantra
@@ -773,6 +774,10 @@ echo n | uv run yantra --provider ollama --model gemma4:26b \
   --prompt "Text <a number of yours> from my iPhone: hello from the agent"
 ```
 
+`sparsh devices` lists the iPhone `sparsh iphone` serves with nothing
+set, as `unnamed`, with how to name it. Working it from this terminal (Yantra's tools are `sparsh mcp`)
+takes `SPARSH_WDA`, or `SPARSH_PHONES` with an Android named beside it:
+`export SPARSH_PHONES="nexus=192.168.1.160:5555,iphone=http://127.0.0.1:8100"`.
 The first line also says `iPhone`. A task like the first one has run
 on a real iPhone 17, from Yantra and from Telegram, with
 `qwen3.8-64k:latest` on Ollama ([notes/12](notes/12-a-real-iphone.md)).
@@ -900,7 +905,7 @@ To remove it: `adb uninstall com.android.adbkeyboard`.
 | Drives it | `adb` | WebDriverAgent on the phone, started by go-ios |
 | Name it with | `--serial R58M...` / `ANDROID_SERIAL` | `--serial http://127.0.0.1:8100` / `SPARSH_WDA` |
 | Both at once | `SPARSH_PHONES="nexus=R58M..."`, then `--phone nexus` | `SPARSH_PHONES="iphone=http://127.0.0.1:8100"` (one list for both) |
-| Check | `uv run sparsh devices` | the same, with `SPARSH_WDA` set |
+| Check | `uv run sparsh devices` | the same (`unnamed` while `sparsh iphone` runs and it isn't named) |
 | Every day | plug in / start the emulator | `sparsh iphone` (after an unplug, a restart or an iOS update too) |
 | Screen while an agent works | kept on; `SPARSH_AWAKE=always` or `off` | left to Auto-Lock |
 | Other languages (é, नमस्ते, emoji) | install ADBKeyBoard once (Part G) | nothing to do |

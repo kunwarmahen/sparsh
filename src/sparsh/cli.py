@@ -1,6 +1,6 @@
 """`sparsh`: see a phone's screen as a numbered list, and work it.
 
-    sparsh devices                      phones adb can see, and $SPARSH_WDA
+    sparsh devices                      phones adb can see, $SPARSH_WDA, and `sparsh iphone`'s
     sparsh pair ADDRESS CODE            trust this computer over Wi-Fi, once
     sparsh connect ADDRESS              reach a paired phone over Wi-Fi
     sparsh tcpip [--port 5555]          the phone on the cable listens over Wi-Fi
@@ -38,6 +38,8 @@ mcp`` serves them all, or the ones ``--phone`` picks
 WebDriverAgent's address: ``--serial http://192.168.1.40:8100``.
 ``$SPARSH_WDA`` says where one would answer; it is used only when it
 does, so an Android plugged in in its place is the phone (device.pick).
+``devices`` and ``status`` also list the iPhone a running ``sparsh
+iphone`` serves, set or not; working it still takes one of the names.
 A phone over Wi-Fi is named by its address, and ``$SPARSH_CONNECT``
 reconnects to it whenever phones are looked for.
 A phone with no Wireless debugging page (Android 10 and older), or one
@@ -241,7 +243,7 @@ def _show(args, screen: Screen) -> int:
 
 
 def _devices(args) -> int:
-    found = iphones()
+    found = iphones(state_root(args.state))
     try:
         phones = attached()
     except SparshError:
@@ -403,7 +405,8 @@ def _status(args) -> int:
         print(f"adb: {data['adb']}")
     for phone in data["phones"]:
         name = f"{phone['name']}: " if phone.get("name") else ""
-        print(f"phone: {name}{phone['serial']}  {phone['model'] or '?'}  {phone['state']}")
+        note = f"  ({phone['note']})" if phone.get("note") else ""
+        print(f"phone: {name}{phone['serial']}  {phone['model'] or '?'}  {phone['state']}{note}")
     seen = {p["serial"] for p in data["phones"]}
     for named in data["named"]:
         if named["where"] not in seen:

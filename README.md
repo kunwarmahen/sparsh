@@ -129,7 +129,11 @@ An iPhone is named by WebDriverAgent's address
 (`SPARSH_WDA=http://127.0.0.1:8100`, or `--serial`). With an iPhone
 named and an Android plugged in in its place, the Android is the phone:
 the one that answers is used
-([notes/15](notes/15-the-phone-that-answers.md)). On an iPhone,
+([notes/15](notes/15-the-phone-that-answers.md)). `sparsh devices` and
+`sparsh status` list the iPhone a running `sparsh iphone` serves with
+nothing set, as `unnamed` (a harness takes only `device` as ready);
+working it takes `SPARSH_WDA` or `SPARSH_PHONES`
+([notes/18](notes/18-several-phones.md)). On an iPhone,
 `back` is the swipe in from the left edge, and `sparsh apps` lists
 every app installed on it. An iPhone won't tell WebDriverAgent that, but
 go-ios reads it over the cable: `sparsh iphone` hands the list
@@ -157,7 +161,7 @@ Sparsh needs Python 3.12 or newer and has no other dependencies.
 ## Commands
 
 ```
-sparsh devices                      phones adb can see, and the iPhone at $SPARSH_WDA
+sparsh devices                      phones adb can see, $SPARSH_WDA, and the iPhone `sparsh iphone` serves
 sparsh look [--shot FILE] [--json]  the screen, one numbered line per thing
 sparsh look --peek                  the same, leaving an agent's numbers as they were
 sparsh tap 7 [--long]               tap 7 from the last look (--long: press and hold)
@@ -584,7 +588,8 @@ show the agent a job, are logged by `you`.
 * ~~Several phones at once.~~ Built: each named in `SPARSH_PHONES`, one
   server for all, every tool taking `phone`
   ([notes/18](notes/18-several-phones.md)); run on a Nexus 6P and the
-  emulator together.
+  emulator together, and read by name on a real Nexus 6P over Wi-Fi and
+  a real iPhone 17 on the cable.
 * ~~iPhones.~~ Built: [notes/03](notes/03-an-iphone-through-a-mac.md),
   with a Mac needed once to sign WebDriverAgent; read and tapped on a
   real iPhone 17, iOS 26 ([notes/12](notes/12-a-real-iphone.md)).

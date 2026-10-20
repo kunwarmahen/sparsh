@@ -64,6 +64,7 @@ import shutil
 import subprocess
 import time
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Protocol
 
 from sparsh import SparshError
@@ -222,13 +223,16 @@ class Attached:
     """One line of ``adb devices -l``."""
 
     serial: str
-    state: str  # device, unauthorized, offline
+    state: str  # device, unauthorized, offline, unnamed (iphones)
     model: str = ""
 
     def note(self) -> str:
         """Why it isn't ready, as a person would fix it; empty when it is."""
         if self.state == "unauthorized":
             return "unlock the phone and allow USB debugging"
+        if self.state == "unnamed":
+            return (f"`sparsh iphone` serves it; to work it, export SPARSH_WDA={self.serial} "
+                    "or name it in SPARSH_PHONES")
         if self.state != "offline":
             return ""
         if is_wda(self.serial):
@@ -382,12 +386,24 @@ def pair(address: str, code: str, adb: str | None = None) -> str:
     return (done.stdout + done.stderr).decode(errors="replace").strip()
 
 
-def iphones() -> list[Attached]:
+def iphones(state: os.PathLike | None = None) -> list[Attached]:
     """The iPhones named by ``$SPARSH_WDA`` -- or by ``$ANDROID_SERIAL``, the
     name ``pick`` obeys first, so a session pinned to an iPhone isn't told
     "no phone attached" while its tools work it -- and by ``$SPARSH_PHONES``
-    (phones.py), and whether each answers."""
+    (phones.py), and whether each answers.
+
+    THE ONE `sparsh iphone` SERVES IS LISTED UNASKED. Given the state
+    folder, an iPhone that ``sparsh iphone`` is keeping up (its pid file
+    names a live process, wdastart.py) is listed at its address too, so a
+    person who plugged it in and started it isn't told only of the
+    Android by a shell that never set ``$SPARSH_WDA``. Listing only:
+    ``pick`` still asks just the phones it is told of, so a terminal
+    that worked the Nexus alone isn't now told that two phones answer.
+    So one that answers is ``unnamed``, not ``device``: a harness that
+    takes ``device`` as ready (Yantra, Sarathi) doesn't tell its agent
+    of a phone the tools can't reach, and the note says how to name it."""
     from sparsh.phones import named as phones_named
+    from sparsh.wdastart import URL, running
 
     named = os.environ.get("ANDROID_SERIAL", "").strip()
     url = named if is_wda(named) else os.environ.get("SPARSH_WDA", "")
@@ -395,14 +411,16 @@ def iphones() -> list[Attached]:
         urls = [w for w in phones_named().values() if is_wda(w)]
     except SparshError:
         urls = []
+    told = list(dict.fromkeys(([url] if is_wda(url) else []) + urls))
+    served = state is not None and running(Path(state)) and URL not in told
     found = []
-    for each in dict.fromkeys(([url] if is_wda(url) else []) + urls):
+    for each in told + ([URL] if served else []):
         try:
             WdaDevice(each, timeout=5).status()
-            state = "device"
+            said = "device" if each in told else "unnamed"
         except SparshError:
-            state = "offline"
-        found.append(Attached(each, state, "iPhone"))
+            said = "offline"
+        found.append(Attached(each, said, "iPhone"))
     return found
 
 

@@ -169,7 +169,7 @@ def test_a_named_android_on_wifi_is_connected_to_like_sparsh_connect(monkeypatch
 
 def test_status_names_the_phones_answering_or_not(tmp_path, monkeypatch):
     monkeypatch.setattr("sparsh.status.attached", lambda: [])
-    monkeypatch.setattr("sparsh.status.iphones", lambda: [])
+    monkeypatch.setattr("sparsh.status.iphones", lambda state=None: [])
     data = report(tmp_path, {"nexus": "192.168.1.160:5555"})
     assert data["named"] == [{"name": "nexus", "where": "192.168.1.160:5555",
                               "kind": "Android"}]  # fmt: skip
