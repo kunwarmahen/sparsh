@@ -414,7 +414,11 @@ Sparsh **holds** the few that can't be taken back:
 
 A held step isn't done. The agent is told so, and asks you through its
 `confirm` tool. That is the one tool Yantra asks about every time, even
-when you've told it to stop asking (`--yolo`). The question is one
+when you've told it to stop asking (`--yolo`). (What's on the screen is
+text you didn't write, too: after the agent reads it, any change outside
+the phone, like a send or a write, asks you as well, Yantra's notes/142.
+Ordinary taps don't. The held steps above are the phone's own guard.)
+The question is one
 sentence, the words filled in on the screen, and a **picture of the
 screen with what it would tap ringed**:
 
