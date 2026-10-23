@@ -17,6 +17,7 @@
     sparsh wake                         turn the screen on; a lock with no PIN is swiped away
     sparsh mcp                          the agent's tools (MCP, stdio), held by the rules
     sparsh status [--json]              phones, rules, and how a harness starts the tools
+    sparsh keeps [--json]               where your rules and adb's key are, for a backup
     sparsh wda [WDA.ipa]                when the iPhone's WebDriverAgent signature runs out
     sparsh iphone [WDA.ipa] [--background | --stop]
                                         the iPhone on the cable, ready (after an unplug,
@@ -191,6 +192,10 @@ def _parser() -> argparse.ArgumentParser:
 
     s = sub.add_parser("status", parents=[common], help="phones, rules, and the agent's tools")
     s.set_defaults(run=_status)
+
+    s = sub.add_parser("keeps", parents=[common],
+                       help="where your rules and adb's key are kept, for a backup")
+    s.set_defaults(run=_keeps)
 
     s = sub.add_parser("wda", parents=[common],
                        help="when the iPhone's WebDriverAgent signature runs out; "
@@ -390,6 +395,19 @@ def _mcp(args) -> int:
     finally:
         for each in [keeper, *keepers.values()]:
             each.rest()  # the person's own screen timeout back as the server stops
+    return 0
+
+
+def _keeps(args) -> int:
+    from sparsh.keeps import report
+
+    data = report(args.state)
+    if args.json:
+        print(json.dumps(data, indent=1))
+        return 0
+    for place in data["keeps"]:
+        missing = "" if place["exists"] else "  (not there yet)"
+        print(f"{place['id']:<10} {place['path']}{missing}\n{'':<10} {place['what']}")
     return 0
 
 

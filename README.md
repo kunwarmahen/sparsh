@@ -178,6 +178,7 @@ sparsh connect ADDRESS              reach a paired phone over Wi-Fi
 sparsh tcpip [--port 5555]          the phone on the cable listens over Wi-Fi; prints its address
 sparsh mcp [--shots]                the agent's tools (MCP), held by your rules
 sparsh status [--json]              phones, rules, and how to start the tools
+sparsh keeps [--json]               where your rules and adb's key are, for a backup
 sparsh wda [WDA.ipa]                when the iPhone's WebDriverAgent signature runs out
 sparsh iphone [WDA.ipa]             the iPhone on the cable, ready; again after an unplug,
                                     a restart or an iOS update (SETUP.md, C6)
@@ -671,6 +672,8 @@ src/sparsh/
 │               (notes/19)
 ├── status.py   `sparsh status --json` (sparsh.status.v1): what a harness
 │               reads to find the phone, the rules and each tool's kind
+├── keeps.py    `sparsh keeps --json` (sparsh.keeps.v1): the state folder and adb's
+│               key, so a restored computer is trusted by the phone at once
 ├── fake.py     a phone made of saved screens, for tests
 └── cli.py      `sparsh`
 tests/screens/  real screens from the Android 15 emulator (locked.xml from a
