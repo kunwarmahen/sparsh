@@ -532,3 +532,40 @@ def test_a_phone_that_waits_for_a_still_screen_is_read_once_after_an_act(fake, t
     fake.tries.clear()
     phone.tap(4)
     assert len(fake.tries) == 2  # the check before the tap, and one after
+
+
+def test_android_battery_and_missed_calls_are_read_from_its_own_answers(monkeypatch):
+    from sparsh.device import AdbDevice
+
+    answers = {
+        "dumpsys": "Current Battery Service state:\n  AC powered: false\n  status: 3\n"
+                   "  level: 64\n  scale: 100\n",
+        "content": "Row: 0 number=+15550100, name=Mum, date=1761200000000\n"
+                   "Row: 1 number=+15550199, name=NULL, date=1761200100000\n",
+    }
+    device = AdbDevice("serial", adb="adb")
+    monkeypatch.setattr(device, "_shell", lambda *a, **k: answers[a[0]])
+    assert device.battery_and_calls() == {"battery": 64, "charging": False,
+                                          "missed": ["Mum", "+15550199"]}
+
+
+def test_android_that_keeps_its_call_log_from_adb_says_none(monkeypatch):
+    from sparsh.device import AdbDevice
+
+    device = AdbDevice("serial", adb="adb")
+    monkeypatch.setattr(device, "_shell", lambda *a, **k: (
+        "  level: 9\n  status: 2\n" if a[0] == "dumpsys"
+        else "Error while accessing provider:call_log\njava.lang.SecurityException"))
+    assert device.battery_and_calls() == {"battery": 9, "charging": True, "missed": None}
+
+
+def test_the_missed_call_filter_is_quoted_for_the_phones_own_shell(monkeypatch):
+    """adb joins shell words with spaces: an unquoted filter is three words
+    on the phone, and the call log comes back unread (seen on Android 15)."""
+    from sparsh.device import AdbDevice
+
+    asked: list[tuple] = []
+    device = AdbDevice("serial", adb="adb")
+    monkeypatch.setattr(device, "_shell", lambda *a, **k: asked.append(a) or "")
+    device.battery_and_calls()
+    assert "'type=3 AND new=1'" in asked[1]

@@ -412,6 +412,27 @@ class WdaDevice:
             return None, None
         return None, bool(locked) if isinstance(locked, bool) else None
 
+    def battery_and_calls(self) -> dict:
+        """Battery from WDA (``/wda/batteryInfo``: level 0-1, state 2
+        charging, 3 full); an iPhone lets nothing read its calls."""
+        info: object = {}
+        try:
+            paths = [f"/session/{self._session_id()}/wda/batteryInfo"]
+        except SparshError:
+            paths = []
+        for path in [*paths, "/wda/batteryInfo"]:
+            try:
+                info = self._call("GET", path)
+                break
+            except (WdaError, SparshError):
+                continue
+        level = info.get("level") if isinstance(info, dict) else None
+        state = info.get("state") if isinstance(info, dict) else None
+        return {"battery": round(level * 100) if isinstance(level, int | float) and level >= 0
+                else None,
+                "charging": None if state not in (1, 2, 3) else state in (2, 3),
+                "missed": None}
+
     def keyboard_area(self) -> tuple[int, int, int, int] | None:
         return None  # WDA's tree lists the keyboard's own keys
 

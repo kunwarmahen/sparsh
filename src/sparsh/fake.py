@@ -48,6 +48,11 @@ class FakeDevice:
         #: The person's own touches, as a test makes them (hand.py); None:
         #: a phone that shows no fingers, like an iPhone.
         self.hand: list | None = []
+        #: What phone_status reads: percent, plugged in, missed callers
+        #: (None: a phone that won't say, like an iPhone's calls).
+        self.battery: int | None = 80
+        self.charging: bool | None = False
+        self.missed: list[str] | None = []
 
     def _did(self, *action) -> None:
         self.actions.append(action)
@@ -96,6 +101,9 @@ class FakeDevice:
 
     def awake(self) -> tuple[bool | None, bool | None]:
         return self.screen_on, self.locked
+
+    def battery_and_calls(self) -> dict:
+        return {"battery": self.battery, "charging": self.charging, "missed": self.missed}
 
     def keyboard_area(self) -> tuple[int, int, int, int] | None:
         return self.keyboard_up

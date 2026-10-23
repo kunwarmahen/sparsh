@@ -46,7 +46,7 @@ def call(tools, tool, **args):
 
 def test_the_kinds():
     assert mcp.KINDS == {
-        "look": "read", "list_apps": "read", "describe_hold": "read",
+        "look": "read", "phone_status": "read", "list_apps": "read", "describe_hold": "read",
         "watch_phone": "read", "watched": "read",
         "tap": "act", "tap_at": "act", "type_text": "act", "scroll": "act", "press_key": "act",
         "open_app": "act", "confirm": "confirm",
@@ -120,7 +120,7 @@ def test_the_wire(tools):
     mcp.serve(tools, io.StringIO("\n".join(json.dumps(m) for m in lines) + "\nnot json\n"), out)
     replies = [json.loads(line) for line in out.getvalue().splitlines()]
     assert replies[0]["result"]["protocolVersion"] == "2024-11-05"
-    assert len(replies[1]["result"]["tools"]) == 12
+    assert len(replies[1]["result"]["tools"]) == 13
     assert replies[2]["error"]["code"] == -32601
     assert replies[3]["error"]["code"] == -32700
 
@@ -429,3 +429,20 @@ def test_a_held_step_names_the_phone_not_its_address(tools, fake):
     told, failed = call(tools, "describe_hold", hold=hold)
     assert told.startswith('On your phone (Nexus 6P): tap button "Send SMS" in Messages --')
     assert "fake" not in told.split(":")[0]  # the serial, not shown
+
+
+# -- the battery and missed calls ------------------------------------------------
+
+
+def test_phone_status_reads_without_touching_the_screen(tools, fake):
+    fake.battery, fake.charging, fake.missed = 41, True, ["Mum", "+1 555 0100"]
+    text, failed = call(tools, "phone_status")
+    assert not failed
+    assert text == "Battery: 41%, charging.\nMissed calls (2 new): Mum, +1 555 0100."
+    assert fake.actions == []
+    assert mcp.KINDS["phone_status"] == "read"
+
+
+def test_a_phone_that_keeps_its_calls_says_so_rather_than_none():
+    said = mcp.status_words({"battery": 90, "charging": None, "missed": None})
+    assert said == "Battery: 90%\nMissed calls: this phone doesn't let them be read."

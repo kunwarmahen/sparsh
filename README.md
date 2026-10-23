@@ -255,6 +255,13 @@ done.
 Every one of them hands back the screen it led to, so the agent always
 has the next numbers in front of it.
 
+`phone_status` is the one that doesn't touch the screen: the battery
+(percent, and whether it's charging) and the calls missed since the
+person last looked, from the phone's own records (`dumpsys battery` and
+the call log on Android; WebDriverAgent's battery on an iPhone, which
+lets nothing read its calls). A phone that keeps its call log from adb
+says so rather than "none" ([notes/19](notes/19-the-battery-without-the-screen.md)).
+
 `open_app` takes an app's everyday name. Android won't tell a computer
 the name the launcher shows, so Sparsh finds it in the package name
 ("youtube" is `com.google.android.youtube`), in a short table for apps
@@ -659,7 +666,9 @@ src/sparsh/
 │               where the list falls short or when asked (notes/05,
 │               notes/10); `tap_at` (notes/06); `watch_phone` and
 │               `watched` (notes/17); several named phones, each with
-│               its own look, holds, watch and keeper (notes/18)
+│               its own look, holds, watch and keeper (notes/18);
+│               `phone_status`, battery and missed calls with no screen
+│               (notes/19)
 ├── status.py   `sparsh status --json` (sparsh.status.v1): what a harness
 │               reads to find the phone, the rules and each tool's kind
 ├── fake.py     a phone made of saved screens, for tests

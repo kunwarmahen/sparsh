@@ -122,6 +122,13 @@ TOOLS: list[dict] = [
              "the list (unnamed rows, a map, a page with no words). Only if this "
              "phone sends pictures; you are told if not.")}}},
      "annotations": _READ},
+    {"name": "phone_status",
+     "description": (
+         "The phone's battery (percent, and whether it is charging) and the calls "
+         "missed since they were last looked at, without touching the screen. "
+         "An iPhone tells its battery only."),
+     "inputSchema": {"type": "object", "properties": {}},
+     "annotations": _READ},
     {"name": "list_apps",
      "description": "Apps on the phone that can be opened, as package names.",
      "inputSchema": {"type": "object", "properties": {
@@ -237,6 +244,21 @@ KINDS = {
     )
     for t in TOOLS
 }
+
+
+def status_words(status: dict) -> str:
+    """``phone_status`` in words a model passes on as they are."""
+    level, charging, missed = status.get("battery"), status.get("charging"), status.get("missed")
+    battery = ("Battery: not said." if level is None else
+               f"Battery: {level}%" + ("" if charging is None else
+                                       ", charging." if charging else ", not charging."))
+    if missed is None:
+        calls = "Missed calls: this phone doesn't let them be read."
+    elif not missed:
+        calls = "Missed calls: none new."
+    else:
+        calls = f"Missed calls ({len(missed)} new): " + ", ".join(missed) + "."
+    return f"{battery}\n{calls}"
 
 
 class ToolFailed(Exception):
@@ -414,6 +436,9 @@ class Tools:
 
     def _look(self, args: dict) -> Screen:
         return self.phone().see()
+
+    def _phone_status(self, args: dict) -> str:
+        return status_words(self.phone().device.battery_and_calls())
 
     def _list_apps(self, args: dict) -> str:
         return "\n".join(self.phone().apps(str(args.get("like") or ""))) or "(none)"

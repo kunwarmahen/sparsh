@@ -211,6 +211,7 @@ class Device(Protocol):
     def front_app(self) -> str: ...
     def name(self) -> str: ...
     def awake(self) -> tuple[bool | None, bool | None]: ...
+    def battery_and_calls(self) -> dict: ...
     def keyboard_area(self) -> tuple[int, int, int, int] | None: ...
     def secure(self) -> bool | None: ...
     def dismiss_lock(self) -> None: ...
@@ -626,6 +627,29 @@ class AdbDevice:
         )
         locked = None if not found else found.group(1) == "true"
         return on, locked
+
+    def battery_and_calls(self) -> dict:
+        """Battery and missed calls (``phone_status``), from Android itself:
+        ``dumpsys battery``, and the call log through ``content query`` --
+        which some phones keep from adb (then ``missed`` is None)."""
+        battery = self._shell("dumpsys", "battery")
+        level = re.search(r"^\s+level: (\d+)", battery, flags=re.MULTILINE)
+        state = re.search(r"^\s+status: (\d+)", battery, flags=re.MULTILINE)
+        out: dict = {"battery": int(level.group(1)) if level else None,
+                     # 2 charging, 5 full (BatteryManager.BATTERY_STATUS_*)
+                     "charging": None if not state else state.group(1) in ("2", "5"),
+                     "missed": None}
+        calls = self._shell("content", "query", "--uri", "content://call_log/calls",
+                            "--projection", "number:name:date",
+                            # quoted for the phone's own shell, which adb
+                            # hands the words to joined by spaces
+                            "--where", "'type=3 AND new=1'")
+        if "Row:" in calls or "No result found" in calls:
+            out["missed"] = [
+                (row.group(2).strip() if row.group(2) and row.group(2).strip() != "NULL"
+                 else row.group(1).strip())
+                for row in re.finditer(r"number=([^,]*), name=([^,]*), date=", calls)]
+        return out
 
     def secure(self) -> bool | None:
         """Whether the lock needs its person (a PIN, pattern, password),

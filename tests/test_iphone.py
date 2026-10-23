@@ -85,6 +85,8 @@ class FakeWda:
                     self._reply({"ready": True}, sessionId=fake.session)
                 elif self.path == "/screenshot":
                     self._reply(base64.b64encode(PNG).decode())
+                elif self.path.endswith("/wda/batteryInfo"):
+                    self._reply({"level": 0.57, "state": 2})
                 elif self.path == "/window/size":
                     self._reply({"width": 390, "height": 844})
                 else:
@@ -597,3 +599,9 @@ def test_an_app_the_rules_keep_out_is_left_for_home_at_once(spotlight, tmp_path)
     with pytest.raises(SparshError, match="off limits"):
         phone.open_app("WhatsApp")
     assert [p for p, _ in spotlight.posts()][-1] == "/wda/homescreen"
+
+
+def test_an_iphone_tells_its_battery_and_not_its_calls(wda):
+    assert WdaDevice(wda.url).battery_and_calls() == {"battery": 57, "charging": True,
+                                                       "missed": None}
+    assert any(path == "/session/S1/wda/batteryInfo" for _, path, _ in wda.calls)
