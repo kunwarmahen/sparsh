@@ -670,6 +670,9 @@ src/sparsh/
 │               its own look, holds, watch and keeper (notes/18);
 │               `phone_status`, battery and missed calls with no screen
 │               (notes/19)
+├── version.py  `sparsh --version` and status's "version": the day of the last
+│               commit and that day's count (2026.10.25.3), with the commit;
+│               from git, else the VERSION file `sarathi image` writes
 ├── status.py   `sparsh status --json` (sparsh.status.v1): what a harness
 │               reads to find the phone, the rules and each tool's kind
 ├── keeps.py    `sparsh keeps --json` (sparsh.keeps.v1): the state folder and adb's

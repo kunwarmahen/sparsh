@@ -38,7 +38,7 @@ import shutil
 import sys
 from pathlib import Path
 
-from sparsh import SparshError, __version__
+from sparsh import SparshError, version
 from sparsh.device import attached, iphones
 from sparsh.iphone import signature, signature_note
 from sparsh.mcp import KINDS
@@ -77,7 +77,8 @@ def report(state: Path, named: dict[str, str] | None = None) -> dict:
     rules, path = load(state)
     return {
         "format": FORMAT,
-        "version": __version__,
+        "version": version.version(),
+        "commit": version.commit(),
         "state": str(state),
         "rules": {
             "path": str(path),

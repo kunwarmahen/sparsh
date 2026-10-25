@@ -60,8 +60,8 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-from sparsh import SparshError, __version__
-from sparsh import log, mcp, phones
+from sparsh import SparshError
+from sparsh import log, mcp, phones, version
 from sparsh.awake import Awake
 from sparsh.awake import mode as awake_mode
 from sparsh.device import KEYS, TCPIP_PORT, attached, connect, iphones, pair, pick, tcpip
@@ -92,7 +92,7 @@ def main(argv: list[str] | None = None) -> int:
 
 def _parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="sparsh", description="An agent's hands on a real phone.")
-    p.add_argument("--version", action="version", version=f"sparsh {__version__}")
+    p.add_argument("--version", action=version.Show)
     common = argparse.ArgumentParser(add_help=False)
     common.add_argument("--serial", help="which phone (default: the only one attached)")
     common.add_argument("--phone", action="append", metavar="NAME[=WHERE]",
