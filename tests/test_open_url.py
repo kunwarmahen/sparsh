@@ -124,3 +124,53 @@ def test_brave_still_filling_in_is_waited_for(fake, tmp_path):
     fake.dump = dump
     seen = Phone(fake, state=tmp_path, settle=0.001).open_url(URL)
     assert any(e.label == "Tillamook Oregon Strawberry" for e in seen.elements)
+
+
+#: Food Lion on the Nexus: the site's own header first, the product later.
+HEADER_ONLY = BRAVE_FILLING.replace('text="Web View"', 'text="Online Grocery | Food Lion"')
+
+
+def test_a_page_is_read_until_it_holds_still(fake, tmp_path):
+    fake.screens.update(header=HEADER_ONLY, filled=BRAVE_FILLED)
+    fake.after = lambda f, a: setattr(f, "current", "header") if a[0] == "open_url" else None
+    reads = []
+
+    def dump(retry=True, _dump=fake.dump):
+        reads.append(1)
+        if len(reads) >= 3:
+            fake.current = "filled"       # the product, after the header
+        return _dump(retry)
+    fake.dump = dump
+    seen = Phone(fake, state=tmp_path, settle=0.001).open_url(URL)
+    assert any(e.label == "Tillamook Oregon Strawberry" for e in seen.elements)
+
+
+def test_a_settled_page_is_not_read_forever(fake, tmp_path):
+    fake.screens["filled"] = BRAVE_FILLED
+    fake.after = lambda f, a: setattr(f, "current", "filled") if a[0] == "open_url" else None
+    Phone(fake, state=tmp_path, settle=0.001).open_url(URL)
+    assert len(fake.tries) < 8            # settled: stops before the cap
+
+
+def test_the_fullest_read_wins_when_chrome_stops_listing_the_page(fake, tmp_path):
+    # Live on the Nexus: header, then the product, then "Web View" again.
+    fake.screens.update(header=HEADER_ONLY, filled=BRAVE_FILLED, gone=BRAVE_FILLING)
+    fake.after = lambda f, a: setattr(f, "current", "header") if a[0] == "open_url" else None
+    order = iter(["header", "filled", "gone", "gone", "gone", "gone", "gone", "gone"])
+
+    def dump(retry=True, _dump=fake.dump):
+        fake.current = next(order, "gone")
+        return _dump(retry)
+    fake.dump = dump
+    seen = Phone(fake, state=tmp_path, settle=0.001).open_url(URL)
+    assert any(e.label == "Tillamook Oregon Strawberry" for e in seen.elements)
+
+
+def test_chrome_reuses_one_tab_of_its_own(monkeypatch):
+    sent = []
+    device = AdbDevice("serial", adb="adb")
+    monkeypatch.setattr(device, "apps", lambda: ["com.android.chrome"])
+    monkeypatch.setattr(device, "_shell", lambda *a, **k: sent.append(a) or "Starting")
+    device.open_url(URL)
+    words = list(sent[0])
+    assert words[words.index("com.android.browser.application_id") + 1] == "sparsh"

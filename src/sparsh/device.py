@@ -613,11 +613,23 @@ class AdbDevice:
         # CHROME WHEN IT'S THERE, whatever the default is: Chrome puts a
         # page's words in the list Sparsh reads, and Brave -- the default
         # on a real Nexus 6P -- shows only "Web View" once it scrolls.
-        chrome = ["-p", CHROME] if CHROME in self.apps() else []
+        # ONE TAB OF ITS OWN: Chrome reuses the tab an application_id names,
+        # so a daily look doesn't leave a new tab behind every day.
+        chrome = (["-p", CHROME, "--es", "com.android.browser.application_id", "sparsh"]
+                  if CHROME in self.apps() else [])
         out = self._shell("am", "start", "-a", "android.intent.action.VIEW",
                           *chrome, "-d", shlex.quote(url))
         if "Error" in out:
             raise SparshError(f"the phone would not open {url}: {out.strip()[-200:]}")
+
+    def page_text(self, url: str) -> str:
+        """The words of Chrome's tab showing ``url`` (devtools.py); "" when
+        the phone has no Chrome to ask."""
+        if CHROME not in self.apps():
+            return ""
+        from sparsh import devtools
+
+        return devtools.page_text(self.serial, url)
 
     def apps(self) -> list[str]:
         out = self._shell(

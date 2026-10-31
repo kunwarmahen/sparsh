@@ -76,7 +76,13 @@ SETTLE = 0.8
 #: long after an act it is read again until two reads agree (``_after``).
 STILL_WITHIN = 4.0
 #: How many reads a page opened by address gets while it is still blank.
-PAGE_READS = 6
+PAGE_READS = 8
+#: How long a page opened by address is read for: Food Lion's showed its
+#: own header first and its product within about four seconds on a Nexus
+#: 6P, and Chrome stopped listing it a few seconds after that.
+PAGE_WAIT = 10.0
+#: The most of a page's own words an answer carries.
+PAGE_CHARS = 12000
 #: Seconds a held step waits for its yes.
 HOLD_FOR = 600
 #: The share of a screenshot that may differ from the one a person said
@@ -700,7 +706,8 @@ class Phone:
         A last resort for a page the house's browser is turned away from:
         the phone has its own network and is a browser people really use.
         A page takes longer than an app to fill in, so it is read again,
-        up to ``PAGE_READS`` times, while it is still blank. The browser
+        for ``PAGE_WAIT`` seconds (at most ``PAGE_READS`` reads), and the
+        fullest read is the answer. The browser
         is checked against the person's rules like any app, and an app
         they keep the agent out of is left for home before it is read."""
         if not url.lower().startswith(("http://", "https://")):
@@ -708,18 +715,49 @@ class Phone:
         if self.device.awake()[1] and self.device.secure() is False:
             self.device.dismiss_lock()
         self.device.open_url(url)
+        words = self._page_words(url)
+        if words:
+            # THE BROWSER'S OWN WORDS, when it shares them: the list then
+            # only has to say where things are, and one read does that.
+            screen = self._after()
+            screen.page = words[:PAGE_CHARS]
+            return self._opened(screen)
+        opened = time.monotonic()
+        # on a phone that settles at SETTLE, PAGE_WAIT seconds; scaled with it
+        least = PAGE_WAIT * (self.settle / SETTLE) if self.settle else 0.0
         screen = self._after()
+        best = None if _unfilled(screen) else screen
         reads = 1
-        while _unfilled(screen) and reads < PAGE_READS:
+        # THE FULLEST READ, NOT THE LAST. Chrome lists a page's words while
+        # it loads and stops a few seconds later ("Web View" again); before
+        # that, Food Lion's showed only its own header. So the page is read
+        # until PAGE_WAIT has passed, and the read with the most on it wins.
+        while reads < PAGE_READS and (best is None or time.monotonic() - opened < least):
             if self.settle:
-                time.sleep(self.settle * 2)
+                time.sleep(self.settle)
             screen = self._after()
             reads += 1
+            if not _unfilled(screen) and (best is None
+                                          or len(screen.text()) > len(best.text())):
+                best = screen
+        return self._opened(best or screen)
+
+    def _page_words(self, url: str) -> str:
+        reader = getattr(self.device, "page_text", None)
+        if reader is None or self._off_limits("com.android.chrome"):
+            return ""                      # never read from a browser kept out
+        try:
+            return reader(url).strip()
+        except SparshError:
+            return ""                      # the screen list is still there
+
+    def _opened(self, screen: Screen) -> Screen:
         if screen.app and self._off_limits(screen.app):
             self.device.keys("home")
             self._guard(screen.app)
-        screen.remark = ("(Opened in the phone's own browser. This is the top of the "
-                         "page; scroll down for more.)")
+        screen.remark = ("(Opened in the phone's own browser. Its list is the top of the "
+                         "page" + ("; the page's own words follow it." if screen.page
+                                   else "; scroll down for more.") + ")")
         return screen
 
     def _opened_by_search(self, search, name: str) -> Screen:

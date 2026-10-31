@@ -277,9 +277,16 @@ passed over rather than guessed at, and so are words like "app" and
 whenever the phone has it, whatever its default is, since Chrome puts a
 page's words in the list and Brave shows only "Web View"; Safari on an
 iPhone) and hands the page back as a screen: the top of it, with the
-usual numbers. On a real Nexus 6P it read Food Lion's product page,
+usual numbers. With Chrome, the answer also carries **the page's own
+words**, read from Chrome over adb the way `chrome://inspect` reads a
+tab (`devtools.py`): the screen list alone can't be trusted with a web
+page, since Chrome on a Nexus 6P listed a page's words for only a few
+seconds after it loaded. On that phone it read Food Lion's product page,
 which turns away every browser on the house computer with a DataDome
-captcha: `Sale Price$5.49Original Price$5.99`. It's for a page the computer's own browser is
+captcha, in about eight seconds: `Sale Price` / `$5.49` / `Original
+Price` / `$5.99`. The one question asked of the tab is a read of its
+text; nothing is clicked or run. A phone with no Chrome, or an iPhone,
+gets the screen list only. It's for a page the computer's own browser is
 turned away from, since the phone has its own network and is a browser
 people really use. A page fills in slower than an app (Food Lion's took
 about eight seconds), so a page still blank, or showing only "Web View",
@@ -640,7 +647,11 @@ src/sparsh/
 │               that answers picked, not the one written down (notes/15);
 │               where the keyboard covers; the panels at the top. Nothing
 │               installed on it, unless you add ADBKeyBoard for letters
-│               beyond ASCII (notes/04, notes/08)
+│               beyond ASCII (notes/04, notes/08); open an address in
+│               Chrome when it's there, in a tab of Sparsh's own
+├── devtools.py a web page's own words from Chrome on the phone, over
+│               adb's localabstract: (no port forward, so a container's
+│               borrowed adb works); one read of innerText, once loaded
 ├── iphone.py   an iPhone, through WebDriverAgent over HTTP; its screen
 │               rewritten in Android's words so one reader serves both
 │               (notes/03); widgets, row frames, knobs and twins as one

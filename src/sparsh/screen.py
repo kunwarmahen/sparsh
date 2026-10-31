@@ -151,6 +151,9 @@ class Screen:
     #: (module docstring).
     blanks: int = 0
     blank_page: bool = False
+    #: A web page's own words, read from the browser (devtools.py), said
+    #: after the list: what the list can't be trusted to carry.
+    page: str = ""
 
     @property
     def partly_blank(self) -> bool:
@@ -166,6 +169,9 @@ class Screen:
         lines += [e.line() for e in self.elements]
         if not self.elements:
             lines.append("(nothing on this screen can be read -- try a screenshot)")
+        if self.page:
+            lines += ["", "The page's own words (read from the browser, top to bottom):",
+                      self.page]
         return "\n".join(lines)
 
     def get(self, n: int) -> Element:
@@ -188,6 +194,7 @@ class Screen:
             "note": self.note,
             "remark": self.remark,
             "elements": [e.to_json() for e in self.elements],
+            **({"page": self.page} if self.page else {}),
         }
 
 
