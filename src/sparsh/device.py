@@ -251,6 +251,10 @@ class Attached:
         return f"{self.serial}  {self.model or '?'}  {self.state}" + (f"  ({note})" if note else "")
 
 
+#: The browser open_url asks for by name when the phone has it.
+CHROME = "com.android.chrome"
+
+
 def adb_path() -> str:
     found = os.environ.get("SPARSH_ADB") or shutil.which("adb")
     if not found:
@@ -606,8 +610,12 @@ class AdbDevice:
     def open_url(self, url: str) -> None:
         # adb's shell runs its words through the phone's own shell, where a
         # bare & would end the command and drop the rest of the address.
+        # CHROME WHEN IT'S THERE, whatever the default is: Chrome puts a
+        # page's words in the list Sparsh reads, and Brave -- the default
+        # on a real Nexus 6P -- shows only "Web View" once it scrolls.
+        chrome = ["-p", CHROME] if CHROME in self.apps() else []
         out = self._shell("am", "start", "-a", "android.intent.action.VIEW",
-                          "-d", shlex.quote(url))
+                          *chrome, "-d", shlex.quote(url))
         if "Error" in out:
             raise SparshError(f"the phone would not open {url}: {out.strip()[-200:]}")
 

@@ -273,12 +273,17 @@ Maps through "maps". A word that fits several apps, like "google", is
 passed over rather than guessed at, and so are words like "app" and
 "the" ([notes/10](notes/10-where-the-list-falls-short.md)).
 
-`open_url` opens a web address in the phone's own browser (Chrome, or
-Safari on an iPhone) and hands the page back as a screen: the top of it,
-with the usual numbers. It's for a page the computer's own browser is
+`open_url` opens a web address in the phone's own browser (Chrome
+whenever the phone has it, whatever its default is, since Chrome puts a
+page's words in the list and Brave shows only "Web View"; Safari on an
+iPhone) and hands the page back as a screen: the top of it, with the
+usual numbers. On a real Nexus 6P it read Food Lion's product page,
+which turns away every browser on the house computer with a DataDome
+captcha: `Sale Price$5.49Original Price$5.99`. It's for a page the computer's own browser is
 turned away from, since the phone has its own network and is a browser
-people really use. A page fills in slower than an app, so a blank one
-is read again a few times. Only `http`/`https` addresses open, and a
+people really use. A page fills in slower than an app (Food Lion's took
+about eight seconds), so a page still blank, or showing only "Web View",
+is read again up to six times. Only `http`/`https` addresses open, and a
 browser the person's rules keep the agent out of is left for home
 before anything on it is read. Its kind is **ask** (`sparsh status
 --json`): a harness asks the person every time, and a watch runs it only

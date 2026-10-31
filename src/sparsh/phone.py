@@ -76,7 +76,7 @@ SETTLE = 0.8
 #: long after an act it is read again until two reads agree (``_after``).
 STILL_WITHIN = 4.0
 #: How many reads a page opened by address gets while it is still blank.
-PAGE_READS = 4
+PAGE_READS = 6
 #: Seconds a held step waits for its yes.
 HOLD_FOR = 600
 #: The share of a screenshot that may differ from the one a person said
@@ -710,7 +710,7 @@ class Phone:
         self.device.open_url(url)
         screen = self._after()
         reads = 1
-        while (screen.blank_page or not screen.elements) and reads < PAGE_READS:
+        while _unfilled(screen) and reads < PAGE_READS:
             if self.settle:
                 time.sleep(self.settle * 2)
             screen = self._after()
@@ -986,6 +986,15 @@ class Phone:
 
     def _has_last(self) -> bool:
         return (self.folder / "last.xml").exists()
+
+
+def _unfilled(screen: Screen) -> bool:
+    """A page opened by address that hasn't reached the list yet: Chrome's
+    empty WebView (``blank_page``), or a line that says only "Web View" --
+    how Brave, a real Nexus 6P's browser, shows a page still filling in
+    (Food Lion's took about eight seconds)."""
+    return (screen.blank_page or not screen.elements
+            or any(e.label == "Web View" for e in screen.elements))
 
 
 #: Words in an app's name that name no app ("the phone app": "app" is a

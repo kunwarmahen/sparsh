@@ -18,7 +18,7 @@ from sparsh.device import AdbDevice
 from sparsh.phone import Phone
 from sparsh.rules import Rules
 
-from .conftest import BLANK_PAGE, CHROME, FILLED_PAGE
+from .conftest import BLANK_PAGE, CHROME, FILLED_PAGE, hierarchy, node
 
 URL = "https://shop.example/p/1?fulfillment=PICKUP&searchType=default"
 
@@ -72,9 +72,20 @@ def test_a_browser_the_rules_keep_out_is_left_for_home(fake, tmp_path):
 def test_the_whole_address_reaches_the_phones_shell(monkeypatch):
     sent = []
     device = AdbDevice("serial", adb="adb")
+    monkeypatch.setattr(device, "apps", lambda: [])
     monkeypatch.setattr(device, "_shell", lambda *a, **k: sent.append(a) or "Starting")
     device.open_url(URL)
     assert sent[0][-1] == f"'{URL}'"            # quoted: & would end the command
+    assert "-p" not in sent[0]                   # no Chrome: the phone's default
+
+
+def test_chrome_is_asked_for_when_the_phone_has_it(monkeypatch):
+    sent = []
+    device = AdbDevice("serial", adb="adb")
+    monkeypatch.setattr(device, "apps", lambda: ["com.brave.browser", "com.android.chrome"])
+    monkeypatch.setattr(device, "_shell", lambda *a, **k: sent.append(a) or "Starting")
+    device.open_url(URL)
+    assert sent[0][sent[0].index("-p") + 1] == "com.android.chrome"
 
 
 def test_the_tool_is_the_kind_that_is_asked_about():
@@ -88,3 +99,28 @@ def test_the_tool_needs_an_address(fake, tmp_path):
     reply = mcp.answer(tools, {"jsonrpc": "2.0", "id": 1, "method": "tools/call",
                                "params": {"name": "open_url", "arguments": {}}})
     assert reply["result"]["isError"] and "missing: url" in reply["result"]["content"][0]["text"]
+
+
+BRAVE = "com.brave.browser"
+#: Brave on a real Nexus 6P, a page still filling in: one "Web View" line
+#: and the browser's own buttons, no WebView node left empty.
+BRAVE_FILLING = hierarchy(
+    node("view.View", "[0,280][1440,2000]", text="Web View", package=BRAVE),
+    node("widget.ImageButton", "[0,2200][200,2392]", desc="Search", tap=True, package=BRAVE),
+    package=BRAVE)
+BRAVE_FILLED = BRAVE_FILLING.replace('text="Web View"', 'text="Tillamook Oregon Strawberry"')
+
+
+def test_brave_still_filling_in_is_waited_for(fake, tmp_path):
+    fake.screens.update(filling=BRAVE_FILLING, filled=BRAVE_FILLED)
+    fake.after = lambda f, a: setattr(f, "current", "filling") if a[0] == "open_url" else None
+    reads = []
+
+    def dump(retry=True, _dump=fake.dump):
+        reads.append(1)
+        if len(reads) >= 3:
+            fake.current = "filled"
+        return _dump(retry)
+    fake.dump = dump
+    seen = Phone(fake, state=tmp_path, settle=0.001).open_url(URL)
+    assert any(e.label == "Tillamook Oregon Strawberry" for e in seen.elements)
