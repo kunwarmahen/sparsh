@@ -372,6 +372,13 @@ class WdaDevice:
                 raise SparshError(f"{package} wasn't opened: {said}") from None
             raise SparshError(f"{package} could not be opened on this iPhone ({e})") from None
 
+    def open_url(self, url: str) -> None:
+        """The address in Safari (WebDriverAgent's /url opens it there)."""
+        try:
+            self._act("/url", {"url": url})
+        except WdaError as e:
+            raise SparshError(f"the iPhone would not open {url} ({e})") from None
+
     def search_open(self, name: str) -> str:
         """Open the app called ``name`` through Spotlight (module
         docstring); its bundle id. Raises when no result is that name."""

@@ -75,6 +75,8 @@ SETTLE = 0.8
 #: On a phone whose reads don't wait for a still screen (an iPhone), how
 #: long after an act it is read again until two reads agree (``_after``).
 STILL_WITHIN = 4.0
+#: How many reads a page opened by address gets while it is still blank.
+PAGE_READS = 4
 #: Seconds a held step waits for its yes.
 HOLD_FOR = 600
 #: The share of a screenshot that may differ from the one a person said
@@ -691,6 +693,33 @@ class Phone:
                 f"(It opened on a page that can't be read, so back was pressed "
                 f"{'once' if pressed == 1 else 'twice'}. This is where that led.)"
             )
+        return screen
+
+    def open_url(self, url: str) -> Screen:
+        """AN ADDRESS IN THE PHONE'S OWN BROWSER, READ AS ANY SCREEN IS.
+        A last resort for a page the house's browser is turned away from:
+        the phone has its own network and is a browser people really use.
+        A page takes longer than an app to fill in, so it is read again,
+        up to ``PAGE_READS`` times, while it is still blank. The browser
+        is checked against the person's rules like any app, and an app
+        they keep the agent out of is left for home before it is read."""
+        if not url.lower().startswith(("http://", "https://")):
+            raise SparshError(f"only a web address (http or https) opens here, not {url!r}")
+        if self.device.awake()[1] and self.device.secure() is False:
+            self.device.dismiss_lock()
+        self.device.open_url(url)
+        screen = self._after()
+        reads = 1
+        while (screen.blank_page or not screen.elements) and reads < PAGE_READS:
+            if self.settle:
+                time.sleep(self.settle * 2)
+            screen = self._after()
+            reads += 1
+        if screen.app and self._off_limits(screen.app):
+            self.device.keys("home")
+            self._guard(screen.app)
+        screen.remark = ("(Opened in the phone's own browser. This is the top of the "
+                         "page; scroll down for more.)")
         return screen
 
     def _opened_by_search(self, search, name: str) -> Screen:

@@ -49,7 +49,7 @@ def test_the_kinds():
         "look": "read", "phone_status": "read", "list_apps": "read", "describe_hold": "read",
         "watch_phone": "read", "watched": "read",
         "tap": "act", "tap_at": "act", "type_text": "act", "scroll": "act", "press_key": "act",
-        "open_app": "act", "confirm": "confirm",
+        "open_app": "act", "open_url": "ask", "confirm": "confirm",
     }  # fmt: skip
     confirm = next(t for t in mcp.TOOLS if t["name"] == "confirm")
     assert confirm["annotations"]["destructiveHint"] is True
@@ -120,7 +120,7 @@ def test_the_wire(tools):
     mcp.serve(tools, io.StringIO("\n".join(json.dumps(m) for m in lines) + "\nnot json\n"), out)
     replies = [json.loads(line) for line in out.getvalue().splitlines()]
     assert replies[0]["result"]["protocolVersion"] == "2024-11-05"
-    assert len(replies[1]["result"]["tools"]) == 13
+    assert len(replies[1]["result"]["tools"]) == 14
     assert replies[2]["error"]["code"] == -32601
     assert replies[3]["error"]["code"] == -32700
 

@@ -252,7 +252,8 @@ done.
 ## Letting an agent use it
 
 `sparsh mcp` gives an agent the same hands, as an MCP server: `look`,
-`tap`, `type_text`, `scroll`, `press_key`, `open_app` and `list_apps`.
+`tap`, `type_text`, `scroll`, `press_key`, `open_app`, `open_url` and
+`list_apps`.
 Every one of them hands back the screen it led to, so the agent always
 has the next numbers in front of it.
 
@@ -271,6 +272,19 @@ whose package says something else ("phone" is the dialler, "gmail" is
 Maps through "maps". A word that fits several apps, like "google", is
 passed over rather than guessed at, and so are words like "app" and
 "the" ([notes/10](notes/10-where-the-list-falls-short.md)).
+
+`open_url` opens a web address in the phone's own browser (Chrome, or
+Safari on an iPhone) and hands the page back as a screen: the top of it,
+with the usual numbers. It's for a page the computer's own browser is
+turned away from, since the phone has its own network and is a browser
+people really use. A page fills in slower than an app, so a blank one
+is read again a few times. Only `http`/`https` addresses open, and a
+browser the person's rules keep the agent out of is left for home
+before anything on it is read. Its kind is **ask** (`sparsh status
+--json`): a harness asks the person every time, and a watch runs it only
+as the exact call its person said yes to. Sarathi marks the phones a
+watch may use without asking anyone as *spare*, and passes them as
+`SPARSH_SPARE`.
 
 **[Yantra](https://github.com/kunwarmahen/yantra) finds it by itself**
 once `sparsh` is on your `PATH`. A checkout's `sparsh` is inside its

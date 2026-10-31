@@ -96,6 +96,9 @@ class FakeDevice:
             raise SparshError(f"{package} has no app to open on this phone")
         self._did("launch", package)
 
+    def open_url(self, url: str) -> None:
+        self._did("open_url", url)
+
     def apps(self) -> list[str]:
         return list(self.installed)
 

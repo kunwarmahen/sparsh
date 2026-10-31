@@ -108,6 +108,9 @@ VERSIONS = ("2025-06-18", "2025-03-26", "2024-11-05")
 _N = {"type": "integer", "minimum": 1, "description": "A number from the last screen list."}
 _READ = {"readOnlyHint": True}
 _ACT = {"readOnlyHint": False, "destructiveHint": False}
+#: A step a harness asks about every time, because it reaches out: an
+#: address opened on the phone goes over the phone's own network.
+_ASK = {"readOnlyHint": False, "destructiveHint": False, "openWorldHint": True}
 
 TOOLS: list[dict] = [
     {"name": "look",
@@ -195,6 +198,16 @@ TOOLS: list[dict] = [
      "inputSchema": {"type": "object", "properties": {
          "name": {"type": "string"}}, "required": ["name"]},
      "annotations": _ACT},
+    {"name": "open_url",
+     "description": (
+         "Open a web address in the phone's own browser and read the page as a "
+         "screen. For a page this computer's browser can't load (a site that turns "
+         "it away): the phone has its own network. The person is asked first, "
+         "unless it is a watch they already said yes to."),
+     "inputSchema": {"type": "object", "properties": {
+         "url": {"type": "string", "description": "The http(s) address."}},
+         "required": ["url"]},
+     "annotations": _ASK},
     {"name": "describe_hold",
      "description": (
          "A held step in plain words, with the screen it was asked on (for a tap "
@@ -240,6 +253,8 @@ KINDS = {
         if t["annotations"].get("readOnlyHint")
         else "confirm"
         if t["annotations"].get("destructiveHint")
+        else "ask"
+        if t["annotations"].get("openWorldHint")
         else "act"
     )
     for t in TOOLS
@@ -477,6 +492,12 @@ class Tools:
         if not name:
             raise ToolFailed("missing: name")
         return self.phone().open_app(name)
+
+    def _open_url(self, args: dict) -> Screen:
+        url = str(args.get("url") or "").strip()
+        if not url:
+            raise ToolFailed("missing: url")
+        return self.phone().open_url(url)
 
     def _watch_phone(self, args: dict) -> Screen:
         return self.watch().start(self.phone())

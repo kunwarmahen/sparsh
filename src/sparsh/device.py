@@ -60,6 +60,7 @@ from __future__ import annotations
 import base64
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import time
@@ -207,6 +208,7 @@ class Device(Protocol):
     def type_text(self, text: str) -> None: ...
     def keys(self, *names: str) -> None: ...
     def launch(self, package: str) -> None: ...
+    def open_url(self, url: str) -> None: ...
     def apps(self) -> list[str]: ...
     def front_app(self) -> str: ...
     def name(self) -> str: ...
@@ -600,6 +602,14 @@ class AdbDevice:
         out = self._shell("monkey", "-p", package, "-c", "android.intent.category.LAUNCHER", "1")
         if "No activities found" in out:
             raise SparshError(f"{package} has no app to open on this phone")
+
+    def open_url(self, url: str) -> None:
+        # adb's shell runs its words through the phone's own shell, where a
+        # bare & would end the command and drop the rest of the address.
+        out = self._shell("am", "start", "-a", "android.intent.action.VIEW",
+                          "-d", shlex.quote(url))
+        if "Error" in out:
+            raise SparshError(f"the phone would not open {url}: {out.strip()[-200:]}")
 
     def apps(self) -> list[str]:
         out = self._shell(
