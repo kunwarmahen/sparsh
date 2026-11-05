@@ -185,6 +185,8 @@ sparsh iphone [WDA.ipa]             the iPhone on the cable, ready; again after 
 sparsh iphone --background | --stop the same, without a terminal; and stop it
 sparsh adb-share [--socket FILE]    this computer's adb, for containers, through a socket
                                     file (~/.sparsh/adb.sock), not a port
+sparsh serve [--host H] [--port N]  your phones on a page (127.0.0.1:8794): each one, its
+                                    screen when you ask, and every step done on it
 ```
 
 Every command that does something prints the screen it led to. Every
@@ -230,6 +232,34 @@ wrong. An iPhone types them as they are.
 **Exit codes.** `0` done, `1` something went wrong (one sentence on
 stderr), `3` the screen changed since the last look and nothing was
 done.
+
+## Your phones on a page
+
+```
+sparsh serve
+Sparsh's page: http://127.0.0.1:8794/
+  http://127.0.0.1:8794/#token=…
+```
+
+Open the second address. Each phone gets a card: its name, Android or
+iPhone, whether it answers (and if not, what to do about it), and
+whether it's spare. Under it is **every step done on it, newest first,
+whoever asked**: Yantra's chat, a schedule, a watch, someone on Dvara's
+door, or you showing the agent a job. **Look** reads the screen now
+and shows the list beside a screenshot, with the battery. **List**
+gives the list alone. Your rules are at the bottom. With Sarathi,
+`sarathi up` starts it and the home page's **Your phones** card opens
+it already signed in.
+
+The page only watches. It never taps, types or wakes a phone: those
+stay with an agent, held by your rules, or with your own hand. A Look
+leaves an agent's numbers as they were (it's a peek), and an app your
+rules keep the agent out of is described, not shown.
+
+Its token is `$SPARSH_PAGE_TOKEN`, or the one kept in
+`~/.sparsh/page.token`. `--host 0.0.0.0` (or `SPARSH_PAGE_HOST`) opens
+it to your network; `--port` (or `SPARSH_PAGE_PORT`) moves it
+([notes/20](notes/20-a-page-for-the-phones.md)).
 
 ## When the phone can't describe its screen
 
@@ -322,7 +352,7 @@ mode", "text 5554 saying running late". Other ways to hand it over:
 | `YANTRA_SPARSH=/path/to/sparsh` or `--sparsh /path/to/sparsh` | for one run, without the link |
 | `/phone use` in a running session | a phone plugged in after the start |
 | `--mcp-config` naming `sparsh mcp` | works, but as a plain server every tap asks, not only Send |
-| [Sarathi](https://github.com/kunwarmahen/sarathi) | finds a checkout beside its own and hands it to Yantra's page; `sarathi phone` (an Android's address) or `sarathi phone iphone` (an iPhone's WebDriverAgent) gives the phone to Dvara and its containers too |
+| [Sarathi](https://github.com/kunwarmahen/sarathi) | finds a checkout beside its own and hands it to Yantra's page; `sarathi phone` (an Android's address) or `sarathi phone iphone` (an iPhone's WebDriverAgent) gives the phone to Dvara and its containers too; `sarathi up` starts this page (`sparsh serve`), and its home page's **Your phones** card opens it |
 
 To check it all works, [SETUP.md, Part T](SETUP.md#part-t--test-it-end-to-end-one-recipe-per-phone)
 has a copy-and-paste test for the emulator, an Android phone (cable or
@@ -584,6 +614,9 @@ show the agent a job, are logged by `you`.
 | `SPARSH_IOS_APPS` | more iPhone apps for `sparsh apps` and `open`, as bundle ids separated by commas (rarely needed: the start script lists every installed app) |
 | `SPARSH_IOS_MAX_CHILDREN` | how many children of each element an iPhone's screen is read with (30); more is slower, fewer can cut a list short |
 | `SPARSH_APPS_EVERY` | `sparsh iphone`: seconds between reads of the iPhone's installed apps (300) |
+| `SPARSH_PAGE_TOKEN` | `sparsh serve`: the page's token (16 characters or more); else one made once in `~/.sparsh/page.token` |
+| `SPARSH_PAGE_HOST`, `SPARSH_PAGE_PORT` | `sparsh serve`: where the page listens (127.0.0.1, 8794) |
+| `SPARSH_SPARE` | the named phones a watch may open a page on unasked (`nexus,drawer`); the page marks them spare. Sarathi sets it from `[phone.NAME] spare` |
 
 ## Not here yet
 
@@ -628,6 +661,10 @@ show the agent a job, are logged by `you`.
   ([notes/18](notes/18-several-phones.md)); run on a Nexus 6P and the
   emulator together, and read by name on a real Nexus 6P over Wi-Fi and
   a real iPhone 17 on the cable.
+* ~~A page of its own.~~ Built: `sparsh serve`, every phone and every
+  step done on it, whoever asked; it only watches
+  ([notes/20](notes/20-a-page-for-the-phones.md)). Run on a real Nexus
+  6P over Wi-Fi beside an iPhone 17 that wasn't answering.
 * ~~iPhones.~~ Built: [notes/03](notes/03-an-iphone-through-a-mac.md),
   with a Mac needed once to sign WebDriverAgent; read and tapped on a
   real iPhone 17, iOS 26 ([notes/12](notes/12-a-real-iphone.md)).
@@ -685,6 +722,10 @@ src/sparsh/
 │               notes/10)
 ├── log.py      every step on the phone, by the agent or by you, however it
 │               ended; `sparsh log` (notes/02)
+├── page.py     `sparsh serve`: your phones on a page, named ones whether
+│               they answer or not; every step on each, whoever asked; a
+│               peek under your rules on request; it never touches the
+│               phone (notes/20). static/ holds the page
 ├── hand.py     the person's own hand, while they show the agent a job:
 │               getevent's touches named against the screen as it was,
 │               keys counted not read, an iPhone's two screens (notes/17)
@@ -741,7 +782,11 @@ and a cable the containers can borrow) and
 [notes/16](notes/16-an-app-not-on-the-list.md) (an app not on the list,
 found in Spotlight), [notes/17](notes/17-the-persons-own-hand.md) (the
 person's own hand, watched while they show a job) and
-[notes/18](notes/18-several-phones.md) (several phones, each by a name).
+[notes/18](notes/18-several-phones.md) (several phones, each by a name),
+[notes/19](notes/19-the-battery-without-the-screen.md) (the battery and
+missed calls, without the screen) and
+[notes/20](notes/20-a-page-for-the-phones.md) (a page for the phones,
+that only watches).
 
 ## Licence
 

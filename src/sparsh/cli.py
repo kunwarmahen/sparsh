@@ -24,6 +24,9 @@
                                         a restart or an iOS update too): wdastart.py
     sparsh adb-share [--socket FILE]    this computer's adb, for containers, through a
                                         socket file (adbshare.py)
+    sparsh serve [--host H] [--port 8794]
+                                        Sparsh's own page: each phone, its screen on
+                                        request, and every step done on it (page.py)
 
 Every command that does something prints the screen it led to, so the
 next number to use is always on the screen. If the screen changed
@@ -56,12 +59,14 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
+import threading
 from datetime import datetime
 from pathlib import Path
 
 from sparsh import SparshError
-from sparsh import log, mcp, phones, version
+from sparsh import log, mcp, page, phones, version
 from sparsh.awake import Awake
 from sparsh.awake import mode as awake_mode
 from sparsh.device import KEYS, TCPIP_PORT, attached, connect, iphones, pair, pick, tcpip
@@ -221,6 +226,15 @@ def _parser() -> argparse.ArgumentParser:
                             "through a socket file in ~/.sparsh")  # fmt: skip
     s.add_argument("--socket", help="the socket file (default: adb.sock in the state folder)")
     s.set_defaults(run=_adb_share)
+
+    s = sub.add_parser("serve", parents=[common],
+                       help="Sparsh's own page: your phones and what was done on each")
+    s.add_argument("--host", default=os.environ.get("SPARSH_PAGE_HOST") or "127.0.0.1",
+                   help="where it listens (default 127.0.0.1, or $SPARSH_PAGE_HOST)")
+    s.add_argument("--port", type=int,
+                   default=int(os.environ.get("SPARSH_PAGE_PORT") or page.PORT),
+                   help=f"its port (default {page.PORT}, or $SPARSH_PAGE_PORT)")
+    s.set_defaults(run=_serve)
     return p
 
 
@@ -496,6 +510,25 @@ def _adb_share(args) -> int:
         adbshare.serve(path, adb_path())
     except KeyboardInterrupt:
         pass
+    return 0
+
+
+def _serve(args) -> int:
+    """The page, until stopped: its address, then the same with its token
+    on the next line, two spaces in (where Sarathi reads it)."""
+    state = state_root(args.state)
+    token = page.page_token(state)
+    server = page.PageServer(state, token, host=args.host, port=args.port).start()
+    shown = "127.0.0.1" if args.host in ("0.0.0.0", "::") else args.host
+    url = f"http://{shown}:{server.port}/"
+    print(f"Sparsh's page: {url}", flush=True)
+    print(f"  {url}#token={token}", flush=True)
+    try:
+        threading.Event().wait()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        server.close()
     return 0
 
 

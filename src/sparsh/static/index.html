@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>Sparsh</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<style>
+/* Sparsh's page. One accent (teal, the fingertip: the Look button, a
+   phone that answers) on the family's paper; green for a step done,
+   amber for one held for a yes, red for one not done. No fonts are
+   fetched. Light and dark are the same tokens swapped. */
+:root {
+  color-scheme: light;
+  --paper: #f3f5f4; --sheet: #fbfcfc; --sunk: #e6ebea; --line: #d3dcda;
+  --ink: #1a2120; --ink-2: #48524f; --ink-3: #6a7572;
+  --tip: #0f6e66; --tip-ink: #ffffff; --tip-soft: rgba(15, 110, 102, .11);
+  --ok: #2c7a52; --bad: #b3261e; --wait: #8a5a00;
+  --focus: rgba(15, 110, 102, .45);
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans",
+          "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --deva: "Noto Sans Devanagari", "Noto Serif Devanagari", "Mangal",
+          "Kohinoor Devanagari", system-ui, sans-serif;
+  --measure: 980px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --paper: #111615; --sheet: #171d1c; --sunk: #1f2625; --line: #2c3634;
+    --ink: #e5ecea; --ink-2: #adb9b6; --ink-3: #87938f;
+    --tip: #5cc9bd; --tip-ink: #0b1716; --tip-soft: rgba(92, 201, 189, .14);
+    --ok: #5cc28c; --bad: #f07b6f; --wait: #e3b04f;
+    --focus: rgba(92, 201, 189, .5);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --paper: #111615; --sheet: #171d1c; --sunk: #1f2625; --line: #2c3634;
+  --ink: #e5ecea; --ink-2: #adb9b6; --ink-3: #87938f;
+  --tip: #5cc9bd; --tip-ink: #0b1716; --tip-soft: rgba(92, 201, 189, .14);
+  --ok: #5cc28c; --bad: #f07b6f; --wait: #e3b04f;
+  --focus: rgba(92, 201, 189, .5);
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 15px/1.5 var(--sans); }
+.wrap { max-width: var(--measure); margin: 0 auto; padding: 28px 16px 64px; }
+button, input { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-radius: 4px; }
+code, pre { font-family: var(--mono); font-size: 13px; }
+[hidden] { display: none !important; }
+
+header { display: flex; align-items: flex-end; gap: 18px; flex-wrap: wrap; margin-bottom: 22px; }
+.mark { font-family: var(--deva); font-size: 52px; line-height: .9; font-weight: 600; }
+.mark .logo { width: .9em; height: .9em; border-radius: 22%; vertical-align: -.06em; margin-right: .22em; }
+.mark small { display: block; font: 14px/1.4 var(--sans); color: var(--ink-3); margin-top: 10px; }
+.state-line { margin-left: auto; text-align: right; color: var(--ink-2); font-size: 14px; max-width: 52ch; }
+
+h2 { font-size: 19px; font-weight: 650; margin: 30px 0 10px; }
+.lede { color: var(--ink-2); margin: 0 0 12px; font-size: 14px; }
+.empty { color: var(--ink-3); }
+.note { border-radius: 10px; padding: 12px 14px; margin: 10px 0; background: var(--tip-soft); }
+.note.bad { background: rgba(179, 38, 30, .1); color: var(--bad); }
+.note.wait { background: rgba(138, 90, 0, .1); }
+
+.phone { background: var(--sheet); border: 1px solid var(--line); border-radius: 14px;
+         padding: 16px 18px; margin: 0 0 16px; }
+.phone-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.phone-head .name { font-weight: 650; font-size: 18px; }
+.phone-head .what { color: var(--ink-2); font-size: 14px; }
+.chip { font-size: 12px; padding: 2px 9px; border-radius: 999px; background: var(--sunk);
+        color: var(--ink-2); white-space: nowrap; }
+.chip.on { background: rgba(44, 122, 82, .14); color: var(--ok); }
+.chip.off { background: rgba(179, 38, 30, .1); color: var(--bad); }
+.chip.spare { background: var(--tip-soft); color: var(--tip); }
+.phone .why { color: var(--bad); font-size: 14px; margin-top: 6px; overflow-wrap: anywhere; }
+.actions { margin-left: auto; display: flex; gap: 8px; }
+.btn { border: 1px solid var(--line); background: var(--sheet); border-radius: 9px;
+       padding: 6px 13px; cursor: pointer; }
+.btn.main { background: var(--tip); color: var(--tip-ink); border-color: var(--tip); }
+.btn:disabled { opacity: .55; cursor: progress; }
+
+.screen { display: grid; grid-template-columns: minmax(0, 260px) minmax(0, 1fr); gap: 16px;
+          margin-top: 14px; }
+.screen img { width: 100%; border-radius: 12px; border: 1px solid var(--line); display: block; }
+.screen .noshot { border: 1px dashed var(--line); border-radius: 12px; padding: 18px;
+                  color: var(--ink-3); font-size: 14px; }
+.screen pre { margin: 0; padding: 12px; background: var(--sunk); border-radius: 10px;
+              max-height: 520px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
+.screen .meta { color: var(--ink-2); font-size: 14px; margin: 0 0 8px; }
+@media (max-width: 640px) { .screen { grid-template-columns: minmax(0, 1fr); } }
+
+details.steps { margin-top: 12px; }
+details.steps summary { cursor: pointer; color: var(--ink-2); font-size: 14px; }
+.step-list { list-style: none; margin: 8px 0 0; padding: 0; }
+.step-list li { display: grid; grid-template-columns: 64px 54px minmax(0, 1fr); gap: 8px;
+                padding: 7px 0; border-top: 1px solid var(--line); font-size: 14px; }
+.step-list .at { color: var(--ink-3); font-family: var(--mono); font-size: 12.5px; padding-top: 1px; }
+.step-list .by { color: var(--ink-3); }
+.step-list .did { overflow-wrap: anywhere; }
+.step-list .on { color: var(--ink-2); font-size: 13px; }
+.btn.more { margin-top: 8px; font-size: 14px; }
+.out { font-weight: 600; }
+.out.done { color: var(--ok); } .out.held { color: var(--wait); }
+.out.not_done, .out.changed { color: var(--bad); }
+
+.rules dl { margin: 0; }
+.rules { background: var(--sheet); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+.rules dt { font-weight: 600; margin-top: 6px; }
+.rules dd { margin: 2px 0 0; color: var(--ink-2); overflow-wrap: anywhere; }
+
+.sign { max-width: 460px; }
+.sign input { width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 9px;
+              background: var(--sheet); margin: 8px 0; }
+footer { margin-top: 40px; color: var(--ink-3); font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="mark"><img class="logo" src="favicon.svg" alt="">स्पर्श
+      <small>Sparsh · your phones, and what was done on each</small></div>
+    <div class="state-line" id="state-line">Reading…</div>
+  </header>
+
+  <section id="sign" class="sign" hidden>
+    <h2>Sign in</h2>
+    <p class="lede">This page wants its token: Sarathi's home page opens it signed in, or
+      paste the one in <code>~/.sparsh/page.token</code>.</p>
+    <input id="token" type="password" autocomplete="off" aria-label="Token">
+    <button class="btn main" id="token-go">Open</button>
+  </section>
+
+  <main id="main" hidden>
+    <p class="lede">Every step an agent took on a phone, whoever asked for it (Yantra's chat,
+      a schedule, a watch, someone on the door), and every step you showed it. This page only
+      watches: it never taps, types or wakes a phone.</p>
+    <div id="notes"></div>
+    <div id="phones"></div>
+    <h2>Your rules</h2>
+    <div id="rules" class="rules"></div>
+  </main>
+  <footer id="foot"></footer>
+</div>
+<script src="page.js"></script>
+</body>
+</html>
