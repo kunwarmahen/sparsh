@@ -23,7 +23,7 @@ Sparsh's page: http://127.0.0.1:8794/
 
 For each phone it shows its name, Android or iPhone, whether it answers
 (and why not, as a person would fix it) and whether it's spare. Under
-that is every step done on it, newest first, whoever asked. **Look**
+that is every step done on it, newest first, with who asked. **Look**
 reads the screen on request and shows the list beside a screenshot,
 with the battery. **List** gives the list alone. Your rules are at the
 bottom.
@@ -53,6 +53,47 @@ or a sentence of its own: "not answering: is WebDriverAgent running?".
 Any other phone that answers is listed after the named ones. A peek or
 a step list is only given for a phone on the page. The token opens the
 phones this Sparsh was given, not whatever else is on the cable.
+
+## Who asked
+
+Yantra, Samay, Prahari and Dvara all start the same `sparsh mcp`, so
+Sparsh can't tell them apart by itself. So whoever starts it says who it
+is, in `$SPARSH_ASKED_BY`, and every step that server takes carries that
+label in the log's `via` field:
+
+| Who started it | What the step says |
+|---|---|
+| Yantra's page | `Yantra's page` |
+| a Samay schedule run here | `Samay: Tell me my battery and any… (bfaea182)` |
+| a Prahari watch looking here | `Prahari: Mayfield ice cream` |
+| a turn on Dvara | `Telegram · asha`, `Vaani: kitchen puck · asha`, `Samay: … · mahen` |
+
+Samay and Prahari set `YANTRA_ASKED_BY` for the Yantra runs they start,
+and Yantra hands it on. For runs that go through Dvara, they send a
+`label` (the schedule's start and id, the watch's name, the puck), and
+Dvara adds the way the turn came in and the person. A step done after a
+yes says where the yes came from (Dvara's rule: a turn carried on by an
+answer is that answer's). **Show steps asked for by** on the page keeps
+one program's steps only. Steps logged before this have no `via` and
+read *agent*.
+
+Live, on the Nexus over Wi-Fi: Yantra's own link started `sparsh mcp`
+with `YANTRA_ASKED_BY="Samay: live check (scratch01)"`, and one Back
+press landed in the log as
+
+```
+{"at": "2026-11-05T10:59:50-05:00", "by": "agent", "via": "Samay: live check (scratch01)",
+ "action": "press_key", "args": {"keys": ["back"]}, "outcome": "done", "app": "com.android.chrome", …}
+```
+
+and on the page as *10:59 · Samay: live check (scratch01) · press_key
+keys=["back"] → done*, beside a *Telegram · asha* step and one of *you*.
+
+**A label, never a key.** It's what a program said about itself, for
+you to read. Anything that can start `sparsh mcp` could write anything
+there, and only your own programs do. Nothing is decided by it. It's cut
+to 120 characters with control characters taken out, so a label can't
+fill the log or forge a line in it.
 
 ## A token, always
 
@@ -98,10 +139,6 @@ With the wrong token: `{"detail": "missing or wrong token"}`. A `POST`:
 
 ## What was deliberately not built
 
-* **Which program asked for a step.** The log says `agent` or `you`.
-  Yantra, Samay, Prahari and Dvara all start the same `sparsh mcp`, so
-  Sparsh can't tell them apart, and guessing from the time of day would
-  be worse than saying nothing.
 * **Changing names, owners and spares here.** Those are Sarathi's
   `[phone]` settings, and Sarathi's Settings page writes them. A second
   place to edit them would be a second file that can disagree.

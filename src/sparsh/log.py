@@ -9,6 +9,10 @@ what it was done to, and how it ended, in
     at       when, ISO 8601 with the zone
     by       "agent" (through `sparsh mcp`) or "you" (the command line,
              or your own finger while showing the agent a job: hand.py)
+    via      for an agent's step, the program that asked for it, in its
+             own words ("Samay: Morning brief", "Telegram · asha"): what
+             ``$SPARSH_ASKED_BY`` said when ``sparsh mcp`` started. Left
+             out when nothing said
     action   tap, type_text, scroll, press_key, open_app, confirm
     args     what was asked -- text typed into a password field is
              "(hidden)", here as everywhere
@@ -18,6 +22,14 @@ what it was done to, and how it ended, in
     said     for anything but done: why (the hold id, the reason)
     app      the app on screen afterwards
     after    the screen afterwards, as the agent was shown it (cut short)
+
+ASKED BY IS A PROGRAM'S WORD FOR ITSELF. Yantra, Samay, Prahari, Dvara
+and a voice puck all start the same ``sparsh mcp``, so only the one
+starting it can say who it is, and Sparsh writes down what it was told.
+It is a label for the person reading, never a key: anything that can
+start the server could say anything, and only the person's own
+programs do. Cut to ``VIA_CHARS``, with control characters taken out,
+so a label can't fill the log or forge a line of it.
 
 ONLY ACTS. Looking reads nothing worth keeping and would bury the
 steps; a peek (``look --peek``) is the person watching, not doing.
@@ -30,6 +42,7 @@ deletes.
 from __future__ import annotations
 
 import json
+import os
 from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
@@ -45,17 +58,27 @@ KEEP = 500
 AFTER_CHARS = 4000
 
 HIDDEN = "(hidden)"
+#: The longest "asked by" label kept.
+VIA_CHARS = 120
+
+
+def asked_by(raw: str | None = None) -> str:
+    """``$SPARSH_ASKED_BY``, cleaned (the module docstring); "" for none."""
+    raw = os.environ.get("SPARSH_ASKED_BY", "") if raw is None else raw
+    return " ".join("".join(c if c.isprintable() else " " for c in raw).split())[:VIA_CHARS]
 
 
 def path(phone: Phone) -> Path:
     return phone.folder / FILE
 
 
-def recorded(phone: Phone, by: str, action: str, args: dict, run: Callable[[], Any]) -> Any:
+def recorded(phone: Phone, by: str, action: str, args: dict, run: Callable[[], Any],
+             via: str = "") -> Any:
     """Run one act and write down how it went; its result (or its
-    exception) passes through untouched."""
+    exception) passes through untouched. ``via``: who asked (asked_by)."""
     on, secret = _aimed_at(phone, action, args)
-    entry: dict[str, Any] = {"by": by, "action": action, "args": _shown(args, secret), "on": on}
+    entry: dict[str, Any] = {"by": by, **({"via": via} if via else {}), "action": action,
+                             "args": _shown(args, secret), "on": on}
     try:
         result = run()
     except Held as e:
@@ -106,6 +129,8 @@ def line(entry: dict) -> str:
     args = entry.get("args") or {}
     asked = " ".join(f"{k}={json.dumps(v, ensure_ascii=False)}" for k, v in args.items())
     text = f"{at} {entry.get('by', '?'):5} {entry.get('action')} {asked}".rstrip()
+    if entry.get("via"):
+        text += f"  [asked by {entry['via']}]"
     if entry.get("on"):
         text += f"  [on {entry['on']}]"
     text += f" -> {entry.get('outcome')}"

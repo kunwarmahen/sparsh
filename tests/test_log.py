@@ -104,3 +104,29 @@ def test_your_own_hands_are_written_as_you(fake, tmp_path, monkeypatch, capsys):
     cli.main(["log", "--json", *state])
     (step,) = json.loads(capsys.readouterr().out)
     assert step["by"] == "you"
+
+
+# -- who asked: the program that started `sparsh mcp`, in its own words ----------
+
+def test_an_agents_step_says_which_program_asked_for_it(fake, tmp_path, monkeypatch):
+    monkeypatch.setenv("SPARSH_ASKED_BY", "Samay: Morning brief")
+    fake.screens["send"] = SEND
+    asked = mcp.Tools(Rules(), state=tmp_path, device=fake, settle=0)
+    call(asked, "look")
+    call(asked, "press_key", keys=["back"])
+    step = steps(asked)[-1]
+    assert step["by"] == "agent" and step["via"] == "Samay: Morning brief"
+    assert "[asked by Samay: Morning brief]" in log.line(step)
+
+
+def test_nothing_said_leaves_the_step_as_it_always_was(tools):
+    call(tools, "look")
+    call(tools, "press_key", keys=["back"])
+    assert "via" not in steps(tools)[-1]
+
+
+def test_a_label_cannot_forge_a_line_or_fill_the_log():
+    assert log.asked_by("Samay\n2026-11-05 agent tap -> done") == \
+        "Samay 2026-11-05 agent tap -> done"
+    assert len(log.asked_by("x" * 500)) == log.VIA_CHARS
+    assert log.asked_by("   ") == ""

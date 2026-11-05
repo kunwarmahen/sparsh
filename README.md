@@ -244,11 +244,13 @@ Sparsh's page: http://127.0.0.1:8794/
 Open the second address. Each phone gets a card: its name, Android or
 iPhone, whether it answers (and if not, what to do about it), and
 whether it's spare. Under it is **every step done on it, newest first,
-whoever asked**: Yantra's chat, a schedule, a watch, someone on Dvara's
-door, or you showing the agent a job. **Look** reads the screen now
+with who asked**: *Yantra's page*, *Samay: Tell me my battery
+(bfaea182)*, *Prahari: Mayfield ice cream*, *Telegram · asha*, or *you*
+when you showed the agent a job. **Show steps asked for by** keeps one
+program's steps only. **Look** reads the screen now
 and shows the list beside a screenshot, with the battery. **List**
 gives the list alone. Your rules are at the bottom. With Sarathi,
-`sarathi up` starts it and the home page's **Your phones** card opens
+`sarathi up` starts it and the home page's **Sparsh** card opens
 it already signed in.
 
 The page only watches. It never taps, types or wakes a phone: those
@@ -352,7 +354,7 @@ mode", "text 5554 saying running late". Other ways to hand it over:
 | `YANTRA_SPARSH=/path/to/sparsh` or `--sparsh /path/to/sparsh` | for one run, without the link |
 | `/phone use` in a running session | a phone plugged in after the start |
 | `--mcp-config` naming `sparsh mcp` | works, but as a plain server every tap asks, not only Send |
-| [Sarathi](https://github.com/kunwarmahen/sarathi) | finds a checkout beside its own and hands it to Yantra's page; `sarathi phone` (an Android's address) or `sarathi phone iphone` (an iPhone's WebDriverAgent) gives the phone to Dvara and its containers too; `sarathi up` starts this page (`sparsh serve`), and its home page's **Your phones** card opens it |
+| [Sarathi](https://github.com/kunwarmahen/sarathi) | finds a checkout beside its own and hands it to Yantra's page; `sarathi phone` (an Android's address) or `sarathi phone iphone` (an iPhone's WebDriverAgent) gives the phone to Dvara and its containers too; `sarathi up` starts this page (`sparsh serve`), and its home page's **Sparsh** card opens it |
 
 To check it all works, [SETUP.md, Part T](SETUP.md#part-t--test-it-end-to-end-one-recipe-per-phone)
 has a copy-and-paste test for the emulator, an Android phone (cable or
@@ -616,6 +618,7 @@ show the agent a job, are logged by `you`.
 | `SPARSH_APPS_EVERY` | `sparsh iphone`: seconds between reads of the iPhone's installed apps (300) |
 | `SPARSH_PAGE_TOKEN` | `sparsh serve`: the page's token (16 characters or more); else one made once in `~/.sparsh/page.token` |
 | `SPARSH_PAGE_HOST`, `SPARSH_PAGE_PORT` | `sparsh serve`: where the page listens (127.0.0.1, 8794) |
+| `SPARSH_ASKED_BY` | `sparsh mcp`: who started it, in its own words (`Samay: Morning brief`), written beside every step it takes and shown on the page. Yantra sets it; a label, never a key ([notes/20](notes/20-a-page-for-the-phones.md)) |
 | `SPARSH_SPARE` | the named phones a watch may open a page on unasked (`nexus,drawer`); the page marks them spare. Sarathi sets it from `[phone.NAME] spare` |
 
 ## Not here yet
@@ -662,7 +665,7 @@ show the agent a job, are logged by `you`.
   emulator together, and read by name on a real Nexus 6P over Wi-Fi and
   a real iPhone 17 on the cable.
 * ~~A page of its own.~~ Built: `sparsh serve`, every phone and every
-  step done on it, whoever asked; it only watches
+  step done on it and who asked for it; it only watches
   ([notes/20](notes/20-a-page-for-the-phones.md)). Run on a real Nexus
   6P over Wi-Fi beside an iPhone 17 that wasn't answering.
 * ~~iPhones.~~ Built: [notes/03](notes/03-an-iphone-through-a-mac.md),
@@ -723,7 +726,7 @@ src/sparsh/
 ├── log.py      every step on the phone, by the agent or by you, however it
 │               ended; `sparsh log` (notes/02)
 ├── page.py     `sparsh serve`: your phones on a page, named ones whether
-│               they answer or not; every step on each, whoever asked; a
+│               they answer or not; every step on each, and who asked; a
 │               peek under your rules on request; it never touches the
 │               phone (notes/20). static/ holds the page
 ├── hand.py     the person's own hand, while they show the agent a job:

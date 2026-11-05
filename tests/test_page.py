@@ -88,13 +88,15 @@ def test_a_named_phone_that_stopped_answering_is_listed_with_why(served, monkeyp
 def test_steps_are_read_from_the_phones_own_log_whoever_asked(served, tmp_path):
     folder = tmp_path / "phones" / "fake"
     folder.mkdir(parents=True)
-    lines = [{"at": "2026-11-05T03:00:00-05:00", "by": "agent", "action": "open_app",
+    lines = [{"at": "2026-11-05T03:00:00-05:00", "by": "agent", "via": "Samay: Morning brief",
+              "action": "open_app",
               "args": {"name": "Maps"}, "outcome": "done"},
              {"at": "2026-11-05T09:12:00-05:00", "by": "agent", "action": "tap",
               "args": {"n": 6}, "outcome": "held", "said": "h1: it says \"send\""}]
     (folder / "actions.jsonl").write_text("".join(json.dumps(x) + "\n" for x in lines))
     code, data = get(served, "/api/state")
     assert [s["outcome"] for s in data["phones"][0]["steps"]] == ["held", "done"]
+    assert data["phones"][0]["steps"][1]["via"] == "Samay: Morning brief"
     code, data = get(served, "/api/steps?serial=fake&n=1")
     assert code == 200 and [s["action"] for s in data["steps"]] == ["tap"]
 

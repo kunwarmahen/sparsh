@@ -9,6 +9,7 @@ let token = "";
 const open = {};        // serial -> the steps list is open
 const more = {};        // serial -> every step shown, not the newest few
 const FEW = 6;
+let only = "";          // a program's name: only the steps it asked for
 const screens = {};     // serial -> the last peek, kept across redraws
 
 function $(id) { return document.getElementById(id); }
@@ -82,11 +83,21 @@ function asked(step) {
   return (step.action || "?") + (words ? " " + words : "");
 }
 
+// Who asked, as the program said it ("Samay: Morning brief", "Telegram ·
+// asha"); the program is its first word, for the filter.
+function program(step) {
+  if (step.by === "you") return "You";
+  if (!step.via) return "An agent (not said)";
+  return step.via.split(/[:·]/)[0].trim() || step.via;
+}
+
 function stepRow(step) {
   const said = step.said || (step.outcome === "done" ? step.app : "");
+  const asker = step.by === "you" ? "you" : (step.via || "agent");
   return el("li", {},
     el("span", { class: "at", title: step.at || "" }, when(step.at)),
-    el("span", { class: "by" }, step.by || "?"),
+    el("span", { class: "by", title: step.by === "you" ? "your own step"
+                 : step.via ? "asked by " + step.via : "an agent; the program didn't say" }, asker),
     el("span", { class: "did" },
       asked(step), " → ", el("span", { class: "out " + (step.outcome || "") }, step.outcome),
       said ? " (" + said + ")" : "",
@@ -128,7 +139,7 @@ function phoneCard(phone) {
   lookBtn.addEventListener("click", () => look(phone, true, lookBtn));
   listBtn.addEventListener("click", () => look(phone, false, listBtn));
   const ready = phone.state === "device";
-  const steps = phone.steps || [];
+  const steps = (phone.steps || []).filter((s) => !only || program(s) === only);
   const shown = more[phone.serial] ? steps : steps.slice(0, FEW);
   const moreBtn = steps.length > FEW
     ? el("button", { class: "btn more", onclick: () => { more[phone.serial] = !more[phone.serial]; draw(last); } },
@@ -155,6 +166,18 @@ function phoneCard(phone) {
 
 let last = null;
 
+function drawFilter(phones) {
+  const names = new Set();
+  for (const p of phones) for (const s of p.steps || []) names.add(program(s));
+  if (only && !names.has(only)) names.add(only);
+  const pick = el("select", { "aria-label": "Show the steps asked for by",
+    onchange: (e) => { only = e.target.value; draw(last); } },
+    el("option", { value: "" }, "everyone"),
+    [...names].sort().map((n) => el("option", { value: n, selected: n === only }, n)));
+  $("filter").replaceChildren(names.size > 1 || only
+    ? el("label", { class: "filter" }, "Show steps asked for by ", pick) : "");
+}
+
 function draw(data) {
   if (!data) return;
   last = data;
@@ -170,6 +193,7 @@ function draw(data) {
   $("phones").replaceChildren(...(phones.length ? phones.map(phoneCard)
     : [el("p", { class: "empty" }, "No phone is named and none answers. Plug one in, or name them in ",
          el("code", {}, "SPARSH_PHONES"), " (Sarathi: Settings → Your phones).")]));
+  drawFilter(phones);
   const r = data.rules || {};
   $("rules").replaceChildren(el("dl", {},
     el("dt", {}, "Never (the agent is kept out of these apps)"),

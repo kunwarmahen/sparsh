@@ -19,8 +19,10 @@ hand like Samay's -- with twelve tools in three kinds:
     open_app       act      by everyday name or package
     confirm        confirm  do a held step -- after the person said yes
 
-EVERY ACT IS WRITTEN DOWN (log.py), by "agent", however it ended; and
-the person's own steps, seen while they show the agent a job, by "you".
+EVERY ACT IS WRITTEN DOWN (log.py), by "agent", however it ended, with
+the program that started this server as ``$SPARSH_ASKED_BY`` named it
+("Samay: Morning brief"); and the person's own steps, seen while they
+show the agent a job, by "you".
 
 EVERY ACT RETURNS THE SCREEN IT LED TO, so the next number to use is
 always in the model's last tool result, and a turn needs one ``look`` at
@@ -311,6 +313,8 @@ class Tools:
         self._now: str | None = None  # the phone this call is about
         self._phone: Phone | None = None
         self._watch = Watch()  # the person's own hand, while they show a job
+        #: The program that started this server, in its own words (log.py)
+        self.asked_by = log.asked_by()
 
     def listed(self) -> list[dict]:
         """``tools/list``: with more than one phone, each tool says which."""
@@ -443,7 +447,8 @@ class Tools:
                 return handler(args)
             # Every act is written down where the person can read it later
             # (log.py) -- held, refused and moved-screen steps included.
-            return log.recorded(self.phone(), "agent", name, args, lambda: handler(args))
+            return log.recorded(self.phone(), "agent", name, args, lambda: handler(args),
+                                via=self.asked_by)
         except (Held, ScreenChanged) as e:
             raise ToolFailed(str(e)) from None
         except SparshError as e:
